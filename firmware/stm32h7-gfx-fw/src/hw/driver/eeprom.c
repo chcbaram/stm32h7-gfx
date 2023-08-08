@@ -38,7 +38,7 @@ bool eepromInit()
   logPrintf("[%s] eepromInit()\n", ret ? "OK":"NG");
   if (ret == true)
   {
-    logPrintf("[  ] addr : 0x%02X\n", i2c_addr);
+    logPrintf("     addr : 0x%02X\n", i2c_addr);
   }
 #ifdef _USE_HW_CLI
   cliAdd("eeprom", cliEeprom);
