@@ -53,7 +53,8 @@
 #define      HW_I2C_CH_EEPROM       _DEF_I2C1
 #define      HW_I2C_CH_TOUCH        _DEF_I2C2
 
-
+#define _USE_HW_EEPROM
+#define      HW_EEPROM_MAX_SIZE     (8*1024)
 
 #define FLASH_SIZE_TAG              0x400
 #define FLASH_SIZE_VER              0x400

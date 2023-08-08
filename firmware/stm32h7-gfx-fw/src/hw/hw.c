@@ -42,6 +42,7 @@ bool hwInit(void)
   rtcInit();
   resetInit();
   faultInit();
-
+  eepromInit();
+  
   return true;
 }

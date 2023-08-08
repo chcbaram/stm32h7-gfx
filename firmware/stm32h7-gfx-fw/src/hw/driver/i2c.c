@@ -253,6 +253,31 @@ bool i2cReadBytes(uint8_t ch, uint16_t dev_addr, uint16_t reg_addr, uint8_t *p_d
   return ret;
 }
 
+bool i2cReadA16Bytes(uint8_t ch, uint16_t dev_addr, uint16_t reg_addr, uint8_t *p_data, uint32_t length, uint32_t timeout)
+{
+  bool ret;
+  HAL_StatusTypeDef i2c_ret;
+  I2C_HandleTypeDef *p_handle = i2c_tbl[ch].p_hi2c;
+
+  if (ch >= I2C_MAX_CH)
+  {
+    return false;
+  }
+
+  i2c_ret = HAL_I2C_Mem_Read(p_handle, (uint16_t)(dev_addr << 1), reg_addr, I2C_MEMADD_SIZE_16BIT, p_data, length, timeout);
+
+  if( i2c_ret == HAL_OK )
+  {
+    ret = true;
+  }
+  else
+  {
+    ret = false;
+  }
+
+  return ret;
+}
+
 bool i2cReadData(uint8_t ch, uint16_t dev_addr, uint8_t *p_data, uint32_t length, uint32_t timeout)
 {
   bool ret;
@@ -295,6 +320,31 @@ bool i2cWriteBytes(uint8_t ch, uint16_t dev_addr, uint16_t reg_addr, uint8_t *p_
   }
 
   i2c_ret = HAL_I2C_Mem_Write(p_handle, (uint16_t)(dev_addr << 1), reg_addr, I2C_MEMADD_SIZE_8BIT, p_data, length, timeout);
+
+  if(i2c_ret == HAL_OK)
+  {
+    ret = true;
+  }
+  else
+  {
+    ret = false;
+  }
+
+  return ret;
+}
+
+bool i2cWriteA16Bytes(uint8_t ch, uint16_t dev_addr, uint16_t reg_addr, uint8_t *p_data, uint32_t length, uint32_t timeout)
+{
+  bool ret;
+  HAL_StatusTypeDef i2c_ret;
+  I2C_HandleTypeDef *p_handle = i2c_tbl[ch].p_hi2c;
+
+  if (ch >= I2C_MAX_CH)
+  {
+    return false;
+  }
+
+  i2c_ret = HAL_I2C_Mem_Write(p_handle, (uint16_t)(dev_addr << 1), reg_addr, I2C_MEMADD_SIZE_16BIT, p_data, length, timeout);
 
   if(i2c_ret == HAL_OK)
   {
