@@ -71,19 +71,19 @@ bool resetInit(void)
   rtcSetReg(HW_RTC_BOOT_MODE, 0);  
 
 
-  cliPrintf("[OK] resetInit()\n");
+  logPrintf("[OK] resetInit()\n");
   for (int i=0; i<RESET_BIT_MAX; i++)
   {
     if (reset_bits & (1<<i))
     {
-      cliPrintf("     %s\n", reset_bit_str[i]);
+      logPrintf("     %s\n", reset_bit_str[i]);
     }
   }
   for (int i=0; i<RESET_BIT_MAX; i++)
   {
     if (boot_mode & (1<<i))
     {
-      cliPrintf("     %s\n", mode_bit_str[i]);
+      logPrintf("     %s\n", mode_bit_str[i]);
     }
   }  
 

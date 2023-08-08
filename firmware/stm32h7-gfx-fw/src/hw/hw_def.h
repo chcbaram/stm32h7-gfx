@@ -42,7 +42,7 @@
 #define      HW_SWTIMER_MAX_CH      8
 
 #define _USE_HW_RESET
-#define      HW_RESET_BOOT          0
+#define      HW_RESET_BOOT          1
 
 #define _USE_HW_RTC
 #define      HW_RTC_BOOT_MODE       RTC_BKP_DR3
