@@ -25,6 +25,7 @@ bool hwInit(void)
   swtimerInit();
   ledInit();
   buttonInit();
+  i2cInit();
   uartInit();
   for (int i=0; i<HW_UART_MAX_CH; i++)
   {

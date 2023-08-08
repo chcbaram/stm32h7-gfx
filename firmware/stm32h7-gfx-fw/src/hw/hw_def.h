@@ -48,6 +48,10 @@
 #define      HW_RTC_BOOT_MODE       RTC_BKP_DR3
 #define      HW_RTC_RESET_BITS      RTC_BKP_DR4
 
+#define _USE_HW_I2C
+#define      HW_I2C_MAX_CH          2
+#define      HW_I2C_CH_EEPROM       _DEF_I2C1
+#define      HW_I2C_CH_TOUCH        _DEF_I2C2
 
 
 
