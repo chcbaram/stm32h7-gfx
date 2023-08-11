@@ -20,9 +20,9 @@ file(GLOB SRC_FILES CONFIGURE_DEPENDS
   src/bsp/*.c
   src/bsp/device/*.c
 
-  # src/lib/FatFs/src/*.c
-  # src/lib/FatFs/src/option/syscall.c
-  # src/lib/FatFs/src/option/unicode.c
+  src/lib/FatFs/src/*.c
+  src/lib/FatFs/src/option/syscall.c
+  src/lib/FatFs/src/option/unicode.c
 
   # src/lib/STM32_USB_Device_Library/Core/Src/*.c
 )

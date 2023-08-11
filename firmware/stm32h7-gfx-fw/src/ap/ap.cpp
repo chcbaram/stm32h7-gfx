@@ -26,6 +26,7 @@ void apMain(void)
     }    
 
     cliMain();
+    sdUpdate();
   }
 }
 

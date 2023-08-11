@@ -52,6 +52,8 @@ bool hwInit(void)
   fsInit();
   nvsInit();  
   
-  
+  sdInit();
+  fatfsInit();
+
   return true;
 }

@@ -3,7 +3,7 @@
 
 static void bspMpuInit(void);
 static void SystemClock_Config(void);
-
+static void PeriphCommonClock_Config(void);
 
 
 
@@ -18,6 +18,7 @@ bool bspInit(void)
 
 
   SystemClock_Config();
+  PeriphCommonClock_Config();
 
   __HAL_RCC_SYSCFG_CLK_ENABLE();
   __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -117,6 +118,29 @@ void SystemClock_Config(void)
   }
 }
 
+void PeriphCommonClock_Config(void)
+{
+  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+
+  /** Initializes the peripherals clock
+  */
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_FMC|RCC_PERIPHCLK_SDMMC;
+  PeriphClkInitStruct.PLL2.PLL2M = 6;
+  PeriphClkInitStruct.PLL2.PLL2N = 136;
+  PeriphClkInitStruct.PLL2.PLL2P = 3;
+  PeriphClkInitStruct.PLL2.PLL2Q = 4;
+  PeriphClkInitStruct.PLL2.PLL2R = 3;
+  PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_2;
+  PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
+  PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
+  PeriphClkInitStruct.FmcClockSelection = RCC_FMCCLKSOURCE_PLL2;
+  PeriphClkInitStruct.SdmmcClockSelection = RCC_SDMMCCLKSOURCE_PLL2;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
 void bspMpuInit(void)
 {
 
@@ -141,8 +165,23 @@ void bspMpuInit(void)
 
   // MPU 설정 메모리 크기에 정렬된 주소가 입력되어야 함.
 
-  /* Stringly Ordered */
+  /* Configure the MPU as Strongly ordered for not defined regions */
   MPU_InitStruct.Number           = MPU_REGION_NUMBER0;
+  MPU_InitStruct.Enable           = MPU_REGION_ENABLE;
+  MPU_InitStruct.BaseAddress      = 0x00;
+  MPU_InitStruct.Size             = MPU_REGION_SIZE_4GB;
+  MPU_InitStruct.AccessPermission = MPU_REGION_NO_ACCESS;
+  MPU_InitStruct.IsBufferable     = MPU_ACCESS_NOT_BUFFERABLE;
+  MPU_InitStruct.IsCacheable      = MPU_ACCESS_NOT_CACHEABLE;
+  MPU_InitStruct.IsShareable      = MPU_ACCESS_SHAREABLE;
+  MPU_InitStruct.TypeExtField     = MPU_TEX_LEVEL0;
+  MPU_InitStruct.SubRegionDisable = 0x87;
+  MPU_InitStruct.DisableExec      = MPU_INSTRUCTION_ACCESS_DISABLE;
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+
+  /* Stringly Ordered */
+  MPU_InitStruct.Number           = MPU_REGION_NUMBER1;
   MPU_InitStruct.BaseAddress      = 0x38000000;
   MPU_InitStruct.Size             = MPU_REGION_SIZE_16KB;
   MPU_InitStruct.TypeExtField     = MPU_TEX_LEVEL0;
@@ -156,8 +195,23 @@ void bspMpuInit(void)
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
 
+  /* Setup AXI SRAM, SRAM1 and SRAM2 in Write-through */
+  MPU_InitStruct.Number           = MPU_REGION_NUMBER2;
+  MPU_InitStruct.Enable           = MPU_REGION_ENABLE;
+  MPU_InitStruct.BaseAddress      = D1_AXISRAM_BASE;
+  MPU_InitStruct.Size             = MPU_REGION_SIZE_1MB;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+  MPU_InitStruct.IsBufferable     = MPU_ACCESS_NOT_BUFFERABLE;
+  MPU_InitStruct.IsCacheable      = MPU_ACCESS_CACHEABLE;
+  MPU_InitStruct.IsShareable      = MPU_ACCESS_NOT_SHAREABLE;
+  MPU_InitStruct.TypeExtField     = MPU_TEX_LEVEL0;
+  MPU_InitStruct.SubRegionDisable = 0x00;
+  MPU_InitStruct.DisableExec      = MPU_INSTRUCTION_ACCESS_DISABLE;
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+
   /* Write-back, write and read allocate */
-  MPU_InitStruct.Number           = MPU_REGION_NUMBER1;
+  MPU_InitStruct.Number           = MPU_REGION_NUMBER3;
   MPU_InitStruct.Enable           = MPU_REGION_ENABLE;
   MPU_InitStruct.BaseAddress      = 0xC0000000;
   MPU_InitStruct.Size             = MPU_REGION_SIZE_32MB;
@@ -169,6 +223,7 @@ void bspMpuInit(void)
   MPU_InitStruct.SubRegionDisable = 0x00;
   MPU_InitStruct.DisableExec      = MPU_INSTRUCTION_ACCESS_ENABLE;
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
 
   /* Enable the MPU */
   HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);

@@ -16,6 +16,9 @@
 #define _USE_HW_FLASH
 #define _USE_HW_FILES
 #define _USE_HW_NVS
+#define _USE_HW_SD
+#define _USE_HW_FATFS
+#define _USE_HW_CACHE
 
 
 #define _USE_HW_LED
@@ -37,7 +40,7 @@
 #define      HW_LOG_LIST_BUF_MAX    1024
 
 #define _USE_HW_GPIO
-#define      HW_GPIO_MAX_CH         1
+#define      HW_GPIO_MAX_CH         2
 
 #define _USE_HW_BUTTON
 #define      HW_BUTTON_MAX_CH       1
@@ -73,6 +76,10 @@
 #define _USE_HW_SDRAM
 #define      HW_SDRAM_MEM_ADDR      0xC0000000
 #define      HW_SDRAM_MEM_SIZE      (32*1024*1024)
+
+
+#define _PIN_GPIO_SPI_FLASH_CS      0
+#define _PIN_GPIO_SDCARD_DETECT     1
 
 
 #define FLASH_SIZE_TAG              0x400
