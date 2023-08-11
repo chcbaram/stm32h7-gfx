@@ -34,7 +34,7 @@ file(GLOB_RECURSE SRC_FILES_RECURSE CONFIGURE_DEPENDS
   src/common/*.c
   src/hw/*.c
   src/lib/STM32H7xx_HAL_Driver/Src/*.c
-  # src/lib/littlefs/*.c
+  src/lib/littlefs/*.c
 )
 
 add_executable(${EXECUTABLE} 

@@ -23,9 +23,11 @@ bool hwInit(void)
   cliInit();
   logInit();
   swtimerInit();
+  gpioInit();
   ledInit();
   buttonInit();
   i2cInit();
+  spiInit();
   uartInit();
   for (int i=0; i<HW_UART_MAX_CH; i++)
   {
@@ -45,7 +47,11 @@ bool hwInit(void)
   eepromInit();
   sdramInit();
   qspiInit();
+  spiFlashInit();
   flashInit();  
+  fsInit();
+  nvsInit();  
+  
   
   return true;
 }

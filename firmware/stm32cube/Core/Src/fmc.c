@@ -91,7 +91,7 @@ static void HAL_FMC_MspInit(void){
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_FMC;
     PeriphClkInitStruct.PLL2.PLL2M = 6;
     PeriphClkInitStruct.PLL2.PLL2N = 136;
-    PeriphClkInitStruct.PLL2.PLL2P = 4;
+    PeriphClkInitStruct.PLL2.PLL2P = 3;
     PeriphClkInitStruct.PLL2.PLL2Q = 4;
     PeriphClkInitStruct.PLL2.PLL2R = 3;
     PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_2;

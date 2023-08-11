@@ -1,5 +1,6 @@
 #include "flash.h"
 #include "qspi.h"
+#include "spi_flash.h"
 #include "cli.h"
 
 
@@ -72,7 +73,13 @@ bool flashErase(uint32_t addr, uint32_t length)
     return ret;
   }
 #endif
-
+#ifdef _USE_HW_SPI_FLASH
+  if (addr >= spiFlashGetAddr() && addr < (spiFlashGetAddr() + spiFlashGetLength()))
+  {
+    ret = spiFlashErase(addr - spiFlashGetAddr(), length);
+    return ret;
+  }
+#endif
 
   HAL_FLASH_Unlock();
 
@@ -174,7 +181,13 @@ bool flashWrite(uint32_t addr, uint8_t *p_data, uint32_t length)
     return ret;
   }
 #endif
-
+#ifdef _USE_HW_SPI_FLASH
+  if (addr >= spiFlashGetAddr() && addr < (spiFlashGetAddr() + spiFlashGetLength()))
+  {
+    ret = spiFlashWrite(addr - spiFlashGetAddr(), p_data, length);
+    return ret;
+  }
+#endif
 
   HAL_FLASH_Unlock();
 
@@ -251,6 +264,13 @@ bool flashRead(uint32_t addr, uint8_t *p_data, uint32_t length)
     return ret;
   }
 #endif
+#ifdef _USE_HW_SPI_FLASH
+  if (addr >= spiFlashGetAddr() && addr < (spiFlashGetAddr() + spiFlashGetLength()))
+  {
+    ret = spiFlashRead(addr - spiFlashGetAddr(), p_data, length);
+    return ret;
+  }
+#endif
 
   for (int i=0; i<length; i++)
   {
@@ -278,7 +298,8 @@ void cliFlash(cli_args_t *args)
   if (args->argc == 1 && args->isStr(0, "info"))
   {
     cliPrintf("flash addr  : 0x%X\n", 0x8000000);
-    cliPrintf("qspi  addr  : 0x%X\n", 0x90000000);
+    cliPrintf("qspi  addr  : 0x%X\n", qspiGetAddr());
+    cliPrintf("spi   addr  : 0x%X\n", spiFlashGetAddr());
     
     ret = true;
   }

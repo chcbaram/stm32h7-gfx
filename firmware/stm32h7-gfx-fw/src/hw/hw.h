@@ -37,7 +37,7 @@ extern "C" {
 #include "eeprom.h"
 #include "fmc.h"
 #include "sdram.h"
-
+#include "spi_flash.h"
 
 
 bool hwInit(void);

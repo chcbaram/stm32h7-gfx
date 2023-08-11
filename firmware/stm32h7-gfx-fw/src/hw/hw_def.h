@@ -6,7 +6,7 @@
 #include "bsp.h"
 
 
-#define _DEF_FIRMWATRE_VERSION    "V230808R1"
+#define _DEF_FIRMWATRE_VERSION    "V230811R1"
 #define _DEF_BOARD_NAME           "STM32H7-GFX-FW"
 
 
@@ -14,8 +14,8 @@
 #define _USE_HW_FAULT
 #define _USE_HW_QSPI
 #define _USE_HW_FLASH
-
-
+#define _USE_HW_FILES
+#define _USE_HW_NVS
 
 
 #define _USE_HW_LED
@@ -36,6 +36,9 @@
 #define      HW_LOG_BOOT_BUF_MAX    1024
 #define      HW_LOG_LIST_BUF_MAX    1024
 
+#define _USE_HW_GPIO
+#define      HW_GPIO_MAX_CH         1
+
 #define _USE_HW_BUTTON
 #define      HW_BUTTON_MAX_CH       1
 
@@ -53,6 +56,16 @@
 #define      HW_I2C_MAX_CH          2
 #define      HW_I2C_CH_EEPROM       _DEF_I2C1
 #define      HW_I2C_CH_TOUCH        _DEF_I2C2
+
+#define _USE_HW_SPI
+#define      HW_SPI_MAX_CH          1
+
+#define _USE_HW_SPI_FLASH
+#define      HW_SPI_FLASH_ADDR      0x91000000
+
+#define _USE_HW_FS
+#define      HW_FS_FLASH_OFFSET     0x91000000
+#define      HW_FS_MAX_SIZE         (8*1024*1024)
 
 #define _USE_HW_EEPROM
 #define      HW_EEPROM_MAX_SIZE     (8*1024)
