@@ -10,6 +10,7 @@ extern "C" {
 
 
 bool fmcInit(void);
+bool fmcDeInit(void);
 void *fmcGetAddr(void);
 
 #ifdef __cplusplus

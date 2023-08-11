@@ -35,6 +35,9 @@ extern "C" {
 #include "cmd.h"
 #include "util.h"
 #include "eeprom.h"
+#include "fmc.h"
+#include "sdram.h"
+
 
 
 bool hwInit(void);

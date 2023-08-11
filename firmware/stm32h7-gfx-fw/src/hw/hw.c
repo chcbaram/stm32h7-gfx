@@ -43,6 +43,7 @@ bool hwInit(void)
   resetInit();
   faultInit();
   eepromInit();
+  sdramInit();
   
   return true;
 }

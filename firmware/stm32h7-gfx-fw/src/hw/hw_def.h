@@ -56,6 +56,11 @@
 #define _USE_HW_EEPROM
 #define      HW_EEPROM_MAX_SIZE     (8*1024)
 
+#define _USE_HW_SDRAM
+#define      HW_SDRAM_MEM_ADDR      0xC0000000
+#define      HW_SDRAM_MEM_SIZE      (32*1024*1024)
+
+
 #define FLASH_SIZE_TAG              0x400
 #define FLASH_SIZE_VER              0x400
 #define FLASH_SIZE_FIRM             (1024*1024 - 128*1024)
