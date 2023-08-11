@@ -44,6 +44,8 @@ bool hwInit(void)
   faultInit();
   eepromInit();
   sdramInit();
+  qspiInit();
+  flashInit();  
   
   return true;
 }

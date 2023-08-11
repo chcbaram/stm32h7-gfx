@@ -12,7 +12,8 @@
 
 
 #define _USE_HW_FAULT
-
+#define _USE_HW_QSPI
+#define _USE_HW_FLASH
 
 
 
