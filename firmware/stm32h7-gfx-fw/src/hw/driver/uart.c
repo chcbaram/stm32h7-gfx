@@ -154,7 +154,7 @@ bool uartOpen(uint8_t ch, uint32_t baud)
       }
       break;
 
-    case _DEF_UART4:
+    case _DEF_UART2:
       uart_tbl[ch].baud    = baud;
       uart_tbl[ch].is_open = true;
       ret = true;
@@ -181,13 +181,11 @@ uint32_t uartAvailable(uint8_t ch)
   switch(ch)
   {
     case _DEF_UART1:
-    case _DEF_UART2:
-    case _DEF_UART3:
       uart_tbl[ch].qbuffer.in = (uart_tbl[ch].qbuffer.len - ((DMA_Stream_TypeDef *)uart_tbl[ch].p_hdma_rx->Instance)->NDTR);
       ret = qbufferAvailable(&uart_tbl[ch].qbuffer);      
       break;
 
-    case _DEF_UART4:
+    case _DEF_UART2:
       #ifdef _USE_HW_USB
       ret = cdcAvailable();
       #endif
@@ -223,12 +221,10 @@ uint8_t uartRead(uint8_t ch)
   switch(ch)
   {
     case _DEF_UART1:
-    case _DEF_UART2:
-    case _DEF_UART3:
       qbufferRead(&uart_tbl[ch].qbuffer, &ret, 1);
       break;
 
-    case _DEF_UART4:
+    case _DEF_UART2:
       #ifdef _USE_HW_USB
       ret = cdcRead();
       #endif
@@ -247,15 +243,13 @@ uint32_t uartWrite(uint8_t ch, uint8_t *p_data, uint32_t length)
   switch(ch)
   {
     case _DEF_UART1:
-    case _DEF_UART2:
-    case _DEF_UART3:
       if (HAL_UART_Transmit(uart_tbl[ch].p_huart, p_data, length, 100) == HAL_OK)
       {
         ret = length;
       }
       break;
 
-    case _DEF_UART4:
+    case _DEF_UART2:
       #ifdef _USE_HW_USB
       ret = cdcWrite(p_data, length);
       #endif

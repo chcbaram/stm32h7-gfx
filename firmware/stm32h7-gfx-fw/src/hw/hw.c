@@ -54,6 +54,9 @@ bool hwInit(void)
   
   sdInit();
   fatfsInit();
+  usbInit();
+  usbBegin(USB_CDC_MODE);
+  cdcInit();
 
   return true;
 }

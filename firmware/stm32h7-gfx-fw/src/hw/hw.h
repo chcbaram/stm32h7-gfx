@@ -28,7 +28,7 @@ extern "C" {
 #include "lcd.h"
 #include "pwm.h"
 #include "nvs.h"
-// #include "usb.h"
+#include "usb.h"
 #include "cdc.h"
 #include "rtc.h"
 #include "reset.h"
