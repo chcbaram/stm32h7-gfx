@@ -52,6 +52,7 @@ bool hwInit(void)
   fsInit();
   nvsInit();  
   
+  pwmInit();
   sdInit();
   fatfsInit();
   usbInit();

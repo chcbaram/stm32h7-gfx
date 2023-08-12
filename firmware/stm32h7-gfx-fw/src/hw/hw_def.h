@@ -99,6 +99,9 @@
 #define _USE_HW_TOUCH
 #define      HW_TOUCH_MAX_CH        5
 
+#define _USE_HW_PWM
+#define      HW_PWM_MAX_CH          1
+
 
 #define _PIN_GPIO_SPI_FLASH_CS      0
 #define _PIN_GPIO_SDCARD_DETECT     1
