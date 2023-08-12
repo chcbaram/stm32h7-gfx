@@ -301,8 +301,6 @@ void LTDC_IRQHandler(void)
   HAL_LTDC_IRQHandler(&hltdc);
 }
 
-volatile uint32_t ltdc_cnt = 0;
-
 void HAL_LTDC_LineEvenCallback(LTDC_HandleTypeDef* hltdc)
 {
   if (LTDC->LIPCR == lcd_int_active_line)
