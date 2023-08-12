@@ -115,7 +115,7 @@ bool ltdcInit(void)
     ltdc_draw_buffer = frame_buffer[frame_index];
   }
 
-  lcd_int_active_line = (LTDC->BPCR & 0x7FF) - 1;
+  lcd_int_active_line = (LTDC->BPCR & 0x7FF) - (LCD_VBP/2);
   lcd_int_porch_line  = (LTDC->AWCR & 0x7FF) - 1;
 
   HAL_LTDC_ProgramLineEvent(&hltdc, lcd_int_active_line);
@@ -483,6 +483,8 @@ void cliCmd(cli_args_t *args)
     cliPrintf("buf addr 0 : 0x%X\n", (uint32_t)frame_buffer[0]);
     cliPrintf("         1 : 0x%X\n", (uint32_t)frame_buffer[1]);
     cliPrintf("frame rate : %d fps\n", frame_rate);
+    cliPrintf("int active : %d \n", lcd_int_active_line);
+    cliPrintf("int porch  : %d \n", lcd_int_porch_line);
     ret = true;
   }
 
