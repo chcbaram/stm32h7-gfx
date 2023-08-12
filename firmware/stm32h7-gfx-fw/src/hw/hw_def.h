@@ -20,6 +20,7 @@
 #define _USE_HW_FATFS
 #define _USE_HW_CACHE
 #define _USE_HW_BUZZER
+#define _USE_HW_GT911
 
 
 #define _USE_HW_LED
@@ -46,7 +47,7 @@
 #define      HW_LOG_LIST_BUF_MAX    1024
 
 #define _USE_HW_GPIO
-#define      HW_GPIO_MAX_CH         3
+#define      HW_GPIO_MAX_CH         6
 
 #define _USE_HW_BUTTON
 #define      HW_BUTTON_MAX_CH       1
@@ -95,10 +96,17 @@
 #define      HW_SDRAM_MEM_ADDR      0xC0000000
 #define      HW_SDRAM_MEM_SIZE      (32*1024*1024)
 
+#define _USE_HW_TOUCH
+#define      HW_TOUCH_MAX_CH        5
+
 
 #define _PIN_GPIO_SPI_FLASH_CS      0
 #define _PIN_GPIO_SDCARD_DETECT     1
 #define _PIN_GPIO_SPK_EN            2
+#define _PIN_GPIO_LCD_TS_RST        3
+#define _PIN_GPIO_LCD_TS_INT        4
+#define _PIN_GPIO_LCD_BLK           5
+
 
 #define FLASH_SIZE_TAG              0x400
 #define FLASH_SIZE_VER              0x400

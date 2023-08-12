@@ -12,14 +12,18 @@ typedef struct
   GPIO_PinState on_state;
   GPIO_PinState off_state;
   bool          init_value;
+  const char   *p_name;
 } gpio_tbl_t;
 
 
 const gpio_tbl_t gpio_tbl[GPIO_MAX_CH] =
     {
-        {GPIOB, GPIO_PIN_12,  _DEF_OUTPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_HIGH},      // 0. SPI_FLASH_CS
-        {GPIOG, GPIO_PIN_13,  _DEF_INPUT,  GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_HIGH},      // 1. SD_CD
-        {GPIOD, GPIO_PIN_11,  _DEF_OUTPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_LOW },      // 2. SPK_EN
+        {GPIOB, GPIO_PIN_12,  _DEF_OUTPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_HIGH, "SPI_FLASH_CS"},      // 0. SPI_FLASH_CS
+        {GPIOG, GPIO_PIN_13,  _DEF_INPUT,  GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_HIGH, "SD_CD"       },      // 1. SD_CD
+        {GPIOD, GPIO_PIN_11,  _DEF_OUTPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_LOW , "SPK_EN"      },      // 2. SPK_EN
+        {GPIOE, GPIO_PIN_4,   _DEF_OUTPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_LOW , "LCD_TS_RST"  },      // 3. LCD_TS_RST
+        {GPIOB, GPIO_PIN_4,   _DEF_OUTPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_HIGH, "LCD_TS_INT"  },      // 4. LCD_TS_INT
+        {GPIOF, GPIO_PIN_8,   _DEF_OUTPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_LOW , "LCD_BL"      },      // 5. LCD_BL
     };
 
 
@@ -35,6 +39,10 @@ bool gpioInit(void)
 
 
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
 
 
   for (int i=0; i<GPIO_MAX_CH; i++)
@@ -154,6 +162,15 @@ void cliGpio(cli_args_t *args)
   bool ret = false;
 
 
+  if (args->argc == 1 && args->isStr(0, "info") == true)
+  {
+    for (int i=0; i<GPIO_MAX_CH; i++)
+    {
+      cliPrintf("%d %-16s - %d\n", i, gpio_tbl[i].p_name, gpioPinRead(i));
+    }
+    ret = true;
+  }
+
   if (args->argc == 1 && args->isStr(0, "show") == true)
   {
     while(cliKeepLoop())
@@ -199,6 +216,7 @@ void cliGpio(cli_args_t *args)
 
   if (ret != true)
   {
+    cliPrintf("gpio info\n");
     cliPrintf("gpio show\n");
     cliPrintf("gpio read ch[0~%d]\n", GPIO_MAX_CH-1);
     cliPrintf("gpio write ch[0~%d] 0:1\n", GPIO_MAX_CH-1);

@@ -38,6 +38,7 @@ extern "C" {
 #include "fmc.h"
 #include "sdram.h"
 #include "spi_flash.h"
+#include "touch.h"
 
 
 bool hwInit(void);

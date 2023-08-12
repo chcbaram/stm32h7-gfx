@@ -58,6 +58,7 @@ bool hwInit(void)
   usbBegin(USB_CDC_MODE);
   cdcInit();
   i2sInit();
+  touchInit();
 
 
   return true;
