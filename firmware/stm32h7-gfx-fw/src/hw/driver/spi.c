@@ -35,7 +35,7 @@ typedef struct
 spi_t spi_tbl[SPI_MAX_CH];
 
 SPI_HandleTypeDef hspi2;
-
+SPI_HandleTypeDef hspi5;
 
 
 
@@ -100,6 +100,42 @@ bool spiBegin(uint8_t ch)
         ret = true;
       }
       break;
+
+    case _DEF_SPI2:
+      p_spi->h_spi = &hspi5;
+
+      p_spi->h_spi->Instance              = SPI5;
+      p_spi->h_spi->Init.Mode             = SPI_MODE_MASTER;
+      p_spi->h_spi->Init.Direction        = SPI_DIRECTION_1LINE;
+      p_spi->h_spi->Init.DataSize         = SPI_DATASIZE_8BIT;
+      p_spi->h_spi->Init.CLKPolarity      = SPI_POLARITY_LOW;
+      p_spi->h_spi->Init.CLKPhase         = SPI_PHASE_1EDGE;
+      p_spi->h_spi->Init.NSS              = SPI_NSS_SOFT;
+      p_spi->h_spi->Init.BaudRatePrescaler= SPI_BAUDRATEPRESCALER_16;
+      p_spi->h_spi->Init.FirstBit         = SPI_FIRSTBIT_MSB;
+      p_spi->h_spi->Init.TIMode           = SPI_TIMODE_DISABLE;
+      p_spi->h_spi->Init.CRCCalculation   = SPI_CRCCALCULATION_DISABLE;
+      p_spi->h_spi->Init.CRCPolynomial    = 0;
+
+      p_spi->h_spi->Init.NSSPMode                   = SPI_NSS_PULSE_DISABLE;
+      p_spi->h_spi->Init.NSSPolarity                = SPI_NSS_POLARITY_LOW;
+      p_spi->h_spi->Init.FifoThreshold              = SPI_FIFO_THRESHOLD_01DATA;
+      p_spi->h_spi->Init.TxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
+      p_spi->h_spi->Init.RxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
+      p_spi->h_spi->Init.MasterSSIdleness           = SPI_MASTER_SS_IDLENESS_01CYCLE;
+      p_spi->h_spi->Init.MasterInterDataIdleness    = SPI_MASTER_INTERDATA_IDLENESS_01CYCLE;
+      p_spi->h_spi->Init.MasterReceiverAutoSusp     = SPI_MASTER_RX_AUTOSUSP_DISABLE;
+      p_spi->h_spi->Init.MasterKeepIOState          = SPI_MASTER_KEEP_IO_STATE_DISABLE;
+      p_spi->h_spi->Init.IOSwap                     = SPI_IO_SWAP_DISABLE;
+
+      HAL_SPI_DeInit(p_spi->h_spi);
+      if (HAL_SPI_Init(p_spi->h_spi) == HAL_OK)
+      {
+        p_spi->is_open = true;
+        ret = true;
+      }
+      break;
+
   }
 
   return ret;
@@ -349,6 +385,33 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
     GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
   }  
+
+  if(spiHandle->Instance==SPI5)
+  {
+  /** Initializes the peripherals clock
+  */
+    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI5;
+    PeriphClkInitStruct.Spi45ClockSelection = RCC_SPI45CLKSOURCE_D2PCLK1;
+    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    /* SPI5 clock enable */
+    __HAL_RCC_SPI5_CLK_ENABLE();
+
+    __HAL_RCC_GPIOF_CLK_ENABLE();
+    /**SPI5 GPIO Configuration
+    PF7     ------> SPI5_SCK
+    PF9     ------> SPI5_MOSI
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_9;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF5_SPI5;
+    HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+  }
 }
 
 void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
@@ -368,6 +431,18 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
 
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_13);
   }
+  
+  if(spiHandle->Instance==SPI5)
+  {
+    /* Peripheral clock disable */
+    __HAL_RCC_SPI5_CLK_DISABLE();
+
+    /**SPI5 GPIO Configuration
+    PF7     ------> SPI5_SCK
+    PF9     ------> SPI5_MOSI
+    */
+    HAL_GPIO_DeInit(GPIOF, GPIO_PIN_7|GPIO_PIN_9);
+  }  
 }
 
 

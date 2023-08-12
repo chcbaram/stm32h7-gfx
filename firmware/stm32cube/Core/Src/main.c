@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "dma.h"
+#include "dma2d.h"
 #include "fdcan.h"
 #include "i2c.h"
 #include "i2s.h"
@@ -128,6 +129,7 @@ int main(void)
   MX_FDCAN1_Init();
   MX_I2C4_Init();
   MX_TIM13_Init();
+  MX_DMA2D_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */

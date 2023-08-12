@@ -47,7 +47,7 @@
 #define      HW_LOG_LIST_BUF_MAX    1024
 
 #define _USE_HW_GPIO
-#define      HW_GPIO_MAX_CH         6
+#define      HW_GPIO_MAX_CH         8
 
 #define _USE_HW_BUTTON
 #define      HW_BUTTON_MAX_CH       1
@@ -80,7 +80,7 @@
 #define      HW_MIXER_MAX_BUF_LEN   (48*2*4*4) // 48Khz * Stereo * 4ms * 2
 
 #define _USE_HW_SPI
-#define      HW_SPI_MAX_CH          1
+#define      HW_SPI_MAX_CH          2
 
 #define _USE_HW_SPI_FLASH
 #define      HW_SPI_FLASH_ADDR      0x91000000
@@ -102,6 +102,18 @@
 #define _USE_HW_PWM
 #define      HW_PWM_MAX_CH          1
 
+#define _USE_HW_ST7701
+#define      HW_ST7701_WIDTH       480
+#define      HW_ST7701_HEIGHT      480
+
+#define _USE_HW_LTDC
+#define      HW_LTDC_BUF_ADDR      HW_SDRAM_MEM_ADDR
+
+#define _USE_HW_LCD
+#define      HW_LCD_LOGO            1
+#define      HW_LCD_WIDTH           HW_ST7701_WIDTH
+#define      HW_LCD_HEIGHT          HW_ST7701_HEIGHT
+
 
 #define _PIN_GPIO_SPI_FLASH_CS      0
 #define _PIN_GPIO_SDCARD_DETECT     1
@@ -109,7 +121,8 @@
 #define _PIN_GPIO_LCD_TS_RST        3
 #define _PIN_GPIO_LCD_TS_INT        4
 #define _PIN_GPIO_LCD_BLK           5
-
+#define _PIN_GPIO_LCD_RST           6
+#define _PIN_GPIO_LCD_SPI_CS        7
 
 #define FLASH_SIZE_TAG              0x400
 #define FLASH_SIZE_VER              0x400

@@ -1,5 +1,5 @@
 #include "hw.h"
-
+#include "lcd/st7701.h"
 
 
 
@@ -60,6 +60,11 @@ bool hwInit(void)
   cdcInit();
   i2sInit();
   touchInit();
+
+
+  st7701Init();
+  ltdcInit();
+  pwmWrite(_DEF_CH1, 100);
 
 
   return true;

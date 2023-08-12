@@ -39,6 +39,7 @@ extern "C" {
 #include "sdram.h"
 #include "spi_flash.h"
 #include "touch.h"
+#include "ltdc.h"
 
 
 bool hwInit(void);
