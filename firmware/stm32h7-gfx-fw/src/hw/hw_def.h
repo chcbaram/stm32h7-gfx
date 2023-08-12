@@ -19,6 +19,7 @@
 #define _USE_HW_SD
 #define _USE_HW_FATFS
 #define _USE_HW_CACHE
+#define _USE_HW_BUZZER
 
 
 #define _USE_HW_LED
@@ -35,13 +36,17 @@
 #define      HW_CLI_LINE_HIS_MAX    8
 #define      HW_CLI_LINE_BUF_MAX    64
 
+#define _USE_HW_CLI_GUI
+#define      HW_CLI_GUI_WIDTH       80
+#define      HW_CLI_GUI_HEIGHT      24
+
 #define _USE_HW_LOG
 #define      HW_LOG_CH              _DEF_UART1
 #define      HW_LOG_BOOT_BUF_MAX    1024
 #define      HW_LOG_LIST_BUF_MAX    1024
 
 #define _USE_HW_GPIO
-#define      HW_GPIO_MAX_CH         2
+#define      HW_GPIO_MAX_CH         3
 
 #define _USE_HW_BUTTON
 #define      HW_BUTTON_MAX_CH       1
@@ -66,6 +71,13 @@
 #define      HW_USE_CDC             1
 #define      HW_USE_MSC             0
 
+#define _USE_HW_I2S
+#define      HW_I2S_LCD             0
+
+#define _USE_HW_MIXER
+#define      HW_MIXER_MAX_CH        4
+#define      HW_MIXER_MAX_BUF_LEN   (48*2*4*4) // 48Khz * Stereo * 4ms * 2
+
 #define _USE_HW_SPI
 #define      HW_SPI_MAX_CH          1
 
@@ -86,7 +98,7 @@
 
 #define _PIN_GPIO_SPI_FLASH_CS      0
 #define _PIN_GPIO_SDCARD_DETECT     1
-
+#define _PIN_GPIO_SPK_EN            2
 
 #define FLASH_SIZE_TAG              0x400
 #define FLASH_SIZE_VER              0x400

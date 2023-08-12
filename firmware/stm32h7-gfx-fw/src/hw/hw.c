@@ -57,6 +57,8 @@ bool hwInit(void)
   usbInit();
   usbBegin(USB_CDC_MODE);
   cdcInit();
+  i2sInit();
+
 
   return true;
 }

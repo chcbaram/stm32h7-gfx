@@ -19,6 +19,7 @@ const gpio_tbl_t gpio_tbl[GPIO_MAX_CH] =
     {
         {GPIOB, GPIO_PIN_12,  _DEF_OUTPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_HIGH},      // 0. SPI_FLASH_CS
         {GPIOG, GPIO_PIN_13,  _DEF_INPUT,  GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_HIGH},      // 1. SD_CD
+        {GPIOD, GPIO_PIN_11,  _DEF_OUTPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_LOW },      // 2. SPK_EN
     };
 
 
