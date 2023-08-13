@@ -59,6 +59,9 @@ uint16_t *ltdc_draw_buffer;
 uint16_t *ltdc_osd_draw_buffer = (uint16_t *)FRAME_OSD_ADDR;
 
 static volatile bool is_double_buffer = true;
+static void (*vsync_func)(void) = NULL;
+
+
 
 
 
@@ -137,7 +140,11 @@ bool ltdcInit(void)
   return ret;
 }
 
-
+bool ltdcSetVsyncFunc(void (*func)(void))
+{
+  vsync_func = func;
+  return true;
+}
 
 void ltdcSetAlpha(uint16_t LayerIndex, uint32_t value)
 {
@@ -242,7 +249,6 @@ bool ltdcDrawAvailable(void)
 
 void ltdcRequestDraw(void)
 {
-  // SCB_InvalidateDCache_by_Addr((uint32_t *)frame_buffer[frame_index], FRAME_IMG_SIZE);
   ltdc_request_draw = true;
 }
 
@@ -280,8 +286,6 @@ void ltdcSwapFrameBuffer(void)
 {
   if (ltdc_request_draw == true)
   {
-    ltdc_request_draw = false;
-
     frame_index ^= 1;
     ltdcSetFrameBuffer(frame_buffer[frame_index]);
 
@@ -293,6 +297,7 @@ void ltdcSwapFrameBuffer(void)
     {
       ltdc_draw_buffer = frame_buffer[frame_index];
     }
+    ltdc_request_draw = false;
   }
 }
 
@@ -308,6 +313,10 @@ void HAL_LTDC_LineEvenCallback(LTDC_HandleTypeDef* hltdc)
     ltdcSwapFrameBuffer();
     HAL_LTDC_ProgramLineEvent(hltdc, lcd_int_active_line);
 
+    if (vsync_func != NULL)
+    {
+      vsync_func();
+    }
     frame_cnt++;
     if (millis()-frame_time >= 1000)
     {

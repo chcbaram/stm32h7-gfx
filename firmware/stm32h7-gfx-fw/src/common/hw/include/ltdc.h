@@ -14,6 +14,7 @@
 
 bool ltdcInit(void);
 bool ltdcDrawAvailable(void);
+bool ltdcSetVsyncFunc(void (*func)(void));
 void ltdcRequestDraw(void);
 void ltdcSetAlpha(uint16_t LayerIndex, uint32_t value);
 uint16_t *ltdcGetFrameBuffer(void);
