@@ -21,7 +21,7 @@
 #include "bsp.h"
 #include "fault.h"
 #include "stm32h7xx_it.h"
-
+#include "hw_def.h"
 
 
 
@@ -87,9 +87,11 @@ void UsageFault_Handler_C(uint32_t *p_stack)
 /**
   * @brief This function handles System service call via SWI instruction.
   */
+#ifndef _USE_HW_RTOS
 void SVC_Handler(void)
 {
 }
+#endif
 
 /**
   * @brief This function handles Debug monitor.
@@ -101,10 +103,20 @@ void DebugMon_Handler(void)
 /**
   * @brief This function handles Pendable request for system service.
   */
+#ifndef _USE_HW_RTOS
 void PendSV_Handler(void)
 {
 }
+#endif
 
+#ifdef _USE_HW_RTOS
+extern void osSystickHandler(void);
+
+void SysTick_Handler(void)
+{
+  osSystickHandler();
+}
+#else
 extern void swtimerISR(void);
 
 /**
@@ -115,14 +127,5 @@ void SysTick_Handler(void)
   HAL_IncTick();
   swtimerISR();
 }
+#endif
 
-/******************************************************************************/
-/* STM32H7xx Peripheral Interrupt Handlers                                    */
-/* Add here the Interrupt Handlers for the used peripherals.                  */
-/* For the available peripheral interrupt handler names,                      */
-/* please refer to the startup file (startup_stm32h7xx.s).                    */
-/******************************************************************************/
-
-/* USER CODE BEGIN 1 */
-
-/* USER CODE END 1 */

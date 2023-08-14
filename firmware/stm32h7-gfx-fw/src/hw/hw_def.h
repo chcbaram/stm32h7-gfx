@@ -21,6 +21,7 @@
 #define _USE_HW_CACHE
 #define _USE_HW_BUZZER
 #define _USE_HW_GT911
+#define _USE_HW_RTOS
 
 
 #define _USE_HW_LED
@@ -73,7 +74,7 @@
 #define      HW_USE_MSC             0
 
 #define _USE_HW_I2S
-#define      HW_I2S_LCD             0
+#define      HW_I2S_LCD             1
 
 #define _USE_HW_MIXER
 #define      HW_MIXER_MAX_CH        4

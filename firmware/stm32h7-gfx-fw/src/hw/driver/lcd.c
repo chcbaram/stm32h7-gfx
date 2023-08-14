@@ -97,11 +97,13 @@ LVGL_IMG_DEF(logo_img);
 
 bool lcdInit(void)
 {
+  bool ret = true;
+
   backlight_value = 100;
 
-
-  st7701Init();
-  is_init = ltdcInit();
+  ret &= ltdcInit();
+  ret &= st7701Init();
+  is_init = ret;
 
   lcdLoadCfg();
   lcdSetBackLight(backlight_value);

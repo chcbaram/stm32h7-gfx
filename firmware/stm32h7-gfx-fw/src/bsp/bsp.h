@@ -12,6 +12,7 @@ extern "C" {
 #include "arm_math.h"
 #include "arm_const_structs.h"
 
+#include "rtos.h"
 
 
 void logPrintf(const char *fmt, ...);

@@ -24,9 +24,6 @@ static void cliCmd(cli_args_t *args);
 static bool readRegs(uint16_t reg_addr, void *p_data, uint32_t length);
 static bool writeRegs(uint16_t reg_addr, void *p_data, uint32_t length);
 static bool gt911InitRegs(void);
-#ifdef _USE_HW_RTOS
-static void gt911Thread(void* arg);
-#endif
 
 static uint8_t i2c_ch   = _DEF_I2C1;
 static uint8_t i2c_addr = 0x5D; 
@@ -69,9 +66,6 @@ bool gt911Init(void)
   if (ret == true && i2cIsDeviceReady(i2c_ch, i2c_addr))
   {    
     is_detected = true;
-    #ifdef _USE_HW_RTOS
-    xTaskCreate(gt911Thread, "gt911Thread", _HW_DEF_RTOS_THREAD_MEM_GT911, NULL, _HW_DEF_RTOS_THREAD_PRI_GT911, NULL);      
-    #endif
   }
   else
   {
@@ -224,20 +218,6 @@ bool gt911UpdateRegs(void)
 
   return true;
 }
-
-#ifdef _USE_HW_RTOS
-void gt911Thread(void* arg)
-{
-  while(1)
-  {
-    is_init = true;
-    while(1)
-    {
-      delay(10);
-    }
-  }
-}
-#endif
 
 bool readRegs(uint16_t reg_addr, void *p_data, uint32_t length)
 {

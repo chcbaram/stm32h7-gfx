@@ -18,8 +18,6 @@ volatile const firm_ver_t firm_ver __attribute__((section(".version"))) =
 
 bool hwInit(void)
 {
-  bspInit();
-
   cliInit();
   logInit();
   swtimerInit();

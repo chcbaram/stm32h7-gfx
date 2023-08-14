@@ -19,12 +19,19 @@ file(GLOB SRC_FILES CONFIGURE_DEPENDS
   src/*.c
   src/bsp/*.c
   src/bsp/device/*.c
+  src/bsp/rtos/*.c
 
   src/lib/FatFs/src/*.c
   src/lib/FatFs/src/option/syscall.c
   src/lib/FatFs/src/option/unicode.c
 
   src/lib/STM32_USB_Device_Library/Core/Src/*.c
+
+  src/lib/FreeRTOS/Source/*.c
+  src/lib/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1/*.c
+  src/lib/FreeRTOS/Source/CMSIS_RTOS/*.c  
+
+  src/lib/FreeRTOS/Source/portable/MemMang/heap_4.c
 )
 
 file(GLOB_RECURSE SRC_FILES_RECURSE CONFIGURE_DEPENDS
@@ -50,6 +57,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   src/ap/thread
   src/bsp
   src/bsp/device
+  src/bsp/rtos
   src/common 
   src/common/core
   src/common/hw/include 
@@ -67,10 +75,15 @@ target_include_directories(${EXECUTABLE} PRIVATE
   src/lib/STM32H7xx_HAL_Driver/Inc
   src/lib/FatFs/src
   src/lib/STM32_USB_Device_Library/Core/Inc
+
+  src/lib/FreeRTOS/Source/CMSIS_RTOS
+  src/lib/FreeRTOS/Source/include
+  src/lib/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1  
 )
 
 target_compile_definitions(${EXECUTABLE} PRIVATE
   -DSTM32H723xx 
+  -DLFS_THREADSAFE
   )
 
 target_compile_options(${EXECUTABLE} PRIVATE
