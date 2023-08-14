@@ -59,17 +59,21 @@ void cliInfo(cli_args_t *args)
 
     int thread_count;
     thread_t *p_thread;
+    TaskStatus_t task_status;
 
     cliPrintf("cpu usage : %d %%\n", osGetCPUUsage());
 
     thread_count = ((int)&_ethread - (int)&_sthread)/sizeof(thread_t);
+    p_thread = (thread_t *)&_sthread;
     for (int i=0; i<thread_count; i++)
     {
-      p_thread = (thread_t *)&_sthread;
-      cliPrintf("%-16s, stack : %4d, prio : %d\n",
-                p_thread->name,
-                p_thread->stack_size,
-                p_thread->priority
+      vTaskGetInfo(p_thread[i].thread_id, &task_status, pdTRUE, eInvalid);
+
+      cliPrintf("%-16s, stack : %4d free %04d, prio : %d\n",
+                p_thread[i].name,
+                p_thread[i].stack_size,
+                (int)task_status.usStackHighWaterMark * 4,
+                p_thread[i].priority
                 );
     }
     ret = true;
