@@ -22,7 +22,7 @@
 #define _USE_HW_BUZZER
 #define _USE_HW_GT911
 #define _USE_HW_RTOS
-
+#define _USE_HW_PDM
 
 #define _USE_HW_LED
 #define      HW_LED_MAX_CH          1

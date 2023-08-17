@@ -40,7 +40,7 @@ extern "C" {
 #include "spi_flash.h"
 #include "touch.h"
 #include "ltdc.h"
-
+#include "pdm.h"
 
 bool hwInit(void);
 
