@@ -131,19 +131,41 @@ bool buttonEventInit(button_event_t *p_event, uint8_t level)
   bool ret = false;
 
 
-  if (event_cnt < BUTTON_EVENT_MAX)
+  for (int i=0; i<BUTTON_EVENT_MAX; i++)
   {
-    memset(p_event, 0, sizeof(button_event_t));
+    if (event_tbl[event_cnt] == NULL)
+    {
+      memset(p_event, 0, sizeof(button_event_t));
 
-    event_tbl[event_cnt] = p_event;
-    p_event->level = level;
-    p_event->index = event_cnt;
-    event_cnt++;
+      event_tbl[event_cnt] = p_event;
+      p_event->level = level;
+      p_event->index = event_cnt;
+      event_cnt++;
 
-    p_event->is_init = true;
-    ret = true;
+      p_event->is_init = true;
+      ret = true;
+    }
   }
 
+  return ret;
+}
+
+bool buttonEventRemove(button_event_t *p_event)
+{
+  bool ret = false;
+
+  for (int i=0; i<BUTTON_EVENT_MAX; i++)
+  {
+    if (event_tbl[event_cnt] == p_event)
+    {
+      __disable_irq();
+      event_tbl[i] = NULL;
+      event_cnt--;
+      __enable_irq();
+      break;
+    }
+    ret = true;
+  }  
   return ret;
 }
 
@@ -191,12 +213,15 @@ void buttonISR(void *arg)
         button_tbl[i].repeat_cnt++;
         button_tbl[i].repeat_update = true;
 
-        for (int e_i=0; e_i<event_cnt; e_i++)
+        for (int e_i=0; e_i<BUTTON_EVENT_MAX; e_i++)
         {
-          if (event_tbl[e_i]->level <= event_level)
-            event_tbl[e_i]->repeat_event[i] = true;
-          else
-            event_tbl[e_i]->repeat_event[i] = false;
+          if (event_tbl[e_i] != NULL)
+          {
+            if (event_tbl[e_i]->level <= event_level)
+              event_tbl[e_i]->repeat_event[i] = true;
+            else
+              event_tbl[e_i]->repeat_event[i] = false;
+          }
         }        
       }
 
@@ -211,12 +236,15 @@ void buttonISR(void *arg)
         button_tbl[i].released_event = true;
         button_tbl[i].released_start_time = millis();
 
-        for (int e_i=0; e_i<event_cnt; e_i++)
+        for (int e_i=0; e_i<BUTTON_EVENT_MAX; e_i++)
         {
-          if (event_tbl[e_i]->level <= event_level)
-            event_tbl[e_i]->released_event[i] = true;
-          else
-            event_tbl[e_i]->released_event[i] = false;
+          if (event_tbl[e_i] != NULL)
+          {
+            if (event_tbl[e_i]->level <= event_level)
+              event_tbl[e_i]->released_event[i] = true;
+            else
+              event_tbl[e_i]->released_event[i] = false;
+          }
         }          
       }
 
@@ -385,6 +413,7 @@ bool buttonEventClear(button_event_t *p_event)
   
   for (int i=0; i<BUTTON_MAX_CH; i++)
   {
+    event_tbl[p_event->index]->pressed_event[i] = false;
     event_tbl[p_event->index]->released_event[i] = false;
   }
   return ret;

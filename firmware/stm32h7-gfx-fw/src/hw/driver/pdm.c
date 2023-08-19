@@ -7,7 +7,7 @@
 #include "pdm2pcm_glo.h"
 #include "i2s.h"
 #include "qbuffer.h"
-
+#include "mem.h"
 
 
 typedef struct
@@ -41,7 +41,8 @@ typedef struct
 
 typedef struct
 {
-  bool is_request;
+  bool is_req;
+  bool is_done;
   uint32_t request_len;
   uint32_t current_len;
   pcm_data_t *p_pcm_buf;
@@ -109,7 +110,8 @@ bool pdmInit(void)
 
   qbufferCreateBySize(&pcm_msg_q, (uint8_t *)pcm_msg_buf, sizeof(pcm_data_t), PCM_BUF_MSG_Q_LEN);
 
-  pdm_record_info.is_request = false;
+  pdm_record_info.is_req = false;
+  pdm_record_info.is_done = false;
 
 
   hsai_BlockA1.Instance                 = SAI1_Block_A;
@@ -198,6 +200,7 @@ bool pdmBegin(void)
 bool pdmEnd(void)
 {
   is_started = false;
+  pdmRecordStop();
   return true;
 }
 
@@ -212,7 +215,8 @@ bool pdmRecordStart(pcm_data_t *p_buf, uint32_t length)
     return false;
 
   lock();
-  pdm_record_info.is_request = true;
+  pdm_record_info.is_req = true;
+  pdm_record_info.is_done = false;
   pdm_record_info.p_pcm_buf = p_buf;
   pdm_record_info.request_len = length;
   pdm_record_info.current_len = 0;
@@ -223,14 +227,29 @@ bool pdmRecordStart(pcm_data_t *p_buf, uint32_t length)
 bool pdmRecordStop(void)
 {
   lock();  
-  pdm_record_info.is_request = 0;
+  pdm_record_info.is_done = true;
   unLock();
   return true;
 }
 
+bool pdmRecordIsBusy(void)
+{
+  bool ret = false;
+
+  if (pdm_record_info.is_req == true)
+  {
+    if (pdm_record_info.is_done == false)
+    {
+      ret = true;
+    }
+  }
+
+  return ret;
+}
+
 bool pdmRecordIsDone(void)
 {
-  return !pdm_record_info.is_request;
+  return pdm_record_info.is_done;
 }
 
 uint32_t pdmRecordGetLength(void)
@@ -250,6 +269,11 @@ bool pdmRead(pcm_data_t *p_buf, uint32_t length)
   ret = qbufferRead(&pcm_msg_q, (uint8_t *)p_buf, length);
 
   return ret;
+}
+
+uint32_t pdmGetTimeToLengh(uint32_t ms)
+{
+  return PCM_GET_MS_TO_LEN(ms);
 }
 
 void pdmThreadMsg(void const *arg)
@@ -349,7 +373,7 @@ bool pdmToPCM(pdm_data_t *p_data, uint32_t pdm_data_len)
       // #endif
       qbufferWrite(&pcm_msg_q, (uint8_t *)pcm_buf, PCM_BUF_FRAME_LEN);
 
-      if (pdm_record_info.is_request == true)
+      if (pdm_record_info.is_req == true && pdm_record_info.is_done == false)
       {
         uint32_t record_len;
         pcm_data_t *p_buf;
@@ -365,7 +389,7 @@ bool pdmToPCM(pdm_data_t *p_data, uint32_t pdm_data_len)
         pdm_record_info.current_len += record_len;
         if (pdm_record_info.current_len >= pdm_record_info.request_len)
         {
-          pdm_record_info.is_request = false;
+          pdm_record_info.is_done = true;
         }
       }
     }
@@ -512,16 +536,17 @@ void cliCmd(cli_args_t *args)
   {
     uint32_t pre_time;
     uint32_t pre_time_log;
-    pcm_data_t *pcm_record_buf = (pcm_data_t *)(HW_SDRAM_MEM_ADDR + 8*1024*1024);
+    pcm_data_t *pcm_record_buf;
     uint32_t record_time_ms = 5000;
     uint32_t pcm_record_len = PCM_GET_MS_TO_LEN(record_time_ms);
-    uint32_t pcm_record_i = 0;
+
+
+    pcm_record_buf = memMalloc(pcm_record_len * sizeof(pcm_data_t));
 
     pdmBegin();
     cliPrintf("record start\n");
     pre_time = millis();
     pre_time_log = millis();
-    #if 1
 
     pdmRecordStart(pcm_record_buf, pcm_record_len);
     while(cliKeepLoop())
@@ -539,38 +564,6 @@ void cliCmd(cli_args_t *args)
       }
       delay(1);
     }    
-    #else
-    while(cliKeepLoop())
-    {
-      uint32_t pdm_len;
-      uint32_t remain_len;
-
-      pdm_len = pdmAvailable();
-      remain_len = pcm_record_len - pcm_record_i;
-      if (pdm_len > remain_len)
-      {
-        pdm_len = remain_len;
-      }
-
-      if (pdm_len > 0)
-      {
-        pdmRead(&pcm_record_buf[pcm_record_i], pdm_len);
-        pcm_record_i += pdm_len;
-      }
-
-      if (millis()-pre_time_log >= 100)
-      {
-        pre_time_log = millis();
-        cliPrintf("progress %d %%\r", pcm_record_i * 100 / pcm_record_len);
-      }
-
-      if (pcm_record_i >= pcm_record_len)
-      {
-        break;
-      }
-      delay(1);
-    }
-    #endif
     cliPrintf("\n");
     cliPrintf("pdm end %d ms\n", millis()-pre_time);
 
@@ -600,6 +593,8 @@ void cliCmd(cli_args_t *args)
     cliPrintf("play end\n");
 
     pdmEnd();
+
+    memFree(pcm_record_buf);
     ret = true;
   }
 

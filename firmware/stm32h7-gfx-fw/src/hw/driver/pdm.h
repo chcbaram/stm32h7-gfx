@@ -30,8 +30,10 @@ bool pdmRead(pcm_data_t *p_buf, uint32_t length);
 
 bool pdmRecordStart(pcm_data_t *p_buf, uint32_t length);
 bool pdmRecordStop(void);
+bool pdmRecordIsBusy(void);
 bool pdmRecordIsDone(void);
 uint32_t pdmRecordGetLength(void);
+uint32_t pdmGetTimeToLengh(uint32_t ms);
 
 
 #endif

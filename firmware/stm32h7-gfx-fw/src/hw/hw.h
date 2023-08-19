@@ -41,6 +41,7 @@ extern "C" {
 #include "touch.h"
 #include "ltdc.h"
 #include "pdm.h"
+#include "mem.h"
 
 bool hwInit(void);
 

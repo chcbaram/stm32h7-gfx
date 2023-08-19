@@ -12,6 +12,9 @@
 #include "nvs.h"
 #include "touch.h"
 #include "pdm.h"
+#include "mem.h"
+#include "button.h"
+#include "i2s.h"
 
 #ifdef _USE_HW_PWM
 #include "pwm.h"
@@ -1515,7 +1518,7 @@ void cliLcd(cli_args_t *args)
     ret = true;
   }
 
-  if (args->argc == 2 && args->isStr(0, "pdm") && args->isStr(1, "show"))
+  if (args->argc == 1 && args->isStr(0, "pdm"))
   {
     bool clean_buffer = true;
     int32_t point_x;
@@ -1524,12 +1527,89 @@ void cliLcd(cli_args_t *args)
     pcm_data_t pcm_buf_line[LCD_WIDTH/2] = {0, };
     uint32_t pcm_buf_i = 0;
     uint32_t pcm_buf_len = LCD_WIDTH/2;
+    pcm_data_t *p_pcm_record_buf;
+    uint32_t pcm_record_len;
+    button_event_t btn_event;
+    bool is_recorded = false;
+    uint8_t i2s_ch = i2sGetEmptyChannel();
+    uint32_t play_i = 0;
+    uint32_t play_len = 0;
+    bool is_play = false;
 
+    pcm_record_len = pdmGetTimeToLengh(10*1000);
+    p_pcm_record_buf = memMalloc(pcm_record_len * sizeof(pcm_data_t));
+    if (p_pcm_record_buf == NULL)
+    {
+      cliPrintf("memMalloc() fail\n");
+      return;
+    }
+
+    buttonEventInit(&btn_event, 5);
 
     pdmBegin();
     point_i = 0;
     while(cliKeepLoop())
     {
+      if (buttonGetPressed(_DEF_BUTTON1))
+      {
+        if (buttonGetPressedTime(_DEF_BUTTON1) > 1000)
+        {
+          if (pdmRecordIsBusy() == false)
+          {
+            pdmRecordStart(p_pcm_record_buf, pcm_record_len);
+            cliPrintf("record start\n");
+            is_recorded = true;
+          }
+          buttonEventClear(&btn_event);
+        }
+      }
+      if (buttonEventGetReleased(&btn_event, _DEF_BUTTON1))
+      {
+        if (pdmRecordIsBusy())
+        {
+          pdmRecordStop();
+          cliPrintf("record stop\n");
+        }
+        else if (is_recorded)
+        {
+          if (is_play)
+          {
+            is_play = false;
+            cliPrintf("play stop\n");
+          }
+          else
+          {
+            is_play = true;
+            play_i = 0;
+            play_len = pdmRecordGetLength();
+            cliPrintf("play start\n");
+          }
+        }
+      }
+      buttonEventClear(&btn_event);
+
+
+      if (is_play)
+      {
+        uint32_t len;
+        
+        len = i2sAvailableForWrite(i2s_ch);
+        len -= (len % 2);
+
+        if (len > 0)
+        {
+          i2sWrite(i2s_ch, (int16_t *)&p_pcm_record_buf[play_i], len);
+          play_i += (len/2);
+        }
+
+        if (play_i >= play_len)
+        {
+          is_play = false;
+          cliPrintf("play stop\n");
+        }
+      }
+
+
       if (lcdDrawAvailable() == true)
       {
         if (clean_buffer == true)
@@ -1603,6 +1683,28 @@ void cliLcd(cli_args_t *args)
                 pre_y[1] = y[1];                
               }
               clean_buffer = true;
+
+
+              if (pdmRecordIsBusy())
+              {
+                lcdDrawFillRect(240/2, 64, 240, 64, red);
+                lcdPrintfRect(0, 64, LCD_WIDTH, 32, white, 32, 
+                              LCD_ALIGN_H_CENTER|LCD_ALIGN_V_CENTER, 
+                              "녹음중");                 
+                lcdPrintfRect(0, 64+32, LCD_WIDTH, 32, white, 32, 
+                              LCD_ALIGN_H_CENTER|LCD_ALIGN_V_CENTER, 
+                              " %d %%", pdmRecordGetLength() * 100 / pcm_record_len);                 
+              }
+              if (is_play)
+              {
+                lcdDrawFillRect(240/2, 64, 240, 64, white);
+                lcdPrintfRect(0, 64, LCD_WIDTH, 32, black, 32, 
+                              LCD_ALIGN_H_CENTER|LCD_ALIGN_V_CENTER, 
+                              "재생중");                 
+                lcdPrintfRect(0, 64+32, LCD_WIDTH, 32, black, 32, 
+                              LCD_ALIGN_H_CENTER|LCD_ALIGN_V_CENTER, 
+                              " %d %%", play_i * 100 / play_len);                 
+              }
               lcdRequestDraw();
               break;
             }
@@ -1612,6 +1714,10 @@ void cliLcd(cli_args_t *args)
       delay(1);
     }
     pdmEnd();
+
+    buttonEventRemove(&btn_event);
+    memFree(p_pcm_record_buf);
+    lcdClear(black);
 
     ret = true;
   }
@@ -1634,7 +1740,7 @@ void cliLcd(cli_args_t *args)
     cliPrintf("lcd logo\n");
     cliPrintf("lcd test\n");
     cliPrintf("lcd touch\n");
-    cliPrintf("lcd pdm show\n");
+    cliPrintf("lcd pdm\n");
     cliPrintf("lcd bl 0~100\n");
   }
 }

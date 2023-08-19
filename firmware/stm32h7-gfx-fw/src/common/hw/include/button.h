@@ -41,6 +41,7 @@ uint32_t buttonGetRepeatCount(uint8_t ch);
 const char *buttonGetName(uint8_t ch);
 
 bool     buttonEventInit(button_event_t *p_event, uint8_t level);
+bool     buttonEventRemove(button_event_t *p_event);
 bool     buttonEventClear(button_event_t *p_event);
 bool     buttonEventGetPressed(button_event_t *p_event, uint8_t ch);
 bool     buttonEventGetReleased(button_event_t *p_event, uint8_t ch);

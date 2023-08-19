@@ -119,6 +119,10 @@
 #define _USE_HW_PDM
 #define      HW_PDM_MIC_MAX_CH      2
 
+#define _USE_HW_MEM
+#define      HW_MEM_BUF_ADDR        (HW_SDRAM_MEM_ADDR + 8*1024*1024)
+#define      HW_MEM_BUF_SIZE        (8*1024*1024)
+
 
 #define _PIN_GPIO_SPI_FLASH_CS      0
 #define _PIN_GPIO_SDCARD_DETECT     1
