@@ -1554,13 +1554,17 @@ void cliLcd(cli_args_t *args)
       {
         if (buttonGetPressedTime(_DEF_BUTTON1) > 1000)
         {
-          if (pdmRecordIsBusy() == false)
+          if (pdmRecordIsBusy() == false && is_recorded == false)
           {
             pdmRecordStart(p_pcm_record_buf, pcm_record_len);
             cliPrintf("record start\n");
             is_recorded = true;
           }
           buttonEventClear(&btn_event);
+        }
+        else
+        {
+          is_recorded = false;
         }
       }
       if (buttonEventGetReleased(&btn_event, _DEF_BUTTON1))
@@ -1569,12 +1573,14 @@ void cliLcd(cli_args_t *args)
         {
           pdmRecordStop();
           cliPrintf("record stop\n");
+          is_recorded = false;
         }
-        else if (is_recorded)
+        else if (is_recorded == false && pdmRecordGetLength() > 0)
         {
           if (is_play)
           {
             is_play = false;
+            is_recorded = false;
             cliPrintf("play stop\n");
           }
           else
