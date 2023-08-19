@@ -20,13 +20,18 @@ typedef struct
   int16_t L;
 } pcm_data_t;
 
-
 bool pdmInit(void);
 bool pdmIsInit(void);
-bool pdmStart(void);
-bool pdmStop(void);
+bool pdmBegin(void);
+bool pdmEnd(void);
+
 uint32_t pdmAvailable(void);
-bool pdmRead(pcm_data_t *p_buf, uint16_t length);
+bool pdmRead(pcm_data_t *p_buf, uint32_t length);
+
+bool pdmRecordStart(pcm_data_t *p_buf, uint32_t length);
+bool pdmRecordStop(void);
+bool pdmRecordIsDone(void);
+uint32_t pdmRecordGetLength(void);
 
 
 #endif

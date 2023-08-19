@@ -11,8 +11,10 @@ static void PeriphCommonClock_Config(void);
 
 bool bspInit(void)
 {
+  #ifdef _USE_HW_CACHE
   SCB_EnableICache();
   SCB_EnableDCache();
+  #endif
 
   HAL_Init();
 

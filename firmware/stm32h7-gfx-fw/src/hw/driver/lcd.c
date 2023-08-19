@@ -1526,7 +1526,7 @@ void cliLcd(cli_args_t *args)
     uint32_t pcm_buf_len = LCD_WIDTH/2;
 
 
-    pdmStart();
+    pdmBegin();
     point_i = 0;
     while(cliKeepLoop())
     {
@@ -1611,7 +1611,7 @@ void cliLcd(cli_args_t *args)
       }
       delay(1);
     }
-    pdmStop();
+    pdmEnd();
 
     ret = true;
   }
