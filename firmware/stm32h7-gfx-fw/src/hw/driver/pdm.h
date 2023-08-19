@@ -16,8 +16,8 @@ extern "C" {
 
 typedef struct
 {
-  int16_t L;
   int16_t R;
+  int16_t L;
 } pcm_data_t;
 
 

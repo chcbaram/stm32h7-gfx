@@ -8,6 +8,8 @@
 #include "i2s.h"
 #include "qbuffer.h"
 
+
+
 typedef struct
 {
   uint8_t L;
@@ -15,6 +17,9 @@ typedef struct
 } pdm_data_t;
 
 
+
+#define lock()      xSemaphoreTake(mutex_lock, portMAX_DELAY);
+#define unLock()    xSemaphoreGive(mutex_lock);
 
 #define PDM_FILTER_MS           (10)
 #define PDM_FILTER_LEN          ((PDM_SAMPLERATE_HZ * PDM_FILTER_MS) / 1000)
@@ -52,8 +57,9 @@ static void cliCmd(cli_args_t *args);
 #endif
 static void pdmFilterInit(int16_t mic_gain);
 static void pdmThreadMsg(void const *arg);
-// static void pdmProcessDma(pdm_dma_info_t *p_info, pdm_data_t *p_data, uint32_t pdm_data_len);
 static bool pdmToPCM(pdm_data_t *p_data, uint32_t pdm_data_len);
+static bool pdmStartDMA(void);
+// static bool pdmStopDMA(void);
 
 
 static SAI_HandleTypeDef hsai_BlockA1;
@@ -63,18 +69,18 @@ static bool is_init = false;
 __attribute__((aligned(64))) static pdm_data_t pdm_buf[PDM_BUF_LEN];
 __attribute__((aligned(64))) static pcm_data_t pcm_buf[PCM_BUF_LEN];
 
-__attribute__((section(".sdram_buf"))) 
-__attribute__((aligned(64))) static pdm_data_t pdm_record_buf[PDM_GET_MS_TO_LEN(5000)];
+// __attribute__((section(".sdram_buf"))) 
+// __attribute__((aligned(64))) static pdm_data_t pdm_record_buf[PDM_GET_MS_TO_LEN(5000)];
 
 static bool is_started = false;
 
-static pdm_dma_info_t pdm_dma_info;
 static pdm_filter_t pdm_filter;
 static qbuffer_t pcm_msg_q;
 static pcm_data_t pcm_msg_buf[PCM_BUF_MSG_Q_LEN];
 
 
 static osMessageQId pdm_msg_q;
+static SemaphoreHandle_t mutex_lock;
 
 __attribute__((section(".thread"))) 
 static volatile thread_t pdm_msg_thread = 
@@ -97,6 +103,7 @@ bool pdmInit(void)
 
   osMessageQDef(pdm_msg_q, 8, uint32_t);
   pdm_msg_q = osMessageCreate(osMessageQ(pdm_msg_q), NULL);
+  mutex_lock = xSemaphoreCreateMutex();
 
   qbufferCreateBySize(&pcm_msg_q, (uint8_t *)pcm_msg_buf, sizeof(pcm_data_t), PCM_BUF_MSG_Q_LEN);
 
@@ -159,8 +166,7 @@ bool pdmInit(void)
 
 
   pdmFilterInit(30);
-
-
+  pdmStartDMA();
 
   is_init = true;
 
@@ -172,7 +178,10 @@ bool pdmInit(void)
 
 bool pdmStart(void)
 {
+  lock();
+  qbufferFlush(&pcm_msg_q);
   is_started = true;
+  unLock();
   return true;
 }
 
@@ -213,12 +222,10 @@ void pdmThreadMsg(void const *arg)
     {  
       if (evt.value.v == 0)
       {
-        // pdmProcessDma(&pdm_dma_info, &pdm_buf[0], PDM_BUF_FRAME_LEN);
         pdmToPCM(&pdm_buf[0], PDM_BUF_FRAME_LEN);
       }
       if (evt.value.v == 1)
       {
-        // pdmProcessDma(&pdm_dma_info, &pdm_buf[PDM_BUF_FRAME_LEN], PDM_BUF_FRAME_LEN);
         pdmToPCM(&pdm_buf[PDM_BUF_FRAME_LEN], PDM_BUF_FRAME_LEN);
       }        
     }
@@ -291,49 +298,40 @@ bool pdmToPCM(pdm_data_t *p_data, uint32_t pdm_data_len)
   ret = pdmFilterProcess((uint8_t *)p_data, (int16_t *)pcm_buf);
   if (ret == true)
   {
-    qbufferWrite(&pcm_msg_q, (uint8_t *)pcm_buf, PCM_BUF_FRAME_LEN);
+    lock();
+    if (is_started)
+    {
+      qbufferWrite(&pcm_msg_q, (uint8_t *)pcm_buf, PCM_BUF_FRAME_LEN);
+    }
+    unLock();
   }
   return ret;
 }
 
-void pdmProcessDma(pdm_dma_info_t *p_info, pdm_data_t *p_data, uint32_t pdm_data_len)
+bool pdmStartDMA(void)
 {
-  uint32_t offset;
-  uint32_t length;
-  uint32_t index;
-
-  offset = p_info->receive_len;
-  length = p_info->request_len;
-
-  #ifdef _USE_HW_CACHE
-  SCB_InvalidateDCache_by_Addr((uint32_t *)p_data, pdm_data_len * 2);
-  #endif
-  for (index=0; index<pdm_data_len; index++)
-  {
-    p_info->p_pdm_buf[offset + index] = p_data[index];
-    if ((offset + index) >= length)
-    {
-      p_info->is_done = true;
-      break;
-    }
-  }
-  p_info->receive_len += index;
-
-  if (p_info->is_done == true)
-  {
-    HAL_SAI_DMAStop(&hsai_BlockA1);
-  }
+  lock();
+  HAL_SAI_Receive_DMA(&hsai_BlockA1, (uint8_t *)&pdm_buf, PDM_BUF_LEN);  
+  unLock();
+  return true;
 }
+
+bool pdmStopDMA(void)
+{
+  lock();
+  HAL_SAI_DMAStop(&hsai_BlockA1);
+  unLock();
+  return true;
+}
+
 
 void HAL_SAI_RxHalfCpltCallback(SAI_HandleTypeDef *hsai)
 {
-  // pdmProcessDma(&pdm_dma_info, &pdm_buf[0], PDM_BUF_FRAME_LEN);
   osMessagePut(pdm_msg_q, 0, 10);
 }
 
 void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef *hsai)
 {
-  // pdmProcessDma(&pdm_dma_info, &pdm_buf[PDM_BUF_FRAME_LEN], PDM_BUF_FRAME_LEN);
   osMessagePut(pdm_msg_q, 1, 10);
 }
 
@@ -444,103 +442,72 @@ void cliCmd(cli_args_t *args)
     ret = true;
   }
 
-  if (args->argc == 1 && args->isStr(0, "test"))
+  if (args->argc == 1 && args->isStr(0, "record"))
   {
-    HAL_StatusTypeDef status;
+    uint32_t pre_time;
 
-    pdm_dma_info.is_done = false;
-    pdm_dma_info.p_pdm_buf = pdm_record_buf;
-    pdm_dma_info.request_len = PDM_GET_MS_TO_LEN(3000);
-    pdm_dma_info.receive_len = 0;
-    status = HAL_SAI_Receive_DMA(&hsai_BlockA1, (uint8_t *)&pdm_buf, PDM_BUF_LEN);    
-    if (status == HAL_OK)
+    pdmStart();
+    cliPrintf("record start\n");
+    pre_time = millis();
+    while(cliKeepLoop())
     {
-      uint32_t pre_time;
+    }
+    cliPrintf("pdm end %d ms\n", millis()-pre_time);
 
-      cliPrintf("pdm start\n");
-      pre_time = millis();
-      while(cliKeepLoop())
-      {
-        if (pdm_dma_info.is_done == true)
-        {
-          break;
-        }
-        delay(10);
-      }
-      cliPrintf("pdm end %d ms\n", millis()-pre_time);
 
-      uint32_t pdm_frame_cnt;
-      uint32_t pdm_frame_len;
-      uint32_t pcm_frame_len;
+    uint8_t i2s_ch = i2sGetEmptyChannel();
+    uint32_t play_i = 0;
+    uint32_t play_len = PCM_GET_MS_TO_LEN(3000);
 
-      pdm_frame_len = PDM_GET_MS_TO_LEN(PDM_FILTER_MS);
-      pcm_frame_len = PCM_GET_MS_TO_LEN(PDM_FILTER_MS);
-      pdm_frame_cnt = pdm_dma_info.receive_len / pdm_frame_len;
+    cliPrintf("play start\n");
+
+    while(cliKeepLoop())
+    {
+      uint32_t len;
       
-      cliPrintf("pdm_frame_len : %d\n", pdm_frame_len);
-      cliPrintf("pdm_frame_cnt : %d\n", pdm_frame_cnt);
-      cliPrintf("pcm_frame_len : %d\n", pcm_frame_len);
+      len = i2sAvailableForWrite(i2s_ch);
+      len -= (len % 2);
 
-
-      // memset(pdm_dma_info.p_pdm_buf, 0, PDM_GET_MS_TO_LEN(PDM_FILTER_MS) * 2);
-
-      pre_time = millis();
-      for (int pdm_i=0; pdm_i<pdm_frame_cnt; pdm_i++)
+      if (len > 0)
       {
-        uint8_t *p_pdm_buf = (uint8_t *)&pdm_dma_info.p_pdm_buf[pdm_frame_len * pdm_i];
-        int16_t *p_pcm_buf = (int16_t *)&pcm_buf[pcm_frame_len * pdm_i];        
-
-        pdmFilterProcess(p_pdm_buf, p_pcm_buf);
-
-        if (pdm_i < 20)
-        {
-          memset(p_pcm_buf, 0, pcm_frame_len * 4);          
-        }
-
-        // #ifdef _USE_HW_CACHE
-        // SCB_CleanDCache_by_Addr((uint32_t*)p_pcm_buf, pcm_frame_len * 4);
-        // #endif
+        i2sWrite(i2s_ch, (int16_t *)&pcm_buf[play_i], len);
+        play_i += (len/2);
       }
-      cliPrintf("pdm_filter %d ms\n", millis()-pre_time);
+      delay(1);
 
-      uint8_t i2s_ch = i2sGetEmptyChannel();
-      uint32_t play_i = 0;
-      uint32_t play_len = PCM_GET_MS_TO_LEN(3000);
-
-
-      cliPrintf("play start\n");
-
-      while(cliKeepLoop())
-      {
-        uint32_t len;
-        
-        len = i2sAvailableForWrite(i2s_ch);
-        len -= (len % 2);
-
-        if (len > 0)
-        {
-          i2sWrite(i2s_ch, (int16_t *)&pcm_buf[play_i], len);
-          play_i += (len/2);
-        }
-        delay(1);
-
-        if (play_i >= play_len)
-          break;
-      }
-      cliPrintf("play end\n");
+      if (play_i >= play_len)
+        break;
     }
-    else
+    cliPrintf("play end\n");
+
+    ret = true;
+  }
+
+  if (args->argc == 1 && args->isStr(0, "read"))
+  {
+    pdmStart();
+    while(cliKeepLoop())
     {
-      cliPrintf("HAL_SAI_Receive_DMA() Fail\n");
-    }
+      uint32_t pdm_len;
 
+      pdm_len = pdmAvailable();
+
+      if (pdm_len > 0)
+      {
+        pdmRead(NULL, pdm_len);
+        cliPrintf("len %d \n", pdm_len);
+      }
+
+      delay(1);
+    }
+    pdmStop();
     ret = true;
   }
 
   if (ret == false)
   {
     cliPrintf("pdm info\n");
-    cliPrintf("pdm test\n");
+    cliPrintf("pdm record\n");
     cliPrintf("pdm read\n");
   }
 }

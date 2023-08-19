@@ -11,6 +11,7 @@
 #include "lcd/st7701.h"
 #include "nvs.h"
 #include "touch.h"
+#include "pdm.h"
 
 #ifdef _USE_HW_PWM
 #include "pwm.h"
@@ -1514,6 +1515,107 @@ void cliLcd(cli_args_t *args)
     ret = true;
   }
 
+  if (args->argc == 2 && args->isStr(0, "pdm") && args->isStr(1, "show"))
+  {
+    bool clean_buffer = true;
+    int32_t point_x;
+    uint32_t point_i;
+    uint32_t pdm_len;
+    pcm_data_t pcm_buf_line[LCD_WIDTH/2] = {0, };
+    uint32_t pcm_buf_i = 0;
+    uint32_t pcm_buf_len = LCD_WIDTH/2;
+
+
+    pdmStart();
+    point_i = 0;
+    while(cliKeepLoop())
+    {
+      if (lcdDrawAvailable() == true)
+      {
+        if (clean_buffer == true)
+        {
+          clean_buffer = false;
+          lcdClearBuffer(black);
+          point_x = 0;
+
+          lcdDrawFillRect(LCD_WIDTH/2 - 1, 0, 3, LCD_HEIGHT, blue);
+          lcdPrintfRect(0, 0, LCD_WIDTH/2, 32, green, 32, 
+                        LCD_ALIGN_H_CENTER|LCD_ALIGN_V_CENTER, 
+                        "L-PDM");          
+          lcdPrintfRect(LCD_WIDTH/2, 0, LCD_WIDTH/2, 32, green, 32, 
+                        LCD_ALIGN_H_CENTER|LCD_ALIGN_V_CENTER, 
+                        "R-PDM");          
+        }
+
+        pdm_len = pdmAvailable();
+        if (pdm_len > 0)
+        {
+          pcm_data_t pcm_data;
+          int16_t l_y;
+          int16_t r_y;
+
+          for (int i=0; i<pdm_len; i++)
+          {
+            pdmRead(&pcm_data, 1);  
+
+            l_y = cmap(pcm_data.L, -32768, 32767, -50, 50);
+            r_y = cmap(pcm_data.R, -32768, 32767, -50, 50);
+
+            if (point_i%50 == 0)
+            {
+              pcm_buf_line[pcm_buf_i] = pcm_data;
+              pcm_buf_i = (pcm_buf_i + 1) % pcm_buf_len;              
+            }
+
+            lcdDrawPixel(point_x            , LCD_HEIGHT-50 - l_y, red);
+            lcdDrawPixel(point_x+LCD_WIDTH/2, LCD_HEIGHT-50 - r_y, red);
+            
+            point_i++;
+            point_x++;
+            if (point_x >= LCD_WIDTH/2)
+            {
+              uint32_t index;
+
+              int16_t pre_x[2] = {0};
+              int16_t pre_y[2] = {0};
+              int16_t x[2];
+              int16_t y[2];
+              for (int i=0; i<LCD_WIDTH/2-1; i++)
+              {
+                index = (pcm_buf_i + i) % pcm_buf_len;
+                l_y = cmap(pcm_buf_line[index].L, -32768, 32767, -100, 100);
+                r_y = cmap(pcm_buf_line[index].R, -32768, 32767, -100, 100);
+                
+                x[0] = i;
+                y[0] = LCD_HEIGHT-200 - l_y;
+                x[1] = i+LCD_WIDTH/2;
+                y[1] = LCD_HEIGHT-200 - r_y;
+
+                if (i > 0)
+                {
+                  lcdDrawLine(pre_x[0], pre_y[0], x[0], y[0], green);
+                  lcdDrawLine(pre_x[1], pre_y[1], x[1], y[1], green);
+                }
+
+                pre_x[0] = x[0];
+                pre_x[1] = x[1];
+                pre_y[0] = y[0];
+                pre_y[1] = y[1];                
+              }
+              clean_buffer = true;
+              lcdRequestDraw();
+              break;
+            }
+          }
+        }
+      }
+      delay(1);
+    }
+    pdmStop();
+
+    ret = true;
+  }
+
   if (args->argc == 2 && args->isStr(0, "bl") == true)
   {
     uint8_t bl_value;
@@ -1532,6 +1634,7 @@ void cliLcd(cli_args_t *args)
     cliPrintf("lcd logo\n");
     cliPrintf("lcd test\n");
     cliPrintf("lcd touch\n");
+    cliPrintf("lcd pdm show\n");
     cliPrintf("lcd bl 0~100\n");
   }
 }
