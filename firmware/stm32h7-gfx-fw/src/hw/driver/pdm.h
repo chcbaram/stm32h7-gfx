@@ -11,8 +11,22 @@ extern "C" {
 #ifdef _USE_HW_PDM
 
 
+#define PDM_MIC_MAX_CH  HW_PDM_MIC_MAX_CH
+
+
+typedef struct
+{
+  int16_t L;
+  int16_t R;
+} pcm_data_t;
+
+
 bool pdmInit(void);
 bool pdmIsInit(void);
+bool pdmStart(void);
+bool pdmStop(void);
+uint32_t pdmAvailable(void);
+bool pdmRead(pcm_data_t *p_buf, uint16_t length);
 
 
 #endif

@@ -79,6 +79,8 @@ target_include_directories(${EXECUTABLE} PRIVATE
   src/lib/FreeRTOS/Source/CMSIS_RTOS
   src/lib/FreeRTOS/Source/include
   src/lib/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1  
+
+  src/lib/STM32_Audio/Addons/HP_PDM/Inc
 )
 
 target_compile_definitions(${EXECUTABLE} PRIVATE
@@ -120,6 +122,7 @@ target_link_options(${EXECUTABLE} PRIVATE
 
 target_link_libraries( ${EXECUTABLE} PRIVATE
   ${CMAKE_SOURCE_DIR}/src/lib/CMSIS/DSP/Lib/GCC/libarm_cortexM7lfdp_math.a 
+  ${CMAKE_SOURCE_DIR}/src/lib/STM32_Audio/Addons/HP_PDM/Lib/libPDMFilter_CM7_GCC_wc32.a
   )
 
 add_custom_command(TARGET ${EXECUTABLE} 

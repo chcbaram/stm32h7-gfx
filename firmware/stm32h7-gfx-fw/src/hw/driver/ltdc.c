@@ -49,10 +49,13 @@ static volatile uint32_t frame_cnt = 0;
 static volatile uint32_t frame_time = 0;
 
 static volatile uint32_t  frame_index = 0;
+__attribute__((section(".sdram_buf"))) __attribute__((aligned(64)))
+static volatile uint16_t frame_mem[LCD_WIDTH*LCD_HEIGHT*2*2];
+
 static uint16_t *frame_buffer[FRAME_BUF_CNT] =
     {
-      (uint16_t *)(FRAME_BUF_ADDR + LCD_WIDTH*LCD_HEIGHT*2*0),
-      (uint16_t *)(FRAME_BUF_ADDR + LCD_WIDTH*LCD_HEIGHT*2*1),
+      (uint16_t *)&frame_mem[LCD_WIDTH*LCD_HEIGHT*2*0],
+      (uint16_t *)&frame_mem[LCD_WIDTH*LCD_HEIGHT*2*1],
     };
 
 uint16_t *ltdc_draw_buffer;

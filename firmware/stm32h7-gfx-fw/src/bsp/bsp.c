@@ -253,7 +253,7 @@ void bspMpuInit(void)
   MPU_InitStruct.Number           = MPU_REGION_NUMBER4;
   MPU_InitStruct.Enable           = MPU_REGION_ENABLE;
   MPU_InitStruct.BaseAddress      = 0xC0000000;
-  MPU_InitStruct.Size             = MPU_REGION_SIZE_2MB;
+  MPU_InitStruct.Size             = MPU_REGION_SIZE_8MB;
   MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
   MPU_InitStruct.IsBufferable     = MPU_ACCESS_NOT_BUFFERABLE;
   MPU_InitStruct.IsCacheable      = MPU_ACCESS_CACHEABLE;

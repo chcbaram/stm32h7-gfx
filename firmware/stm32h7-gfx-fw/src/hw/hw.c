@@ -4,6 +4,8 @@
 
 
 extern uint32_t _fw_flash_begin;
+extern uint32_t _sdram_buf_size;
+extern uint32_t _sdram_buf_used;
 
 volatile const firm_ver_t firm_ver __attribute__((section(".version"))) = 
 {
@@ -60,6 +62,9 @@ bool hwInit(void)
   pdmInit();
   touchInit();
   lcdInit();
+
+  logPrintf("[  ] SDRAM SIZE : %d\n", (uint32_t)&_sdram_buf_size);
+  logPrintf("[  ] SDRAM USED : %d\n", (uint32_t)&_sdram_buf_used);
 
   return true;
 }

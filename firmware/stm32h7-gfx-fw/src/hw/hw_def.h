@@ -22,7 +22,7 @@
 #define _USE_HW_BUZZER
 #define _USE_HW_GT911
 #define _USE_HW_RTOS
-#define _USE_HW_PDM
+
 
 #define _USE_HW_LED
 #define      HW_LED_MAX_CH          1
@@ -116,6 +116,9 @@
 #define      HW_LCD_WIDTH           HW_ST7701_WIDTH
 #define      HW_LCD_HEIGHT          HW_ST7701_HEIGHT
 
+#define _USE_HW_PDM
+#define      HW_PDM_MIC_MAX_CH      2
+
 
 #define _PIN_GPIO_SPI_FLASH_CS      0
 #define _PIN_GPIO_SDCARD_DETECT     1
@@ -135,5 +138,17 @@
 
 #define FLASH_ADDR_UPDATE           0x90800000
 
+
+
+typedef struct thread_t_
+{
+  const char    *name;
+  bool         (*init)(void); 
+  void         (*main)(void const *arg);
+  osPriority    priority;
+  uint32_t      stack_size;
+  osThreadDef_t thread_def;
+  osThreadId    thread_id;
+} thread_t;
 
 #endif

@@ -43,16 +43,18 @@ _Min_Stack_Size = 0x400 ; /* required amount of stack */
 /* Specify the memory areas */
 MEMORY
 {
-  ITCMRAM (xrw)    : ORIGIN = 0x00000000,   LENGTH = 64K
-  DTCMRAM (xrw)    : ORIGIN = 0x20000000,   LENGTH = 128K
+  ITCMRAM   (xrw)    : ORIGIN = 0x00000000,   LENGTH = 64K
+  DTCMRAM   (xrw)    : ORIGIN = 0x20000000,   LENGTH = 128K
 
-  VECTOR   (rx)    : ORIGIN = 0x08000000,   LENGTH = 1K
-  VER      (rx)    : ORIGIN = 0x08000400,   LENGTH = 1K
-  FLASH    (rx)    : ORIGIN = 0x08000800,   LENGTH = 1021K
+  VECTOR    (rx)    : ORIGIN = 0x08000000,   LENGTH = 1K
+  VER       (rx)    : ORIGIN = 0x08000400,   LENGTH = 1K
+  FLASH     (rx)    : ORIGIN = 0x08000800,   LENGTH = 1021K
 
-  RAM_D1  (xrw)    : ORIGIN = 0x24000000,   LENGTH = 320K
-  RAM_D2  (xrw)    : ORIGIN = 0x30000000,   LENGTH = 32K
-  RAM_D3  (xrw)    : ORIGIN = 0x38000000,   LENGTH = 16K
+  RAM_D1    (xrw)    : ORIGIN = 0x24000000,   LENGTH = 320K
+  RAM_D2    (xrw)    : ORIGIN = 0x30000000,   LENGTH = 32K
+  RAM_D3    (xrw)    : ORIGIN = 0x38000000,   LENGTH = 16K
+
+  SDRAM_BUF (xrw)    : ORIGIN = 0xC0000000,   LENGTH = 8192K
 }
 
 /* Define output sections */
@@ -202,6 +204,20 @@ SECTIONS
     KEEP(*(.noinit))
     . = ALIGN(4);
   } >RAM_D3
+
+  .sdram_buf(NOLOAD) :
+  {
+    . = ALIGN(4);      
+    _ssdram_buf = .;
+    *(.sdram_buf)
+    *(.sdram_buf*) 
+    _esdram_buf = .; 
+    . = ALIGN(4);       
+  } >SDRAM_BUF
+
+  _sdram_buf_size = LENGTH(SDRAM_BUF);
+  _sdram_buf_used = _esdram_buf - _ssdram_buf;
+
 
   .fw_flash_end :
   {
