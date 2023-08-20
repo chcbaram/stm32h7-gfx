@@ -5,6 +5,7 @@
 
 #ifdef _USE_HW_PDM
 #include "pdm2pcm_glo.h"
+#include "acoustic_sl.h"
 #include "i2s.h"
 #include "qbuffer.h"
 #include "mem.h"
@@ -54,6 +55,14 @@ typedef struct
   PDM_Filter_Config_t     config[PDM_MIC_MAX_CH];
 } pdm_filter_t;
 
+typedef struct
+{
+  int32_t angle;
+  AcousticSL_Handler_t handler;
+  AcousticSL_Config_t  config;
+  int32_t result[2];
+} pdm_dir_t;
+
 
 #ifdef _USE_HW_CLI
 static void cliCmd(cli_args_t *args);
@@ -62,6 +71,7 @@ static void pdmFilterInit(int16_t mic_gain);
 static void pdmThreadMsg(void const *arg);
 static bool pdmToPCM(pdm_data_t *p_data, uint32_t pdm_data_len);
 static bool pdmStartDMA(void);
+static bool pdmDirInit(void);
 // static bool pdmStopDMA(void);
 
 
@@ -75,6 +85,7 @@ __attribute__((aligned(64))) static pcm_data_t pcm_buf[PCM_BUF_LEN];
 
 
 static bool is_started = false;
+static bool is_enable_dir = true;
 
 static pdm_filter_t pdm_filter;
 static qbuffer_t pcm_msg_q;
@@ -84,6 +95,8 @@ pdm_record_info_t pdm_record_info;
 
 static osMessageQId pdm_msg_q;
 static SemaphoreHandle_t mutex_lock;
+
+static pdm_dir_t pdm_dir_info;
 
 __attribute__((section(".thread"))) 
 static volatile thread_t pdm_msg_thread = 
@@ -102,6 +115,7 @@ static volatile thread_t pdm_msg_thread =
 
 bool pdmInit(void)
 {
+  bool ret = false;
 
 
   osMessageQDef(pdm_msg_q, 8, uint32_t);
@@ -112,7 +126,7 @@ bool pdmInit(void)
 
   pdm_record_info.is_req = false;
   pdm_record_info.is_done = false;
-
+  
 
   hsai_BlockA1.Instance                 = SAI1_Block_A;
   hsai_BlockA1.Init.Protocol            = SAI_FREE_PROTOCOL;
@@ -170,6 +184,10 @@ bool pdmInit(void)
   logPrintf("     pdm buf len : %d KB\n", sizeof(pdm_buf)/1024);
   logPrintf("     pcm buf len : %d KB\n", sizeof(pcm_buf)/1024);
 
+  ret = pdmDirInit();
+  logPrintf("[%s] pdmDirInit()\n", ret ? "OK":"NG");
+  logPrintf("     mem : %d\n", pdm_dir_info.handler.internal_memory_size);
+  is_enable_dir = ret;
 
   pdmFilterInit(30);
   pdmStartDMA();
@@ -276,24 +294,119 @@ uint32_t pdmGetTimeToLengh(uint32_t ms)
   return PCM_GET_MS_TO_LEN(ms);
 }
 
+bool pdmDirInit(void)
+{
+  bool ret = true;
+
+  volatile uint32_t error_value = 0;
+  /* Enable CRC peripheral to unlock the library */
+  __CRC_CLK_ENABLE();
+
+  /*Setup Source Localization static parameters*/
+  pdm_dir_info.handler.channel_number = 2;
+  pdm_dir_info.handler.M12_distance   = 300;
+  pdm_dir_info.handler.sampling_frequency = PDM_SAMPLERATE_HZ;
+  pdm_dir_info.handler.algorithm = ACOUSTIC_SL_ALGORITHM_GCCP;
+  pdm_dir_info.handler.ptr_M1_channels = 2;
+  pdm_dir_info.handler.ptr_M2_channels = 2;
+  pdm_dir_info.handler.ptr_M3_channels = 2;
+  pdm_dir_info.handler.ptr_M4_channels = 2;
+  pdm_dir_info.handler.samples_to_process = 512;
+  (void)AcousticSL_getMemorySize(&pdm_dir_info.handler);
+  pdm_dir_info.handler.pInternalMemory = (uint32_t *)malloc(pdm_dir_info.handler.internal_memory_size);
+  error_value += AcousticSL_Init(&pdm_dir_info.handler);
+
+  /*Setup Source Localization dynamic parameters*/
+  pdm_dir_info.config.resolution = 2;
+  pdm_dir_info.config.threshold = 24;
+  error_value += AcousticSL_setConfig(&pdm_dir_info.handler, &pdm_dir_info.config);
+
+  /*Error Management*/
+  if (error_value != 0U)
+  {
+    logPrintf("[  ] AcousticSL_setConfig() Err 0x%X\n", error_value);
+    ret = false;
+  }
+
+  /*Malloc Failure*/
+  if (pdm_dir_info.handler.pInternalMemory == NULL)
+  {
+    ret = false;
+  }
+
+  return ret;
+}
+bool pdmDirEnable(void)
+{
+  is_enable_dir = true;
+  return true;
+}
+
+bool pdmDirDisable(void)
+{
+  is_enable_dir = false;
+  return true;
+}
+
+int32_t pdmDirGetAngle(void)
+{
+  return pdm_dir_info.angle;
+}
+
+bool pdmDirProcess(void)
+{
+  bool ret = true;
+
+
+  for (int i=0; i<PCM_BUF_FRAME_LEN; i+=PCM_GET_MS_TO_LEN(1))
+  {
+    ret = AcousticSL_Data_Input((int16_t *)&pcm_buf[i].R, (int16_t *)&pcm_buf[i].L,
+                              NULL, NULL, &pdm_dir_info.handler);
+    if (ret == true)
+    {
+      (void)AcousticSL_Process((int32_t *)&pdm_dir_info.result, &pdm_dir_info.handler);
+
+      if (pdm_dir_info.result[0] == ACOUSTIC_SL_NO_AUDIO_DETECTED)
+      {
+        pdm_dir_info.angle = 0;
+      }
+      else
+      {
+        pdm_dir_info.angle = pdm_dir_info.result[0];
+      }
+    }
+  }
+  return ret;
+}
+
 void pdmThreadMsg(void const *arg)
 {
   (void)arg;
   osEvent evt;
+  bool ret;
 
   while(1)
   {
     evt = osMessageGet(pdm_msg_q, osWaitForever);
     if (evt.status == osEventMessage)
     {  
+      ret = false;
       if (evt.value.v == 0)
       {
-        pdmToPCM(&pdm_buf[0], PDM_BUF_FRAME_LEN);
+        ret = pdmToPCM(&pdm_buf[0], PDM_BUF_FRAME_LEN);
       }
       if (evt.value.v == 1)
       {
-        pdmToPCM(&pdm_buf[PDM_BUF_FRAME_LEN], PDM_BUF_FRAME_LEN);
+        ret = pdmToPCM(&pdm_buf[PDM_BUF_FRAME_LEN], PDM_BUF_FRAME_LEN);
       }        
+
+      if (ret == true)
+      {
+        if (is_enable_dir)
+          pdmDirProcess();
+        else
+          pdm_dir_info.angle = 0;
+      }
     }
   }
 }
@@ -527,7 +640,8 @@ void cliCmd(cli_args_t *args)
 
   if (args->argc == 1 && args->isStr(0, "info") == true)
   {
-    cliPrintf("is_init : %s\n", is_init ? "True":"False");
+    cliPrintf("is_init       : %s\n", is_init ? "True":"False");
+    cliPrintf("is_enable_dir : %s\n", is_enable_dir ? "True":"False");
     
     ret = true;
   }

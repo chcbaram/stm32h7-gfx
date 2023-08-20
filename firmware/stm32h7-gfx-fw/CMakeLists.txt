@@ -32,6 +32,16 @@ file(GLOB SRC_FILES CONFIGURE_DEPENDS
   src/lib/FreeRTOS/Source/CMSIS_RTOS/*.c  
 
   src/lib/FreeRTOS/Source/portable/MemMang/heap_4.c
+
+  src/lib/CMSIS/DSP/Source/FastMathFunctions/arm_cos_f32.c
+  src/lib/CMSIS/DSP/Source/FastMathFunctions/arm_sin_f32.c
+  src/lib/CMSIS/DSP/Source/SupportFunctions/arm_q15_to_float.c
+  src/lib/CMSIS/DSP/Source/SupportFunctions/arm_fill_q15.c
+  src/lib/CMSIS/DSP/Source/TransformFunctions/arm_rfft_fast_f32.c  
+  src/lib/CMSIS/DSP/Source/TransformFunctions/arm_rfft_fast_init_f32.c
+  src/lib/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_dot_prod_f32.c
+  src/lib/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mag_f32.c
+  src/lib/CMSIS/DSP/Source/StatisticsFunctions/arm_power_q15.c
 )
 
 file(GLOB_RECURSE SRC_FILES_RECURSE CONFIGURE_DEPENDS
@@ -81,6 +91,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   src/lib/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1  
 
   src/lib/STM32_Audio/Addons/HP_PDM/Inc
+  src/lib/STM32_AcousticSL_Library/Inc
 )
 
 target_compile_definitions(${EXECUTABLE} PRIVATE
@@ -123,6 +134,9 @@ target_link_options(${EXECUTABLE} PRIVATE
 target_link_libraries( ${EXECUTABLE} PRIVATE
   ${CMAKE_SOURCE_DIR}/src/lib/CMSIS/DSP/Lib/GCC/libarm_cortexM7lfdp_math.a 
   ${CMAKE_SOURCE_DIR}/src/lib/STM32_Audio/Addons/HP_PDM/Lib/libPDMFilter_CM7_GCC_wc32.a
+  ${CMAKE_SOURCE_DIR}/src/lib/STM32_AcousticSL_Library/Lib/AcousticSL_CM7F_wc32_ot.a
+
+  
   )
 
 add_custom_command(TARGET ${EXECUTABLE} 

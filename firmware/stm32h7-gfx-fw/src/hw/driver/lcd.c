@@ -1711,6 +1711,16 @@ void cliLcd(cli_args_t *args)
                               LCD_ALIGN_H_CENTER|LCD_ALIGN_V_CENTER, 
                               " %d %%", play_i * 100 / play_len);                 
               }
+
+              int32_t pdm_dir = pdmDirGetAngle();              
+              lcdPrintf(0, 32, white, "DIR : %d", pdm_dir);
+
+              pdm_dir = cmap(pdm_dir, -90, 90, -240, 240);
+              if (pdm_dir > 0)
+                lcdDrawFillRect(LCD_WIDTH/2, 128, abs(pdm_dir), 32, green);
+              else
+                lcdDrawFillRect(LCD_WIDTH/2 + pdm_dir, 128, abs(pdm_dir), 32, green);
+
               lcdRequestDraw();
               break;
             }

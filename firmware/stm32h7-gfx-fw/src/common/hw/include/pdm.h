@@ -35,6 +35,9 @@ bool pdmRecordIsDone(void);
 uint32_t pdmRecordGetLength(void);
 uint32_t pdmGetTimeToLengh(uint32_t ms);
 
+bool pdmDirEnable(void);
+bool pdmDirDisable(void);
+int32_t pdmDirGetAngle(void);
 
 #endif
 
