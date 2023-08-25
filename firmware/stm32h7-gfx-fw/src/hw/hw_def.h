@@ -6,7 +6,7 @@
 #include "bsp.h"
 
 
-#define _DEF_FIRMWATRE_VERSION    "V230811R1"
+#define _DEF_FIRMWATRE_VERSION    "V230825R1"
 #define _DEF_BOARD_NAME           "STM32H7-GFX-FW"
 
 
@@ -44,8 +44,8 @@
 
 #define _USE_HW_LOG
 #define      HW_LOG_CH              _DEF_UART1
-#define      HW_LOG_BOOT_BUF_MAX    1024
-#define      HW_LOG_LIST_BUF_MAX    1024
+#define      HW_LOG_BOOT_BUF_MAX    2048
+#define      HW_LOG_LIST_BUF_MAX    4096
 
 #define _USE_HW_GPIO
 #define      HW_GPIO_MAX_CH         8

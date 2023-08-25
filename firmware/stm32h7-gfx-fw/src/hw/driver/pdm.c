@@ -27,7 +27,7 @@ typedef struct
 
 #define PDM_SAMPLERATE_HZ       16000
 #define PDM_BUF_MS              (PDM_FILTER_MS)
-#define PDM_DECIMATION          (64)
+#define PDM_DECIMATION          (96)
 #define PDM_GET_MS_TO_LEN(x)    ((PDM_SAMPLERATE_HZ * (PDM_DECIMATION/8) * (x)) / 1000)  
 #define PDM_BUF_FRAME_LEN       PDM_GET_MS_TO_LEN(PDM_BUF_MS)  // 16Khz, 2 mics, 10ms
 #define PDM_BUF_LEN             (PDM_BUF_FRAME_LEN * 2)
