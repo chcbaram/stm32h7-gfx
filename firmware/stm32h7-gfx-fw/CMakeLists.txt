@@ -134,7 +134,7 @@ target_link_options(${EXECUTABLE} PRIVATE
 target_link_libraries( ${EXECUTABLE} PRIVATE
   ${CMAKE_SOURCE_DIR}/src/lib/CMSIS/DSP/Lib/GCC/libarm_cortexM7lfdp_math.a 
   ${CMAKE_SOURCE_DIR}/src/lib/STM32_Audio/Addons/HP_PDM/Lib/libPDMFilter_CM7_GCC_wc32.a
-  ${CMAKE_SOURCE_DIR}/src/lib/STM32_AcousticSL_Library/Lib/AcousticSL_CM7F_wc32_ot.a
+  ${CMAKE_SOURCE_DIR}/src/lib/STM32_AcousticSL_Library/Lib/libAcousticSL_CM7F_wc32_ot.a
 
   
   )

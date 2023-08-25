@@ -19,5 +19,15 @@
       "runToEntryPoint": "main",
       "showDevDebugOutput": "none"
     },
+    {
+      "cwd": "${workspaceRoot}",
+      "executable": "./build/stm32h7-gfx-fw.elf",
+      "name": "Debug with STLINK",
+      "request": "launch",
+      "type": "cortex-debug",
+      "showDevDebugOutput": "none",      
+      "servertype": "stlink",
+      "runToEntryPoint": "main",    
+    },    
   ]
 }
