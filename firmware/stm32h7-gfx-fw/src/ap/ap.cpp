@@ -4,7 +4,6 @@
 
 
 
-
 void apInit(void)
 {  
   thread::init();
@@ -13,6 +12,7 @@ void apInit(void)
 void apMain(void)
 {
   uint32_t pre_time;
+
 
 
   pre_time = millis();

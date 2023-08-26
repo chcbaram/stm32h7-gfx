@@ -92,11 +92,14 @@ target_include_directories(${EXECUTABLE} PRIVATE
 
   src/lib/STM32_Audio/Addons/HP_PDM/Inc
   src/lib/STM32_AcousticSL_Library/Inc
+
+  src/lib/picovoice/include
 )
 
 target_compile_definitions(${EXECUTABLE} PRIVATE
   -DSTM32H723xx 
   -DLFS_THREADSAFE
+  -D__PV_LANGUAGE_KOREAN__
   )
 
 target_compile_options(${EXECUTABLE} PRIVATE
@@ -135,8 +138,8 @@ target_link_libraries( ${EXECUTABLE} PRIVATE
   ${CMAKE_SOURCE_DIR}/src/lib/CMSIS/DSP/Lib/GCC/libarm_cortexM7lfdp_math.a 
   ${CMAKE_SOURCE_DIR}/src/lib/STM32_Audio/Addons/HP_PDM/Lib/libPDMFilter_CM7_GCC_wc32.a
   ${CMAKE_SOURCE_DIR}/src/lib/STM32_AcousticSL_Library/Lib/libAcousticSL_CM7F_wc32_ot.a
+  ${CMAKE_SOURCE_DIR}/src/lib/picovoice/ko/libpicovoice.a
 
-  
   )
 
 add_custom_command(TARGET ${EXECUTABLE} 

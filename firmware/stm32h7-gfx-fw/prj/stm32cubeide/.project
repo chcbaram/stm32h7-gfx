@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>smt32h7-gfx</name>
+	<name>stm32h7-gfx</name>
 	<comment></comment>
 	<projects>
 	</projects>
@@ -41,4 +41,10 @@
 			<locationURI>PARENT-2-PROJECT_LOC/tools</locationURI>
 		</link>
 	</linkedResources>
+	<variableList>
+		<variable>
+			<name>copy_PARENT</name>
+			<value>$%7BPARENT-5-PROJECT_LOC%7D/hdd/git/stm32h7-gfx/firmware/stm32h7-gfx-fw</value>
+		</variable>
+	</variableList>
 </projectDescription>

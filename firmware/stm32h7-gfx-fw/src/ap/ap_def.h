@@ -5,4 +5,7 @@
 #include "hw.h"
 
 
+#define _USE_AP_PICOVOICE       0
+
+
 #endif
