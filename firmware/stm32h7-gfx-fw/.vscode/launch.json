@@ -11,11 +11,16 @@
       "request": "launch",
       "type": "cortex-debug",
       "servertype": "openocd",
+      "windows": {
+        "serverpath": "${env:OPENOCD_DIR}\\bin\\openocd.exe",
+        "searchDir": [
+          "${env:OPENOCD_DIR}\\share\\openocd\\scripts"
+        ],
+      },
       "configFiles": [
         "interface/stlink.cfg",
         "target/stm32h7x.cfg"
-      ],
-      "searchDir": [],
+      ],     
       "runToEntryPoint": "main",
       "showDevDebugOutput": "none"
     },
