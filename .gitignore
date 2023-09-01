@@ -2,8 +2,6 @@ firmware/stm32h7-gfx-fw/build/
 firmware/stm32h7-gfx-fw/prj/stm32cubeide/Debug/
 firmware/stm32h7-gfx-fw/prj/stm32cubeide/.settings/language.settings.xml
 firmware/stm32h7-gfx-fw/src/ap/touch-gfx/build/
-firmware/stm32h7-gfx-fw/src/lib/touchgfx/lib/win/
-firmware/stm32h7-gfx-fw/src/lib/touchgfx/lib/sdl2/
 firmware/stm32h7-gfx-fw/src/lib/touchgfx/lib/core/cortex_m4f/
 firmware/stm32h7-gfx-fw/src/lib/touchgfx/lib/core/cortex_m7/Keil6.x/
 firmware/stm32h7-gfx-fw/src/lib/touchgfx/lib/core/cortex_m7/IAR9.x/
