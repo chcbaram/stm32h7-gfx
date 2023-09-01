@@ -193,7 +193,6 @@ bool gt911InitRegs(void)
 
   writeRegs(0x8047, CTP_CFG_GT911, sizeof(CTP_CFG_GT911));
   writeRegs(0x80FF, temp, 2);
-
   return true;
 }
 

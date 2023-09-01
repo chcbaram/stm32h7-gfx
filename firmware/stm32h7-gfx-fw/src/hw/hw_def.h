@@ -6,7 +6,7 @@
 #include "bsp.h"
 
 
-#define _DEF_FIRMWATRE_VERSION    "V230825R1"
+#define _DEF_FIRMWATRE_VERSION    "V230902R1"
 #define _DEF_BOARD_NAME           "STM32H7-GFX-FW"
 
 
@@ -118,6 +118,12 @@
 
 #define _USE_HW_PDM
 #define      HW_PDM_MIC_MAX_CH      2
+
+#define _USE_HW_TOUCHGFX
+#define      HW_TOUCHGFX_BUF_0      0xC0000000
+#define      HW_TOUCHGFX_BUF_1      0xC0070800
+#define      HW_TOUCHGFX_BUF_2      0xC00E1000
+
 
 #define _USE_HW_MEM
 #define      HW_MEM_BUF_ADDR        (HW_SDRAM_MEM_ADDR + 8*1024*1024)

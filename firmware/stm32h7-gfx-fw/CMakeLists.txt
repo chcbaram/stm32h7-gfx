@@ -52,7 +52,28 @@ file(GLOB_RECURSE SRC_FILES_RECURSE CONFIGURE_DEPENDS
   src/hw/*.c
   src/lib/STM32H7xx_HAL_Driver/Src/*.c
   src/lib/littlefs/*.c
+
+  src/ap/touch-gfx/*.cpp
+  src/lib/touchgfx/framework/source/touchgfx/*.cpp  
 )
+
+# 특정 폴더를 빌드에서 제외한다.
+#
+set(EXCLUDE_PATHS 
+  "src/ap/touch-gfx/build"
+  "src/ap/touch-gfx/simulator"
+  "src/ap/touch-gfx/generated/simulator"
+)
+
+foreach(TMP_PATH ${SRC_FILES_RECURSE}) 
+  foreach(EXCLUDE_PATH ${EXCLUDE_PATHS}) 
+    string(FIND ${TMP_PATH} ${EXCLUDE_PATH} RESULT) 
+    if(NOT ${RESULT} EQUAL -1) 
+      list(REMOVE_ITEM SRC_FILES_RECURSE ${TMP_PATH}) 
+    endif() 
+  endforeach(EXCLUDE_PATH) 
+endforeach(TMP_PATH)
+
 
 add_executable(${EXECUTABLE} 
   ${SRC_FILES}
@@ -94,6 +115,16 @@ target_include_directories(${EXECUTABLE} PRIVATE
   src/lib/STM32_AcousticSL_Library/Inc
 
   src/lib/picovoice/include
+
+  src/ap/touch-gfx
+  src/ap/touch-gfx/target
+  src/ap/touch-gfx/target/generated    
+  src/ap/touch-gfx/gui/include
+  src/ap/touch-gfx/generated/gui_generated/include
+  src/ap/touch-gfx/generated/fonts/include
+  src/ap/touch-gfx/generated/texts/include
+  src/ap/touch-gfx/generated/images/include
+  src/lib/touchgfx/framework/include  
 )
 
 target_compile_definitions(${EXECUTABLE} PRIVATE
@@ -128,18 +159,22 @@ target_link_options(${EXECUTABLE} PRIVATE
   -lm
   -lstdc++
   -lsupc++
+  -fno-rtti
   #-lnosys
   -Wl,-Map=${PRJ_NAME}.map,--cref
   -Wl,--gc-sections
   -Xlinker -print-memory-usage -Xlinker
   )
 
+
+set (CMAKE_CXX_FLAGS "-fno-rtti")
+
 target_link_libraries( ${EXECUTABLE} PRIVATE
   ${CMAKE_SOURCE_DIR}/src/lib/CMSIS/DSP/Lib/GCC/libarm_cortexM7lfdp_math.a 
   ${CMAKE_SOURCE_DIR}/src/lib/STM32_Audio/Addons/HP_PDM/Lib/libPDMFilter_CM7_GCC_wc32.a
   ${CMAKE_SOURCE_DIR}/src/lib/STM32_AcousticSL_Library/Lib/libAcousticSL_CM7F_wc32_ot.a
   ${CMAKE_SOURCE_DIR}/src/lib/picovoice/ko/libpicovoice.a
-
+  ${CMAKE_SOURCE_DIR}/src/lib/touchgfx/lib/core/cortex_m7/gcc/libtouchgfx-float-abi-hard.a
   )
 
 add_custom_command(TARGET ${EXECUTABLE} 

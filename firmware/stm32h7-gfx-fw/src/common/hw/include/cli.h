@@ -33,6 +33,7 @@ typedef struct
 
 bool cliInit(void);
 bool cliOpen(uint8_t ch, uint32_t baud);
+bool cliIsBusy(void);
 bool cliOpenLog(uint8_t ch, uint32_t baud);
 bool cliMain(void);
 void cliPrintf(const char *fmt, ...);

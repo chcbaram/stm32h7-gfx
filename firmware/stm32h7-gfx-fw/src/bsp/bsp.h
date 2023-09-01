@@ -9,8 +9,6 @@ extern "C" {
 
 
 #include "stm32h7xx_hal.h"
-#include "arm_math.h"
-#include "arm_const_structs.h"
 
 #include "rtos.h"
 

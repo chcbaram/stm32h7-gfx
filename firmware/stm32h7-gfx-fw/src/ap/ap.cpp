@@ -12,8 +12,12 @@ void apInit(void)
 void apMain(void)
 {
   uint32_t pre_time;
+  button_event_t btn_evt;
+  uint8_t mode = 0;
 
 
+
+  buttonEventInit(&btn_evt, 5);
 
   pre_time = millis();
   while(1)
@@ -25,6 +29,32 @@ void apMain(void)
     }    
     sdUpdate();
     delay(10);
+
+    if (buttonEventGetPressed(&btn_evt, _DEF_BUTTON1) && cliIsBusy() == false)
+    {
+      if (mode == 0)
+      {
+        cliRunStr("touchgfx test");
+        buttonEventClear(&btn_evt);
+      }      
+      if (mode == 1)
+      {
+        cliRunStr("lcd pdm");
+        buttonEventClear(&btn_evt);
+      }
+      if (mode == 2)
+      {
+        cliRunStr("lcd touch");
+        buttonEventClear(&btn_evt);
+      }
+      if (mode == 3)
+      {
+        cliRunStr("lcd test");
+        buttonEventClear(&btn_evt);
+      }
+
+      mode = (mode + 1) % 4;
+    }
   }
 }
 

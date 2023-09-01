@@ -39,6 +39,15 @@ bool touchInit(void)
   return ret;
 }
 
+bool touchClear(void)
+{
+  touch_info_t info;
+
+  touchGetInfo(&info);
+  
+  return true;
+}
+
 bool touchGetInfo(touch_info_t *p_info)
 {
   bool ret;

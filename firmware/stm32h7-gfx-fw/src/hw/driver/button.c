@@ -133,17 +133,18 @@ bool buttonEventInit(button_event_t *p_event, uint8_t level)
 
   for (int i=0; i<BUTTON_EVENT_MAX; i++)
   {
-    if (event_tbl[event_cnt] == NULL)
+    if (event_tbl[i] == NULL)
     {
       memset(p_event, 0, sizeof(button_event_t));
 
-      event_tbl[event_cnt] = p_event;
+      event_tbl[i] = p_event;
       p_event->level = level;
-      p_event->index = event_cnt;
+      p_event->index = i;
       event_cnt++;
 
       p_event->is_init = true;
       ret = true;
+      break;
     }
   }
 
@@ -156,15 +157,18 @@ bool buttonEventRemove(button_event_t *p_event)
 
   for (int i=0; i<BUTTON_EVENT_MAX; i++)
   {
-    if (event_tbl[event_cnt] == p_event)
+    if (event_tbl[i] == p_event)
     {
       __disable_irq();
       event_tbl[i] = NULL;
-      event_cnt--;
+      if (event_cnt > 0)
+      {
+        event_cnt--;
+      }
       __enable_irq();
+      ret = true;
       break;
     }
-    ret = true;
   }  
   return ret;
 }
@@ -413,8 +417,8 @@ bool buttonEventClear(button_event_t *p_event)
   
   for (int i=0; i<BUTTON_MAX_CH; i++)
   {
-    event_tbl[p_event->index]->pressed_event[i] = false;
-    event_tbl[p_event->index]->released_event[i] = false;
+    p_event->pressed_event[i] = false;
+    p_event->released_event[i] = false;
   }
   return ret;
 }
@@ -428,8 +432,8 @@ bool buttonEventGetReleased(button_event_t *p_event, uint8_t ch)
   if (p_event->is_init != true) return false;
   
 
-  ret = event_tbl[p_event->index]->released_event[ch];
-  event_tbl[p_event->index]->released_event[ch] = false;
+  ret = p_event->released_event[ch];
+  p_event->released_event[ch] = false;
 
   return ret;
 }
@@ -443,8 +447,8 @@ bool buttonEventGetPressed(button_event_t *p_event, uint8_t ch)
   if (p_event->is_init != true) return false;
   
 
-  ret = event_tbl[p_event->index]->pressed_event[ch];
-  event_tbl[p_event->index]->pressed_event[ch] = false;
+  ret = p_event->pressed_event[ch];
+  p_event->pressed_event[ch] = false;
 
   return ret;
 }
@@ -456,9 +460,9 @@ uint32_t buttonEventGetRepeat(button_event_t *p_event, uint8_t ch)
   if (ch >= BUTTON_MAX_CH || is_enable == false) return 0;
   if (p_event->is_init != true) return false;
 
-  if (event_tbl[p_event->index]->repeat_event[ch])
+  if (p_event->repeat_event[ch])
   {
-    event_tbl[p_event->index]->repeat_event[ch] = false;
+    p_event->repeat_event[ch] = false;
     ret = button_tbl[ch].repeat_cnt;
   }
 

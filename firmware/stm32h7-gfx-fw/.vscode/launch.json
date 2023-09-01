@@ -32,7 +32,11 @@
       "type": "cortex-debug",
       "showDevDebugOutput": "none",      
       "servertype": "stlink",
-      "runToEntryPoint": "main",    
+      "runToEntryPoint": "main",  
+      "preRestartCommands": [
+        "enable breakpoint",
+        "monitor reset"
+    ],        
     },    
   ]
 }

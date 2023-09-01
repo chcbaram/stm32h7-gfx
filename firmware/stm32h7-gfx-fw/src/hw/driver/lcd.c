@@ -1402,7 +1402,10 @@ void cliLcd(cli_args_t *args)
     uint32_t fps = 0;
     uint32_t fps_time = 0;
     uint32_t draw_time = 0;
+    button_event_t btn_event;
 
+
+    buttonEventInit(&btn_event, 5);
     lcdSetFont(LCD_FONT_HAN);
 
     pre_time_info = 0;
@@ -1456,11 +1459,17 @@ void cliLcd(cli_args_t *args)
         lcdRequestDraw();
       }
       delay(1);
+
+      if (buttonEventGetPressed(&btn_event, _DEF_BUTTON1))
+      {
+        break;
+      }      
     }
+    buttonEventRemove(&btn_event);
     lcdUpdateDraw();
 
-    lcdClearBuffer(black);
-    lcdUpdateDraw();
+    lcdClear(black);
+    lcdLogoOn();
 
     ret = true;
   }
@@ -1471,8 +1480,12 @@ void cliLcd(cli_args_t *args)
     uint32_t cnt = 0;
     uint32_t fps = 0;
     uint32_t fps_time = 0;
+    button_event_t btn_event;
 
+
+    buttonEventInit(&btn_event, 5);
     lcdSetFont(LCD_FONT_HAN);
+    touchClear();
     while(cliKeepLoop())
     {
       if (lcdDrawAvailable() == true)
@@ -1511,9 +1524,15 @@ void cliLcd(cli_args_t *args)
         lcdRequestDraw();
       }
       delay(1);
-    }
 
+      if (buttonEventGetPressed(&btn_event, _DEF_BUTTON1))
+      {
+        break;
+      }      
+    }
+    buttonEventRemove(&btn_event);
     lcdClear(black);
+    lcdLogoOn();
 
     ret = true;
   }
@@ -1550,6 +1569,16 @@ void cliLcd(cli_args_t *args)
     point_i = 0;
     while(cliKeepLoop())
     {
+      touch_info_t info;
+
+      if (touchGetInfo(&info) == true)
+      {
+        if (info.count >= 2)
+        {
+          break;
+        }
+      } 
+
       if (buttonGetPressed(_DEF_BUTTON1))
       {
         if (buttonGetPressedTime(_DEF_BUTTON1) > 1000)
@@ -1560,7 +1589,6 @@ void cliLcd(cli_args_t *args)
             cliPrintf("record start\n");
             is_recorded = true;
           }
-          buttonEventClear(&btn_event);
         }
         else
         {
@@ -1592,7 +1620,6 @@ void cliLcd(cli_args_t *args)
           }
         }
       }
-      buttonEventClear(&btn_event);
 
 
       if (is_play)
@@ -1734,6 +1761,7 @@ void cliLcd(cli_args_t *args)
     buttonEventRemove(&btn_event);
     memFree(p_pcm_record_buf);
     lcdClear(black);
+    lcdLogoOn();
 
     ret = true;
   }

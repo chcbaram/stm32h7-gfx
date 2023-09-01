@@ -10,7 +10,7 @@ int main(void)
   bspInit();
 
 
-  osThreadDef(main, mainThread, osPriorityNormal, 0, 512);
+  osThreadDef(main, mainThread, osPriorityNormal, 0, 1024);
   if (osThreadCreate(osThread(main), NULL) == NULL)
   {
     ledInit();

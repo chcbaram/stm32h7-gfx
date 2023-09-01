@@ -62,7 +62,7 @@ uint16_t *ltdc_draw_buffer;
 uint16_t *ltdc_osd_draw_buffer = (uint16_t *)FRAME_OSD_ADDR;
 
 static volatile bool is_double_buffer = true;
-static void (*vsync_func)(void) = NULL;
+static void (*vsync_func)(uint8_t mode) = NULL;
 
 
 
@@ -143,7 +143,7 @@ bool ltdcInit(void)
   return ret;
 }
 
-bool ltdcSetVsyncFunc(void (*func)(void))
+bool ltdcSetVsyncFunc(void (*func)(uint8_t mode))
 {
   vsync_func = func;
   return true;
@@ -318,7 +318,7 @@ void HAL_LTDC_LineEvenCallback(LTDC_HandleTypeDef* hltdc)
 
     if (vsync_func != NULL)
     {
-      vsync_func();
+      vsync_func(0);
     }
     frame_cnt++;
     if (millis()-frame_time >= 1000)
@@ -331,6 +331,10 @@ void HAL_LTDC_LineEvenCallback(LTDC_HandleTypeDef* hltdc)
   else
   {
     HAL_LTDC_ProgramLineEvent(hltdc, lcd_int_active_line);
+    if (vsync_func != NULL)
+    {
+      vsync_func(1);
+    }    
   }
 }
 

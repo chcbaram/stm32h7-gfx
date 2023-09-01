@@ -17,6 +17,7 @@
 
 
 #ifdef _USE_HW_I2S
+#include "bsp_math.h"
 
 #define I2S_CFG_NAME "cfg.i2s"
 

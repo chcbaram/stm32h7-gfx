@@ -64,6 +64,7 @@ typedef struct
   uint32_t baud;
   bool     is_open;
   bool     is_log;
+  bool     is_busy;
   uint8_t  log_ch;
   uint32_t log_baud;
   uint8_t  state;
@@ -114,6 +115,7 @@ bool cliInit(void)
 {
   cli_node.is_open = false;
   cli_node.is_log  = false;
+  cli_node.is_busy = false;
   cli_node.state   = CLI_RX_IDLE;
 
   cli_node.hist_line_i     = 0;
@@ -150,6 +152,11 @@ bool cliOpen(uint8_t ch, uint32_t baud)
   }
 
   return cli_node.is_open;
+}
+
+bool cliIsBusy(void)
+{
+  return cli_node.is_busy;
 }
 
 bool cliOpenLog(uint8_t ch, uint32_t baud)
@@ -523,6 +530,7 @@ bool cliRunCmd(cli_t *p_cli)
 
     cliToUpper(p_cli->argv[0]);
 
+    p_cli->is_busy = true;
     for (int i=0; i<p_cli->cmd_count; i++)
     {
       if (strcmp(p_cli->argv[0], p_cli->cmd_list[i].cmd_str) == 0)
@@ -533,6 +541,7 @@ bool cliRunCmd(cli_t *p_cli)
         break;
       }
     }
+    p_cli->is_busy = false;
   }
 
   return ret;
