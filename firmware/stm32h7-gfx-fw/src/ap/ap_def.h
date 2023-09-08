@@ -6,6 +6,7 @@
 
 
 #define _USE_AP_PICOVOICE       0
-#define _USE_AP_TOUCHGFX        1
+#define _USE_AP_TOUCHGFX        0
+#define _USE_AP_VIDEO           1
 
 #endif
