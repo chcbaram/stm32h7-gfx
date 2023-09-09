@@ -63,10 +63,7 @@ static bool is_started = false;
 static bool is_busy = false;
 static uint32_t i2s_sample_rate = I2S_SAMPLERATE_HZ;
 
-static volatile uint32_t i2s_frame_cur_i = 0;
-static volatile bool     i2s_frame_update = false;
-static int16_t  i2s_frame_buf[2][I2S_BUF_FRAME_LEN];
-const int16_t   i2s_frame_buf_zero[I2S_BUF_FRAME_LEN] = {0, };
+static int16_t  i2s_frame_buf[I2S_BUF_FRAME_LEN * 2];
 static uint32_t i2s_frame_len = 0;
 static int16_t  i2s_volume = 100;
 static mixer_t   mixer;
@@ -218,8 +215,8 @@ bool i2sStart(void)
   HAL_StatusTypeDef status;
   I2S_HandleTypeDef *p_i2s = &hi2s1;
 
-
-  status = HAL_I2S_Transmit_DMA(p_i2s, (uint16_t *)i2s_frame_buf_zero, i2s_frame_len);
+  memset(i2s_frame_buf, 0, sizeof(i2s_frame_buf));
+  status = HAL_I2S_Transmit_DMA(p_i2s, (uint16_t *)i2s_frame_buf, i2s_frame_len * 2);
   if (status == HAL_OK)
   {
     is_started = true;
@@ -235,6 +232,8 @@ bool i2sStart(void)
 bool i2sStop(void)
 {
   is_started = false;
+  HAL_I2S_DMAStop(&hi2s1);
+
   return true;
 }
 
@@ -432,34 +431,28 @@ bool i2sSetVolume(int16_t volume)
   return true;
 }
 
-void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
+void i2sUpdateBuffer(uint8_t index)
 {
-  if (is_started != true)
-  {
-    return;
-  }
-
-  if (i2s_frame_update)
-  {
-    HAL_I2S_Transmit_DMA(hi2s, (uint16_t *)i2s_frame_buf[i2s_frame_cur_i], i2s_frame_len);
-    i2s_frame_cur_i ^= 1;
-    i2s_frame_update = false;
+  if (mixerAvailable(&mixer) >= i2s_frame_len)
+  {    
+    mixerRead(&mixer, &i2s_frame_buf[index * i2s_frame_len], i2s_frame_len);
     is_busy = true;
   }
   else
   {
-    HAL_I2S_Transmit_DMA(hi2s, (uint16_t *)i2s_frame_buf_zero, i2s_frame_len);
+    memset(&i2s_frame_buf[index * i2s_frame_len], 0, i2s_frame_len * 2);
     is_busy = false;
   }
 }
 
 void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 {
-  if (mixerAvailable(&mixer) >= i2s_frame_len)
-  {    
-    mixerRead(&mixer, i2s_frame_buf[i2s_frame_cur_i], i2s_frame_len);
-    i2s_frame_update = true;
-  }
+  i2sUpdateBuffer(0);
+}
+
+void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
+{
+  i2sUpdateBuffer(1);
 }
 
 void HAL_I2S_ErrorCallback(I2S_HandleTypeDef *hi2s)
@@ -534,7 +527,7 @@ void HAL_I2S_MspInit(I2S_HandleTypeDef* i2sHandle)
     hdma_spi1_tx.Init.MemInc = DMA_MINC_ENABLE;
     hdma_spi1_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
     hdma_spi1_tx.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
-    hdma_spi1_tx.Init.Mode = DMA_NORMAL;
+    hdma_spi1_tx.Init.Mode = DMA_CIRCULAR;
     hdma_spi1_tx.Init.Priority = DMA_PRIORITY_LOW;
     hdma_spi1_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
     if (HAL_DMA_Init(&hdma_spi1_tx) != HAL_OK)

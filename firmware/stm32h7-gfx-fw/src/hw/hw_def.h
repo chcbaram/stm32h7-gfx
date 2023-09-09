@@ -6,7 +6,7 @@
 #include "bsp.h"
 
 
-#define _DEF_FIRMWATRE_VERSION    "V230902R1"
+#define _DEF_FIRMWATRE_VERSION    "V230909R1"
 #define _DEF_BOARD_NAME           "STM32H7-GFX-FW"
 
 
