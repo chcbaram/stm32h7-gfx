@@ -78,6 +78,7 @@ void cliCmd(cli_args_t *args)
     uint8_t *p_buf = (uint8_t *)(HW_MEM_BUF_ADDR + HW_MEM_BUF_SIZE);
     uint32_t buf_index = 0;
 
+    i2sSetVolume(20);
     do 
     {
       fret = f_open(&mjpeg_file, "video1.avi", FA_READ);
@@ -127,40 +128,27 @@ void cliCmd(cli_args_t *args)
         {
           avi_handle.CurrentImage++;
 
-          // cliPrintf("%d/%d %d %d\n", 
-          //   avi_handle.CurrentImage, 
-          //   avi_handle.aviInfo.TotalFrame,
-          //   frame_rate,
-          //   avi_handle.FrameSize);
+          cliPrintf("%d/%d %d %d\n", 
+            avi_handle.CurrentImage, 
+            avi_handle.aviInfo.TotalFrame,
+            frame_rate,
+            avi_handle.FrameSize);
 
           frame_rate = (millis() - pre_time) + 1;
           if(frame_rate < ((avi_handle.aviInfo.SecPerFrame/1000) * avi_handle.CurrentImage))
           {
-            delay(((avi_handle.aviInfo.SecPerFrame /1000) * avi_handle.CurrentImage) - frame_rate);
+            // delay(((avi_handle.aviInfo.SecPerFrame /1000) * avi_handle.CurrentImage) - frame_rate);
           }      
 
         }
         else if (frame_type == AVI_AUDIO_FRAME)
         {
-          cliPrintf("AUDIO %d\n", avi_handle.FrameSize);
+          // cliPrintf("AUDIO %d\n", avi_handle.FrameSize);
 
-          // uint32_t buf_i = 0;
-          // uint32_t remain;
-          // uint32_t wr_len;
+          i2sWriteTimeout(i2s_ch, (int16_t *)mjpeg_audio_buffer, avi_handle.FrameSize/2, 50);
 
-          // while(buf_i < avi_handle.FrameSize)
-          // {
-          //   remain = (avi_handle.FrameSize - buf_i)/2;
-          //   wr_len = cmin(i2sAvailableForWrite(i2s_ch), remain);
-            
-          //   i2sWrite(i2s_ch, (int16_t *)&mjpeg_audio_buffer[buf_i], wr_len);
-
-          //   buf_i += (wr_len * 2);
-          // }
           memcpy(&p_buf[buf_index], mjpeg_audio_buffer, avi_handle.FrameSize);
-          buf_index += avi_handle.FrameSize;
-
-          delay(1);
+          buf_index += avi_handle.FrameSize;          
         }        
         else if (frame_type == AVI_END_FILE)
         {
@@ -180,19 +168,24 @@ void cliCmd(cli_args_t *args)
         }
       }
 
-      uint32_t buf_i = 0;
-      uint32_t remain;
-      uint32_t wr_len;
+      // uint32_t buf_i = 0;
+      // uint32_t remain;
+      // uint32_t wr_len;
 
-      while(buf_i < buf_index)
-      {
-        remain = (buf_index - buf_i)/2;
-        wr_len = cmin(i2sAvailableForWrite(i2s_ch), remain);
-        
-        i2sWrite(i2s_ch, (int16_t *)&p_buf[buf_i], wr_len);
+      // while(buf_i < buf_index)
+      // {
 
-        buf_i += (wr_len * 2);
-      }
+      //   if (i2sAvailableForWrite(i2s_ch) >= i2sGetFrameSize())
+      //   {
+      //     remain = (buf_index - buf_i)/2;
+      //     wr_len = i2sGetFrameSize();
+          
+      //     i2sWrite(i2s_ch, (int16_t *)&p_buf[buf_i], wr_len);
+
+      //     buf_i += (wr_len * 2);
+      //     // delay(1);
+      //   }
+      // }
 
       cliPrintf("[OK] f_close()\n");
       f_close(&mjpeg_file);

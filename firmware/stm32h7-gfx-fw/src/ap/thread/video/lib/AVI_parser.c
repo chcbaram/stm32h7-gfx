@@ -82,6 +82,10 @@ AVISTATUS __AVI_GetStreamInfo( AVI_CONTEXT * pavi, uint8_t* buf)
   {
     pavi->aviInfo.StreamID  =  AVI_MAKEWORD (buf+0);;
     pavi->aviInfo.StreamSize = (buf[3]<<8) | (buf[2]<<0);
+
+    if(pavi->aviInfo.StreamSize%2)
+      pavi->aviInfo.StreamSize++;
+
     logPrintf("pavi->aviInfo.StreamID 0x%X, %d\n", pavi->aviInfo.StreamID, pavi->aviInfo.StreamSize );
   }
   
@@ -360,10 +364,10 @@ uint32_t AVI_GetFrame(AVI_CONTEXT * pavi, FIL *file)
   {
     /* the Frame is a Video Frame */
 
-    cliPrintf("read0 in %d\n", pavi->FrameSize + 8);   
+    // cliPrintf("read0 in %d\n", pavi->FrameSize + 8);   
     /* Read The current frame + the header of the next frame (8 bytes) */
     f_read(file, pavi->pVideoBuffer, pavi->FrameSize + 8 , (UINT*)&readSize );
-    cliPrintf("read0 %d %d\n", pavi->FrameSize + 8, readSize);
+    // cliPrintf("read0 %d %d\n", pavi->FrameSize + 8, readSize);
 
     /* Get the info of the next frame */
     __AVI_GetStreamInfo(pavi, pavi->pVideoBuffer + pavi->aviInfo.StreamSize );
@@ -373,12 +377,12 @@ uint32_t AVI_GetFrame(AVI_CONTEXT * pavi, FIL *file)
   if (pavi->aviInfo.StreamID  ==  AVI_AUDS_FLAG)
   { /* the Frame is an Audio Frame */
     
-    cliPrintf("read1 in %d\n", pavi->FrameSize + 8);   
+    // cliPrintf("read1 in %d\n", pavi->FrameSize + 8);   
 
     /* Read The current frame + the header of the next frame (8 bytes) */
     f_read(file, pavi->pAudioBuffer, pavi->FrameSize + 8, (UINT*)&readSize );
 
-    cliPrintf("read1 %d %d\n", pavi->FrameSize + 8, readSize);
+    // cliPrintf("read1 %d %d\n", pavi->FrameSize + 8, readSize);
 
     /* Get the info of the next frame */
     __AVI_GetStreamInfo(pavi, pavi->pAudioBuffer + pavi->aviInfo.StreamSize );
