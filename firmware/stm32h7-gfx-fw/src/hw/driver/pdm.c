@@ -280,6 +280,11 @@ uint32_t pdmAvailable(void)
   return qbufferAvailable(&pcm_msg_q);
 }
 
+uint32_t pdmGetSampleRate(void)
+{
+  return PDM_SAMPLERATE_HZ;
+}
+
 bool pdmRead(pcm_data_t *p_buf, uint32_t length)
 {
   bool ret;

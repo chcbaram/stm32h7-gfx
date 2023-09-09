@@ -1565,6 +1565,7 @@ void cliLcd(cli_args_t *args)
 
     buttonEventInit(&btn_event, 5);
 
+    i2sSetSampleRate(pdmGetSampleRate());
     pdmBegin();
     point_i = 0;
     while(cliKeepLoop())

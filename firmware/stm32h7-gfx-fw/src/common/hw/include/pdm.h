@@ -26,6 +26,7 @@ bool pdmBegin(void);
 bool pdmEnd(void);
 
 uint32_t pdmAvailable(void);
+uint32_t pdmGetSampleRate(void);
 bool pdmRead(pcm_data_t *p_buf, uint32_t length);
 
 bool pdmRecordStart(pcm_data_t *p_buf, uint32_t length);

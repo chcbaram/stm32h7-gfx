@@ -258,6 +258,35 @@ bool i2sWrite(uint8_t ch, int16_t *p_data, uint32_t length)
   return mixerWrite(&mixer, ch, p_data, length);
 }
 
+uint32_t i2sWriteTimeout(uint8_t ch, int16_t *p_data, uint32_t length, uint32_t timeout)
+{
+  uint32_t pre_time;
+  uint32_t buf_i;
+  uint32_t remain;
+  uint32_t wr_len;
+
+  buf_i = 0;
+  pre_time = millis();
+  while(buf_i < length)
+  {
+    remain = length - buf_i;
+    wr_len = cmin(mixerAvailableForWrite(&mixer, ch), remain);
+
+    mixerWrite(&mixer, ch, &p_data[buf_i], wr_len);
+    buf_i += wr_len;
+
+    if (millis()-pre_time >= timeout)
+    {
+      break;
+    }
+    #ifdef _USE_HW_RTOS
+    delay(1);
+    #endif
+  }
+
+  return buf_i;
+}
+
 // https://m.blog.naver.com/PostView.nhn?blogId=hojoon108&logNo=80145019745&proxyReferer=https:%2F%2Fwww.google.com%2F
 //
 float i2sGetNoteHz(int8_t octave, int8_t note)
