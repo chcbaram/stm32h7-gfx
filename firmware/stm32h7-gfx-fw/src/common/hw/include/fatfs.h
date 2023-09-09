@@ -12,6 +12,7 @@
 
 
 #ifdef _USE_HW_FATFS
+#include "ff_gen_drv.h"
 
 
 bool fatfsInit(void);
