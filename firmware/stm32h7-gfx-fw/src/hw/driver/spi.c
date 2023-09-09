@@ -21,6 +21,7 @@ typedef struct
 {
   bool is_open;
   bool is_tx_done;
+  bool is_rx_done;
   bool is_error;
 
   void (*func_tx)(void);
@@ -36,7 +37,7 @@ spi_t spi_tbl[SPI_MAX_CH];
 
 SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi5;
-
+DMA_HandleTypeDef hdma_spi2_rx;
 
 
 
@@ -50,6 +51,7 @@ bool spiInit(void)
   {
     spi_tbl[i].is_open = false;
     spi_tbl[i].is_tx_done = true;
+    spi_tbl[i].is_rx_done = true;
     spi_tbl[i].is_error = false;
     spi_tbl[i].func_tx = NULL;
     spi_tbl[i].h_dma_rx = NULL;
@@ -68,6 +70,7 @@ bool spiBegin(uint8_t ch)
   {
     case _DEF_SPI1:
       p_spi->h_spi = &hspi2;
+      p_spi->h_dma_rx = &hdma_spi2_rx;
 
       p_spi->h_spi->Instance              = SPI2;
       p_spi->h_spi->Init.Mode             = SPI_MODE_MASTER;
@@ -92,6 +95,8 @@ bool spiBegin(uint8_t ch)
       p_spi->h_spi->Init.MasterReceiverAutoSusp     = SPI_MASTER_RX_AUTOSUSP_DISABLE;
       p_spi->h_spi->Init.MasterKeepIOState          = SPI_MASTER_KEEP_IO_STATE_DISABLE;
       p_spi->h_spi->Init.IOSwap                     = SPI_IO_SWAP_DISABLE;
+
+      __HAL_RCC_DMA1_CLK_ENABLE();
 
       HAL_SPI_DeInit(p_spi->h_spi);
       if (HAL_SPI_Init(p_spi->h_spi) == HAL_OK)
@@ -278,6 +283,55 @@ bool spiTransfer(uint8_t ch, uint8_t *tx_buf, uint8_t *rx_buf, uint32_t length, 
   return ret;
 }
 
+bool spiTransferDMA(uint8_t ch, uint8_t *tx_buf, uint8_t *rx_buf, uint32_t length, uint32_t timeout)
+{
+  bool ret = false;
+  HAL_StatusTypeDef status;
+  spi_t  *p_spi = &spi_tbl[ch];
+  bool is_dma = false;
+
+  if (p_spi->is_open == false) return false;
+
+  if (rx_buf == NULL)
+  {
+    status = HAL_SPI_Transmit(p_spi->h_spi, tx_buf, length, timeout);
+  }
+  else if (tx_buf == NULL)
+  {
+    p_spi->is_rx_done = false;
+    status = HAL_SPI_Receive_DMA(p_spi->h_spi, rx_buf, length);
+    is_dma = true;
+  }
+  else
+  {
+    status = HAL_SPI_TransmitReceive(p_spi->h_spi, tx_buf, rx_buf, length, timeout);
+  }
+
+  if (status == HAL_OK)
+  {
+    uint32_t pre_time;
+
+    ret = true;
+    pre_time = millis();
+    if (is_dma == true)
+    {
+      while(1)
+      {
+        if(p_spi->is_rx_done == true)
+          break;
+
+        if((millis()-pre_time) >= timeout)
+        {
+          ret = false;
+          break;
+        }
+      }
+    }
+  }
+
+  return ret;
+}
+
 void spiDmaTxStart(uint8_t spi_ch, uint8_t *p_buf, uint32_t length)
 {
   spi_t  *p_spi = &spi_tbl[spi_ch];
@@ -336,6 +390,13 @@ void spiAttachTxInterrupt(uint8_t ch, void (*func)())
 }
 
 
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+  if (hspi->Instance == spi_tbl[_DEF_SPI1].h_spi->Instance)
+  {
+    spi_tbl[_DEF_SPI1].is_rx_done = true;
+  }  
+}
 
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 {
@@ -343,6 +404,16 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
   {
     spi_tbl[_DEF_SPI1].is_error = true;
   }
+}
+
+void SPI2_IRQHandler(void)
+{
+  HAL_SPI_IRQHandler(&hspi2);
+}
+
+void DMA1_Stream5_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_spi2_rx);
 }
 
 void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
@@ -384,6 +455,33 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    /* SPI2 DMA Init */
+    /* SPI2_RX Init */
+    hdma_spi2_rx.Instance = DMA1_Stream5;
+    hdma_spi2_rx.Init.Request = DMA_REQUEST_SPI2_RX;
+    hdma_spi2_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_spi2_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_spi2_rx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_spi2_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_spi2_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_spi2_rx.Init.Mode = DMA_NORMAL;
+    hdma_spi2_rx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_spi2_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    if (HAL_DMA_Init(&hdma_spi2_rx) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(spiHandle,hdmarx,hdma_spi2_rx);    
+
+    /* SPI2 interrupt Init */
+    HAL_NVIC_SetPriority(SPI2_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(SPI2_IRQn);
+
+    /* DMA1_Stream5_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);    
   }  
 
   if(spiHandle->Instance==SPI5)

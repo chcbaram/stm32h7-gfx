@@ -121,6 +121,10 @@ bool spiFlashRead(uint32_t addr, uint8_t *p_data, uint32_t length)
   }
   SPI_CS_H();
 
+  #ifdef _USE_HW_CACHE
+  SCB_InvalidateDCache_by_Addr ((uint32_t *)p_data, length);
+  #endif
+
   return ret;
 }
 
@@ -412,7 +416,7 @@ bool spiFlashTransfer(uint8_t *tx_buf, uint8_t *rx_buf, uint32_t length, uint32_
 {
   bool ret = true;
 
-  ret = spiTransfer(spi_ch, tx_buf, rx_buf, length, timeout);
+  ret = spiTransferDMA(spi_ch, tx_buf, rx_buf, length, timeout);
 
   return ret;
 }
@@ -437,6 +441,23 @@ void cliCmd(cli_args_t *args)
     {
       cliPrintf("flash addr  : 0x%X\n", 0x0000000);
     }
+    else if(args->isStr(0, "test") == true)
+    {
+      uint8_t rx_buf[256];
+
+      for (int i=0; i<100; i++)
+      {
+        if (spiFlashRead(0x1000*i, rx_buf, 256))
+        {
+          cliPrintf("%d : OK\n", i);
+        }
+        else
+        {
+          cliPrintf("%d : FAIL\n", i);
+          break;
+        }
+      }
+    }    
     else
     {
       ret = false;
@@ -515,6 +536,7 @@ void cliCmd(cli_args_t *args)
   if (ret == false)
   {
     cliPrintf( "spiFlash info\n");
+    cliPrintf( "spiFlash test\n");
     cliPrintf( "spiFlash read  [addr] [length]\n");
     cliPrintf( "spiFlash erase [addr] [length]\n");
     cliPrintf( "spiFlash write [addr] [data]\n");
