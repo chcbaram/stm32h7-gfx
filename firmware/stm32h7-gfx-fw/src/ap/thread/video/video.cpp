@@ -3,7 +3,7 @@
 
 #if _USE_AP_VIDEO == 1
 #include "video/lib/AVI_parser.h"
-
+#include "tjpgd.h"
 
 
 
@@ -23,6 +23,14 @@ static volatile thread_t thread_obj =
     .stack_size = 8*1024
   };
 
+typedef struct
+{
+  uint32_t width;
+  uint32_t height;
+  uint8_t *p_buf;
+  uint32_t size;
+  uint32_t buf_i;
+} jpeg_buf_t;
 
 static bool is_enable = true;
 
@@ -36,9 +44,53 @@ AVI_CONTEXT avi_handle;  /* AVI Parser Handle*/
 __attribute__ ((aligned (32))) uint8_t mjpeg_video_buffer[MJPEG_VID_BUFFER_SIZE] ;
 __attribute__ ((aligned (32))) uint8_t mjpeg_audio_buffer[MJPEG_AUD_BUFFER_SIZE] ;
 
+static uint8_t jpeg_work_buf[8*1024];  
 
 
 
+
+
+size_t jpegdDataReader(JDEC *decoder, uint8_t *buffer, size_t size)
+{
+  jpeg_buf_t *jp_buf = (jpeg_buf_t *)decoder->device;
+
+
+  if (jp_buf->buf_i < jp_buf->size)
+  {
+    uint32_t len;
+
+    //len = cmin(size, jp_buf->size - jp_buf->buf_i);
+    len = size;
+    if (buffer) 
+    {
+      memcpy(buffer, &jp_buf->p_buf[jp_buf->buf_i], len);
+    }
+    jp_buf->buf_i += len;
+    return len;
+  }
+  else
+  {
+    return 0;
+  }  
+}
+
+int jpegdDataWriter(JDEC* decoder, void* bitmap, JRECT* rectangle)
+{
+  uint16_t *p_src = (uint16_t *)bitmap;
+  uint16_t *p_dst = lcdGetFrameBuffer();
+  uint16_t index;
+
+  index = 0;
+  for (int y=rectangle->top; y<=rectangle->bottom; y++)
+  {
+    for (int x=rectangle->left; x<=rectangle->right; x++)
+    {
+      p_dst[(y*4) * LCD_WIDTH + (x*2)] = p_src[index];
+      index++;
+    }
+  }
+  return 1;
+}
 
 bool videoInit(void)
 {
@@ -128,11 +180,39 @@ void cliCmd(cli_args_t *args)
         {
           avi_handle.CurrentImage++;
 
+          if (avi_handle.CurrentImage%2 != 0)
+            continue;
+
           cliPrintf("%d/%d %d %d\n", 
             avi_handle.CurrentImage, 
             avi_handle.aviInfo.TotalFrame,
             frame_rate,
             avi_handle.FrameSize);
+
+          JDEC decoder;
+          JRESULT result;
+          jpeg_buf_t jpeg_buf;
+
+          jpeg_buf.width  = avi_handle.aviInfo.Width;
+          jpeg_buf.height = avi_handle.aviInfo.Height;
+          jpeg_buf.size   = avi_handle.FrameSize;
+          jpeg_buf.p_buf  = mjpeg_video_buffer;
+          jpeg_buf.buf_i  = 0;
+
+          uint32_t pre_time_jp;
+
+          pre_time_jp = millis();
+          lcdDrawAvailable();
+          lcdClearBuffer(black);
+          result = jd_prepare(&decoder, jpegdDataReader, jpeg_work_buf, 8*1024, &jpeg_buf);
+          if (JDR_OK == result) 
+          {
+            if (jd_decomp(&decoder, jpegdDataWriter, 1) == JDR_OK)
+            {
+              lcdRequestDraw();
+              cliPrintf("jp %d ms\n", millis()-pre_time_jp);         
+            }
+          }
 
           frame_rate = (millis() - pre_time) + 1;
           if(frame_rate < ((avi_handle.aviInfo.SecPerFrame/1000) * avi_handle.CurrentImage))

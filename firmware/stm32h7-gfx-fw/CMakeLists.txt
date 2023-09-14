@@ -55,6 +55,7 @@ file(GLOB_RECURSE SRC_FILES_RECURSE CONFIGURE_DEPENDS
 
   src/ap/touch-gfx/*.cpp
   src/lib/touchgfx/framework/source/touchgfx/*.cpp  
+  src/lib/tjpgd/src/*.c
 )
 
 # 특정 폴더를 빌드에서 제외한다.
@@ -125,6 +126,8 @@ target_include_directories(${EXECUTABLE} PRIVATE
   src/ap/touch-gfx/generated/texts/include
   src/ap/touch-gfx/generated/images/include
   src/lib/touchgfx/framework/include  
+
+  src/lib/tjpgd/src
 )
 
 target_compile_definitions(${EXECUTABLE} PRIVATE
