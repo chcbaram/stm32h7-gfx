@@ -16,7 +16,6 @@
 #define _USE_HW_FLASH
 #define _USE_HW_FILES
 #define _USE_HW_NVS
-#define _USE_HW_SD
 #define _USE_HW_FATFS
 #define _USE_HW_CACHE
 #define _USE_HW_BUZZER
@@ -82,6 +81,9 @@
 
 #define _USE_HW_SPI
 #define      HW_SPI_MAX_CH          2
+
+#define _USE_HW_SD
+#define      HW_SD_EMMC             1
 
 #define _USE_HW_SPI_FLASH
 #define      HW_SPI_FLASH_ADDR      0x91000000

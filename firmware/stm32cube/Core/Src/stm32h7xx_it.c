@@ -61,7 +61,7 @@ extern DMA_HandleTypeDef hdma_spi1_tx;
 extern I2S_HandleTypeDef hi2s1;
 extern DMA_HandleTypeDef hdma_sai1_a;
 extern SAI_HandleTypeDef hsai_BlockA1;
-extern SD_HandleTypeDef hsd2;
+extern MMC_HandleTypeDef hmmc2;
 extern DMA_HandleTypeDef hdma_spi2_rx;
 extern SPI_HandleTypeDef hspi2;
 extern DMA_HandleTypeDef hdma_usart1_rx;
@@ -399,7 +399,7 @@ void SDMMC2_IRQHandler(void)
   /* USER CODE BEGIN SDMMC2_IRQn 0 */
 
   /* USER CODE END SDMMC2_IRQn 0 */
-  HAL_SD_IRQHandler(&hsd2);
+  HAL_MMC_IRQHandler(&hmmc2);
   /* USER CODE BEGIN SDMMC2_IRQn 1 */
 
   /* USER CODE END SDMMC2_IRQn 1 */

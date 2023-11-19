@@ -125,7 +125,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART10_UART_Init();
   MX_USB_OTG_HS_PCD_Init();
-  MX_SDMMC2_SD_Init();
+  MX_SDMMC2_MMC_Init();
   MX_FDCAN1_Init();
   MX_I2C4_Init();
   MX_TIM13_Init();
