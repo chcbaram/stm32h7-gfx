@@ -24,11 +24,11 @@
 
 /* USER CODE END 0 */
 
-SD_HandleTypeDef hsd2;
+MMC_HandleTypeDef hmmc2;
 
 /* SDMMC2 init function */
 
-void MX_SDMMC2_SD_Init(void)
+void MX_SDMMC2_MMC_Init(void)
 {
 
   /* USER CODE BEGIN SDMMC2_Init 0 */
@@ -38,13 +38,13 @@ void MX_SDMMC2_SD_Init(void)
   /* USER CODE BEGIN SDMMC2_Init 1 */
 
   /* USER CODE END SDMMC2_Init 1 */
-  hsd2.Instance = SDMMC2;
-  hsd2.Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
-  hsd2.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
-  hsd2.Init.BusWide = SDMMC_BUS_WIDE_4B;
-  hsd2.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd2.Init.ClockDiv = 4;
-  if (HAL_SD_Init(&hsd2) != HAL_OK)
+  hmmc2.Instance = SDMMC2;
+  hmmc2.Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
+  hmmc2.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
+  hmmc2.Init.BusWide = SDMMC_BUS_WIDE_4B;
+  hmmc2.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
+  hmmc2.Init.ClockDiv = 4;
+  if (HAL_MMC_Init(&hmmc2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -54,11 +54,11 @@ void MX_SDMMC2_SD_Init(void)
 
 }
 
-void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
+void HAL_MMC_MspInit(MMC_HandleTypeDef* mmcHandle)
 {
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  if(sdHandle->Instance==SDMMC2)
+  if(mmcHandle->Instance==SDMMC2)
   {
   /* USER CODE BEGIN SDMMC2_MspInit 0 */
 
@@ -122,10 +122,10 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
   }
 }
 
-void HAL_SD_MspDeInit(SD_HandleTypeDef* sdHandle)
+void HAL_MMC_MspDeInit(MMC_HandleTypeDef* mmcHandle)
 {
 
-  if(sdHandle->Instance==SDMMC2)
+  if(mmcHandle->Instance==SDMMC2)
   {
   /* USER CODE BEGIN SDMMC2_MspDeInit 0 */
 

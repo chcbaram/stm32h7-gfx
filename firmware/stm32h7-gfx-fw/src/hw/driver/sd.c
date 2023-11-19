@@ -25,8 +25,11 @@ static uint8_t is_try = 0;
 static sd_state_t sd_state = SDCARD_IDLE;
 
 
-SD_HandleTypeDef hsd;
-
+#if HW_SD_EMMC
+static MMC_HandleTypeDef hmmc;
+#else
+static SD_HandleTypeDef hsd;
+#endif
 
 
 #ifdef _USE_HW_CLI
@@ -40,20 +43,31 @@ static void cliSd(cli_args_t *args);
 bool sdInit(void)
 {
   bool ret = false;
+  #if HW_SD_EMMC
+  MMC_HandleTypeDef *p_sd = &hmmc;
+  #else
+  SD_HandleTypeDef *p_sd = &hsd;
+  #endif
+ 
 
   // 200Mhz / (2*2) = 50Mhz
-  hsd.Instance            = SDMMC2;
-  hsd.Init.ClockEdge      = SDMMC_CLOCK_EDGE_RISING;
-  hsd.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
-  hsd.Init.BusWide        = SDMMC_BUS_WIDE_4B;
-  hsd.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd.Init.ClockDiv       = SDMMC_HSPEED_CLK_DIV;
+  p_sd->Instance            = SDMMC2;
+  p_sd->Init.ClockEdge      = SDMMC_CLOCK_EDGE_RISING;
+  p_sd->Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
+  p_sd->Init.BusWide        = SDMMC_BUS_WIDE_4B;
+  p_sd->Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
+  p_sd->Init.ClockDiv       = SDMMC_HSPEED_CLK_DIV;
 
   is_detected = sdIsDetected();
 
   if (is_detected == true)
   {
+    #if HW_SD_EMMC
+    HAL_MMC_DeInit(&hmmc);
+    if (HAL_MMC_Init(&hmmc) == HAL_OK)
+    #else
     if (HAL_SD_Init(&hsd) == HAL_OK)
+    #endif
     {
       ret = true;
     }
@@ -86,8 +100,13 @@ bool sdReInit(void)
 {
   bool ret = false;
 
+  #if HW_SD_EMMC
+  HAL_MMC_DeInit(&hmmc);
+  if (HAL_MMC_Init(&hmmc) == HAL_OK)
+  #else
   HAL_SD_DeInit(&hsd);
   if (HAL_SD_Init(&hsd) == HAL_OK)
+  #endif
   {
     ret = true;
   }
@@ -104,7 +123,11 @@ bool sdDeInit(void)
   if (is_init == true)
   {
     is_init = false;
+    #if HW_SD_EMMC
+    if (HAL_MMC_DeInit(&hmmc) == HAL_OK)
+    #else 
     if (HAL_SD_DeInit(&hsd) == HAL_OK)
+    #endif
     {
       ret = true;
     }
@@ -169,6 +192,7 @@ sd_state_t sdUpdate(void)
           sd_state  = SDCARD_CONNECTED;
           ret_state = SDCARD_CONNECTED;
         }
+
         else
         {
           sd_state = SDCARD_IDLE;
@@ -209,6 +233,26 @@ bool sdGetInfo(sd_info_t *p_info)
   bool ret = false;
   sd_info_t *p_sd_info = (sd_info_t *)p_info;
 
+  #if HW_SD_EMMC
+  HAL_MMC_CardInfoTypeDef card_info;
+
+
+  if (is_init == true)
+  {
+    HAL_MMC_GetCardInfo(&hmmc, &card_info);
+
+    p_sd_info->card_type          = card_info.CardType;
+    p_sd_info->card_version       = 0;
+    p_sd_info->card_class         = card_info.Class;
+    p_sd_info->rel_card_Add       = card_info.RelCardAdd;
+    p_sd_info->block_numbers      = card_info.BlockNbr;
+    p_sd_info->block_size         = card_info.BlockSize;
+    p_sd_info->log_block_numbers  = card_info.LogBlockNbr;
+    p_sd_info->log_block_size     = card_info.LogBlockSize;
+    p_sd_info->card_size          =  (uint32_t)((uint64_t)p_sd_info->block_numbers * (uint64_t)p_sd_info->block_size / (uint64_t)1024 / (uint64_t)1024);
+    ret = true;
+  }
+  #else
   HAL_SD_CardInfoTypeDef card_info;
 
 
@@ -227,6 +271,7 @@ bool sdGetInfo(sd_info_t *p_info)
     p_sd_info->card_size          =  (uint32_t)((uint64_t)p_sd_info->block_numbers * (uint64_t)p_sd_info->block_size / (uint64_t)1024 / (uint64_t)1024);
     ret = true;
   }
+  #endif
 
   return ret;
 }
@@ -235,7 +280,11 @@ bool sdIsBusy(void)
 {
   bool is_busy;
 
+  #if HW_SD_EMMC
+  if (HAL_MMC_GetCardState(&hmmc) == HAL_SD_CARD_TRANSFER )
+  #else
   if (HAL_SD_GetCardState(&hsd) == HAL_SD_CARD_TRANSFER )
+  #endif
   {
     is_busy = false;
   }
@@ -274,7 +323,11 @@ bool sdReadBlocks(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks, 
 
 
   is_rx_done = false;
+  #if HW_SD_EMMC
+  if(HAL_MMC_ReadBlocks_DMA(&hmmc, (uint8_t *)p_data, block_addr, num_of_blocks) == HAL_OK)
+  #else
   if(HAL_SD_ReadBlocks_DMA(&hsd, (uint8_t *)p_data, block_addr, num_of_blocks) == HAL_OK)
+  #endif
   {
 
     pre_time = millis();
@@ -317,7 +370,11 @@ bool sdWriteBlocks(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks,
   #endif
 
   is_tx_done = false;
+  #if HW_SD_EMMC
+  if(HAL_MMC_WriteBlocks_DMA(&hmmc, (uint8_t *)p_data, block_addr, num_of_blocks) == HAL_OK)
+  #else
   if(HAL_SD_WriteBlocks_DMA(&hsd, (uint8_t *)p_data, block_addr, num_of_blocks) == HAL_OK)
+  #endif
   {
     pre_time = millis();
     while(is_tx_done == false)
@@ -348,7 +405,11 @@ bool sdEraseBlocks(uint32_t start_addr, uint32_t end_addr)
 
   if (is_init == false) return false;
 
+  #if HW_SD_EMMC
+  if(HAL_MMC_Erase(&hmmc, start_addr, end_addr) == HAL_OK)
+  #else
   if(HAL_SD_Erase(&hsd, start_addr, end_addr) == HAL_OK)
+  #endif
   {
     ret = true;
   }
@@ -356,12 +417,26 @@ bool sdEraseBlocks(uint32_t start_addr, uint32_t end_addr)
   return ret;
 }
 
+#if HW_SD_EMMC
+void SDMMC2_IRQHandler(void)
+{
+  HAL_MMC_IRQHandler(&hmmc);
+}
 
+void HAL_MMC_RxCpltCallback(MMC_HandleTypeDef *hsd)
+{
+  is_rx_done = true;
+}
+
+void HAL_MMC_TxCpltCallback(MMC_HandleTypeDef *hsd)
+{
+  is_tx_done = true;
+}
+#else
 void SDMMC2_IRQHandler(void)
 {
   HAL_SD_IRQHandler(&hsd);
 }
-
 
 void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
 {
@@ -372,6 +447,7 @@ void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)
 {
   is_tx_done = true;
 }
+#endif
 
 void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
 {
@@ -396,35 +472,35 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
     */
     GPIO_InitStruct.Pin = GPIO_PIN_1;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF9_SDMMC2;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = GPIO_PIN_0;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF9_SDMMC2;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_10;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF11_SDMMC2;
     HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = GPIO_PIN_12;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF10_SDMMC2;
     HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = GPIO_PIN_3;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF9_SDMMC2;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
@@ -464,8 +540,15 @@ void HAL_SD_MspDeInit(SD_HandleTypeDef* sdHandle)
   }
 }
 
+void HAL_MMC_MspInit(MMC_HandleTypeDef* mmcHandle)
+{
+  HAL_SD_MspInit((SD_HandleTypeDef *)mmcHandle);
+}
 
-
+void HAL_MMC_MspDeInit(MMC_HandleTypeDef* mmcHandle)
+{
+  HAL_SD_MspDeInit((SD_HandleTypeDef *)mmcHandle);
+}
 
 
 #ifdef _USE_HW_CLI
