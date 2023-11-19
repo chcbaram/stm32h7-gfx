@@ -83,7 +83,7 @@
 #define      HW_SPI_MAX_CH          2
 
 #define _USE_HW_SD
-#define      HW_SD_EMMC             1
+#define      HW_SD_EMMC             0
 
 #define _USE_HW_SPI_FLASH
 #define      HW_SPI_FLASH_ADDR      0x91000000
