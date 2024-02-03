@@ -1,10 +1,11 @@
 #include "touch.h"
-#include "touch/gt911.h"
-#include "cli.h"
-#include "cli_gui.h"
 
 
 #ifdef _USE_HW_TOUCH
+#include "touch/gt911.h"
+#include "touch/ft5206.h"
+#include "cli.h"
+#include "cli_gui.h"
 
 
 static void cliCmd(cli_args_t *args);
@@ -12,9 +13,19 @@ static void cliCmd(cli_args_t *args);
 
 static bool is_init = false;
 static bool is_enable = false;
-static uint16_t touch_width  = 480;
-static uint16_t touch_height = 480;
+static uint16_t touch_width  = HW_LCD_WIDTH;
+static uint16_t touch_height = HW_LCD_HEIGHT;
 
+#ifdef _USE_HW_GT911
+#define ic_info_t     gt911_info_t
+#define ic_init       gt911Init
+#define ic_get_info   gt911GetInfo
+#endif
+#ifdef _USE_HW_FT5206
+#define ic_info_t     ft5206_info_t
+#define ic_init       ft5206Init
+#define ic_get_info   ft5206GetInfo
+#endif
 
 
 bool touchInit(void)
@@ -22,11 +33,9 @@ bool touchInit(void)
   bool ret = false;
 
 
-  ret = gt911Init();
+  ret = ic_init();
   if (ret == true)
   {
-    touch_width  = gt911GetWidth();
-    touch_height = gt911GetHeight();
     is_init = true;
     is_enable = true;
   }
@@ -51,7 +60,7 @@ bool touchClear(void)
 bool touchGetInfo(touch_info_t *p_info)
 {
   bool ret;
-  gt911_info_t ts_info;
+  ic_info_t ts_info;
 
   if (is_init == false) return false;
   if (is_enable == false)
@@ -60,7 +69,7 @@ bool touchGetInfo(touch_info_t *p_info)
     return false;
   } 
 
-  ret = gt911GetInfo(&ts_info);
+  ret = ic_get_info(&ts_info);
   if (ret == true)
   {
     p_info->count = ts_info.count;

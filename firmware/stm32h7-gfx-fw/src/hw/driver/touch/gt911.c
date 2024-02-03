@@ -1,11 +1,12 @@
 #include "touch/gt911.h"
+
+
+#ifdef _USE_HW_GT911
 #include "i2c.h"
 #include "gpio.h"
 #include "cli.h"
 #include "cli_gui.h"
 
-
-#ifdef _USE_HW_GT911
 
 #ifdef _USE_HW_RTOS
 #define lock()      xSemaphoreTake(mutex_lock, portMAX_DELAY);

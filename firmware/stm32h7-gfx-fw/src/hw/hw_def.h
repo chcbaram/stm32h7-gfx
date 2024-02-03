@@ -10,6 +10,10 @@
 #define _DEF_BOARD_NAME           "STM32H7-GFX-FW"
 
 
+#define LCD_MODEL_4_0_480x480   1
+#define LCD_MODEL_4_3_800x480   0
+#define LCD_MODEL_4_3_480x272   0
+
 
 #define _USE_HW_FAULT
 #define _USE_HW_QSPI
@@ -19,8 +23,14 @@
 #define _USE_HW_FATFS
 #define _USE_HW_CACHE
 #define _USE_HW_BUZZER
-#define _USE_HW_GT911
 #define _USE_HW_RTOS
+
+#if LCD_MODEL_4_0_480x480
+#define _USE_HW_GT911
+#endif
+#if LCD_MODEL_4_3_800x480 || LCD_MODEL_4_3_480x272
+#define _USE_HW_FT5206
+#endif
 
 
 #define _USE_HW_LED
@@ -106,8 +116,16 @@
 #define      HW_PWM_MAX_CH          1
 
 #define _USE_HW_ST7701
+#if LCD_MODEL_4_0_480x480
 #define      HW_ST7701_WIDTH       480
 #define      HW_ST7701_HEIGHT      480
+#elif LCD_MODEL_4_3_800x480
+#define      HW_ST7701_WIDTH       800
+#define      HW_ST7701_HEIGHT      480
+#elif LCD_MODEL_4_3_480x272
+#define      HW_ST7701_WIDTH       480
+#define      HW_ST7701_HEIGHT      272
+#endif
 
 #define _USE_HW_LTDC
 #define      HW_LTDC_BUF_ADDR      HW_SDRAM_MEM_ADDR
@@ -123,8 +141,8 @@
 
 #define _USE_HW_TOUCHGFX
 #define      HW_TOUCHGFX_BUF_0      0xC0000000
-#define      HW_TOUCHGFX_BUF_1      0xC0070800
-#define      HW_TOUCHGFX_BUF_2      0xC00E1000
+#define      HW_TOUCHGFX_BUF_1      (HW_TOUCHGFX_BUF_0 + (HW_LCD_WIDTH * HW_LCD_HEIGHT * 2) * 1)
+#define      HW_TOUCHGFX_BUF_2      (HW_TOUCHGFX_BUF_0 + (HW_LCD_WIDTH * HW_LCD_HEIGHT * 2) * 2)
 
 
 #define _USE_HW_MEM
