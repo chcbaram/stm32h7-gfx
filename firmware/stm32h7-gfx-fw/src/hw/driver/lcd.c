@@ -1778,6 +1778,79 @@ void cliLcd(cli_args_t *args)
     ret = true;
   }
 
+  if (args->argc == 1 && args->isStr(0, "rgb") == true)
+  {
+    uint16_t line;
+    uint16_t line_h = 2;
+
+    lcdClearBuffer(black);
+    lcdUpdateDraw();
+
+    line = 0;
+    for (int i=0; i<(255>>2); i++)
+    {
+      uint16_t color;
+
+      color = RGB2COLOR(i<<2, 0, 0);
+      lcdDrawFillRect(0, line, LCD_WIDTH, line_h, color); 
+      line += line_h;
+    }
+    for (int i=0; i<(255>>2); i++)
+    {
+      uint16_t color;
+
+      color = RGB2COLOR(0, i<<2, 0);
+      lcdDrawFillRect(0, line, LCD_WIDTH, line_h, color); 
+      line += line_h;
+    }
+    for (int i=0; i<(255>>2); i++)
+    {
+      uint16_t color;
+
+      color = RGB2COLOR(0, 0, i<<2);
+      lcdDrawFillRect(0, line, LCD_WIDTH, line_h, color); 
+      line += line_h;
+    }
+
+
+    lcdUpdateDraw();
+    
+    while(cliKeepLoop())
+    {
+
+    }
+
+    ret = true;
+  }
+
+  if (args->argc == 1 && args->isStr(0, "gray") == true)
+  {
+    uint16_t line;
+    uint16_t line_h = 2;
+
+    lcdClearBuffer(black);
+    lcdUpdateDraw();
+
+    line = 0;
+    for (int i=0; i<(255>>0); i++)
+    {
+      uint16_t color;
+
+      color = RGB2COLOR(i<<0, i<<0, i<<0);
+      lcdDrawFillRect(0, line, LCD_WIDTH, line_h, color); 
+      line += line_h;
+    }
+
+    lcdUpdateDraw();
+    
+    while(cliKeepLoop())
+    {
+
+    }
+
+    ret = true;
+  }
+
   if (ret != true)
   {
     cliPrintf("lcd info\n");
@@ -1786,6 +1859,8 @@ void cliLcd(cli_args_t *args)
     cliPrintf("lcd test\n");
     cliPrintf("lcd touch\n");
     cliPrintf("lcd pdm\n");
+    cliPrintf("lcd rgb\n");
+    cliPrintf("lcd gray\n");
     cliPrintf("lcd bl 0~100\n");
   }
 }
