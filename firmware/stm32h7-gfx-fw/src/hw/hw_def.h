@@ -13,7 +13,7 @@
 #define LCD_MODEL_4_0_480x480   1
 #define LCD_MODEL_4_3_800x480   0
 #define LCD_MODEL_4_3_480x272   0
-
+#define LCD_MODEL_7_0_800x480   0
 
 #define _USE_HW_FAULT
 #define _USE_HW_QSPI
@@ -29,6 +29,8 @@
 #define _USE_HW_GT911
 #endif
 #if LCD_MODEL_4_3_800x480 || LCD_MODEL_4_3_480x272
+#define _USE_HW_FT5206
+#else
 #define _USE_HW_FT5206
 #endif
 
@@ -125,6 +127,9 @@
 #elif LCD_MODEL_4_3_480x272
 #define      HW_ST7701_WIDTH       480
 #define      HW_ST7701_HEIGHT      272
+#elif LCD_MODEL_7_0_800x480
+#define      HW_ST7701_WIDTH       800
+#define      HW_ST7701_HEIGHT      480
 #endif
 
 #define _USE_HW_LTDC

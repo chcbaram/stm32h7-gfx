@@ -1446,9 +1446,9 @@ void cliLcd(cli_args_t *args)
         // lcdDrawFillRect(lcdGetWidth()-x, 90+30*2, 30*2, 30*2, green);
         // lcdDrawFillRect(x + 30, 90+30*4, 30*2, 30*2, blue);
 
-        lcdDrawFillRect(((cnt*3)%(LCD_WIDTH-100)), 100, 100, (LCD_HEIGHT-100), red);
-        lcdDrawFillRect(((cnt*5)%(LCD_WIDTH-100)), 100, 100, (LCD_HEIGHT-100), green);
-        lcdDrawFillRect(((cnt*6)%(LCD_WIDTH-100)), 100, 100, (LCD_HEIGHT-100), blue);
+        lcdDrawFillRect(((cnt*3)%(LCD_WIDTH-100)), 100, 100, (LCD_HEIGHT-102), red);
+        lcdDrawFillRect(((cnt*5)%(LCD_WIDTH-100)), 100, 100, (LCD_HEIGHT-102), green);
+        lcdDrawFillRect(((cnt*6)%(LCD_WIDTH-100)), 100, 100, (LCD_HEIGHT-102), blue);
 
         x += 3;
         x %= lcdGetWidth();

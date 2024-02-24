@@ -15,15 +15,23 @@
 #define LCD_WIDTH             HW_LCD_WIDTH      // LCD PIXEL WIDTH            
 #define LCD_HEIGHT            HW_LCD_HEIGHT     // LCD PIXEL HEIGHT           
 
+#if LCD_MODEL_7_0_800x480
+#define LCD_HSYNC             ((uint16_t)4)     // Horizontal synchronization 
+#define LCD_HBP               ((uint16_t)8)     // Horizontal back porch      
+#define LCD_HFP               ((uint16_t)8)     // Horizontal front porch     
 
+#define LCD_VSYNC             ((uint16_t)4)     // Vertical synchronization   
+#define LCD_VBP               ((uint16_t)16)    // Vertical back porch        
+#define LCD_VFP               ((uint16_t)16)    // Vertical front porch       
+#else
 #define LCD_HSYNC             ((uint16_t)8)     // Horizontal synchronization 
 #define LCD_HBP               ((uint16_t)50)    // Horizontal back porch      
 #define LCD_HFP               ((uint16_t)10)    // Horizontal front porch     
 
-
 #define LCD_VSYNC             ((uint16_t)8)     // Vertical synchronization   
 #define LCD_VBP               ((uint16_t)20)    // Vertical back porch        
 #define LCD_VFP               ((uint16_t)10)    // Vertical front porch       
+#endif
 
 
 #define FRAME_IMG_SIZE        (LCD_WIDTH * LCD_HEIGHT * 2)
@@ -75,10 +83,17 @@ bool ltdcInit(void)
 
   hltdc.Instance = LTDC;
 
+#if LCD_MODEL_7_0_800x480
+  hltdc.Init.HSPolarity = LTDC_HSPOLARITY_AH;
+  hltdc.Init.VSPolarity = LTDC_VSPOLARITY_AH;
+  hltdc.Init.DEPolarity = LTDC_DEPOLARITY_AH;
+  hltdc.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
+#else
   hltdc.Init.HSPolarity = LTDC_HSPOLARITY_AL;
   hltdc.Init.VSPolarity = LTDC_VSPOLARITY_AL;
   hltdc.Init.DEPolarity = LTDC_DEPOLARITY_AL;
   hltdc.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
+#endif
 
   hltdc.Init.HorizontalSync     = (LCD_HSYNC  - 1);
   hltdc.Init.VerticalSync       = (LCD_VSYNC  - 1);
@@ -136,6 +151,13 @@ bool ltdcInit(void)
   __HAL_RCC_DMA2D_CLK_ENABLE();
   is_init = ret;
   logPrintf("[%s] ltdcInit()\n", is_init ? "OK":"NG");
+
+  PLL3_ClocksTypeDef pll3_clock;
+  HAL_RCCEx_GetPLL3ClockFreq(&pll3_clock);
+  logPrintf("     freq : %d.%03d Mhz\n", 
+    pll3_clock.PLL3_R_Frequency/1000000,
+    (pll3_clock.PLL3_R_Frequency%1000000)/1000
+    );
 
 #ifdef _USE_HW_CLI
   cliAdd("ltdc", cliCmd);
@@ -349,12 +371,16 @@ void HAL_LTDC_MspInit(LTDC_HandleTypeDef* ltdcHandle)
   /** Initializes the peripherals clock
   */
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
-    PeriphClkInitStruct.PLL3.PLL3M = 1;
-    PeriphClkInitStruct.PLL3.PLL3N = 4;
-    PeriphClkInitStruct.PLL3.PLL3P = 2;
+    PeriphClkInitStruct.PLL3.PLL3M = 10;
+    PeriphClkInitStruct.PLL3.PLL3N = 224;
+    PeriphClkInitStruct.PLL3.PLL3P = 11;
     PeriphClkInitStruct.PLL3.PLL3Q = 2;
-    PeriphClkInitStruct.PLL3.PLL3R = 6;
-    PeriphClkInitStruct.PLL3.PLL3RGE = RCC_PLL3VCIRANGE_3;
+#if LCD_MODEL_7_0_800x480
+    PeriphClkInitStruct.PLL3.PLL3R = 22;
+#else
+    PeriphClkInitStruct.PLL3.PLL3R = 34;
+#endif
+    PeriphClkInitStruct.PLL3.PLL3RGE = RCC_PLL3VCIRANGE_1;
     PeriphClkInitStruct.PLL3.PLL3VCOSEL = RCC_PLL3VCOWIDE;
     PeriphClkInitStruct.PLL3.PLL3FRACN = 0;
     if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)

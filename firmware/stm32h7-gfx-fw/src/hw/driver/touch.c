@@ -16,12 +16,11 @@ static bool is_enable = false;
 static uint16_t touch_width  = HW_LCD_WIDTH;
 static uint16_t touch_height = HW_LCD_HEIGHT;
 
-#ifdef _USE_HW_GT911
+#if defined(_USE_HW_GT911)
 #define ic_info_t     gt911_info_t
 #define ic_init       gt911Init
 #define ic_get_info   gt911GetInfo
-#endif
-#ifdef _USE_HW_FT5206
+#elif defined(_USE_HW_FT5206)
 #define ic_info_t     ft5206_info_t
 #define ic_init       ft5206Init
 #define ic_get_info   ft5206GetInfo
