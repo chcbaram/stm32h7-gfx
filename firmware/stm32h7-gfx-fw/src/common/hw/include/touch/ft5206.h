@@ -41,7 +41,7 @@
 #define FT5206_REG_FOCALTECH_ID            0xA8
 #define FT5206_REG_STATE                   0xBC
 
-
+#define FT5206_MAX_TOUCH_POINT             5
 
 
 typedef struct
@@ -58,7 +58,7 @@ typedef struct
 {
   uint8_t gest_id;
   uint8_t count;
-  ft5206_point_t point[2];
+  ft5206_point_t point[FT5206_MAX_TOUCH_POINT];
 } ft5206_info_t;
 
 

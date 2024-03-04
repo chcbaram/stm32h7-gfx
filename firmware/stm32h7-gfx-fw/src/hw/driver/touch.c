@@ -4,6 +4,7 @@
 #ifdef _USE_HW_TOUCH
 #include "touch/gt911.h"
 #include "touch/ft5206.h"
+#include "touch/ft5316.h"
 #include "cli.h"
 #include "cli_gui.h"
 
@@ -24,6 +25,10 @@ static uint16_t touch_height = HW_LCD_HEIGHT;
 #define ic_info_t     ft5206_info_t
 #define ic_init       ft5206Init
 #define ic_get_info   ft5206GetInfo
+#elif defined(_USE_HW_FT5316)
+#define ic_info_t     ft5316_info_t
+#define ic_init       ft5316Init
+#define ic_get_info   ft5316GetInfo
 #endif
 
 

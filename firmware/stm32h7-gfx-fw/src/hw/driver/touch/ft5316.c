@@ -1,8 +1,8 @@
-#include "touch/ft5206.h"
+#include "touch/ft5316.h"
 
 
 
-#ifdef _USE_HW_FT5206
+#ifdef _USE_HW_FT5316
 #include "i2c.h"
 #include "gpio.h"
 #include "cli.h"
@@ -12,8 +12,8 @@
 #define unLock()    xSemaphoreGive(mutex_lock);
 
 
-#define FT5206_TOUCH_WIDTH    HW_LCD_WIDTH
-#define FT5206_TOUCH_HEIGTH   HW_LCD_HEIGHT
+#define FT5316_TOUCH_WIDTH    HW_LCD_WIDTH
+#define FT5316_TOUCH_HEIGTH   HW_LCD_HEIGHT
 
 #define FT6246_PIN_RESET      _PIN_GPIO_LCD_TS_RST
 
@@ -22,7 +22,7 @@
 static void cliCmd(cli_args_t *args);
 static bool readRegs(uint8_t reg_addr, uint8_t *p_data, uint32_t length);
 static bool writeRegs(uint8_t reg_addr, uint8_t *p_data, uint32_t length);
-static bool ft5206InitRegs(void);
+static bool ft5316InitRegs(void);
 
 
 static uint8_t i2c_ch   = _DEF_I2C1;
@@ -35,7 +35,7 @@ static SemaphoreHandle_t mutex_lock = NULL;
 
 
 
-bool ft5206Init(void)
+bool ft5316Init(void)
 {
   bool ret = false;
 
@@ -68,24 +68,24 @@ bool ft5206Init(void)
 
   if (is_detected == true)
   {
-    ret = ft5206InitRegs();
+    ret = ft5316InitRegs();
   }
 
   is_init = ret;
 
-  logPrintf("[%s] ft5206Init()\n", ret ? "OK":"NG");
+  logPrintf("[%s] ft5316Init()\n", ret ? "OK":"NG");
 
-  cliAdd("ft5206", cliCmd);
+  cliAdd("ft5316", cliCmd);
 
   return ret;
 }
 
-bool ft5206InitRegs(void)
+bool ft5316InitRegs(void)
 {
   uint8_t data;
 
   data = 0;  
-  writeRegs(FT5206_REG_DEV_MODE, &data, 1);
+  writeRegs(FT5316_REG_DEV_MODE, &data, 1);
   return true;
 }
 
@@ -122,17 +122,17 @@ bool writeRegs(uint8_t reg_addr, uint8_t *p_data, uint32_t length)
   return ret;
 }
 
-uint16_t ft5206GetWidth(void)
+uint16_t ft5316GetWidth(void)
 {
-  return FT5206_TOUCH_WIDTH;
+  return FT5316_TOUCH_WIDTH;
 }
 
-uint16_t ft5206GetHeight(void)
+uint16_t ft5316GetHeight(void)
 {
-  return FT5206_TOUCH_HEIGTH;
+  return FT5316_TOUCH_HEIGTH;
 }
 
-bool ft5206GetInfo(ft5206_info_t *p_info)
+bool ft5316GetInfo(ft5316_info_t *p_info)
 {
   bool ret;
   uint8_t buf[14];
@@ -146,24 +146,24 @@ bool ft5206GetInfo(ft5206_info_t *p_info)
   ret = readRegs(0x00, buf, 14);
   if (ret == true)
   {
-    p_info->gest_id = buf[FT5206_REG_GEST_ID];
-    p_info->count   = buf[FT5206_REG_TD_STATUS] & 0x0F;
-    if (p_info->count <= FT5206_MAX_TOUCH_POINT)
+    p_info->gest_id = buf[FT5316_REG_GEST_ID];
+    p_info->count   = buf[FT5316_REG_TD_STATUS] & 0x0F;
+    if (p_info->count <= FT5316_MAX_TOUCH_POINT)
     {
       for (int i=0; i<p_info->count; i++)
       {
         uint16_t x;
         uint16_t y;
 
-        p_info->point[i].id     = (buf[FT5206_REG_P_YH     + (6*i)] & 0xF0) >> 4;
-        p_info->point[i].event  = (buf[FT5206_REG_P_XH     + (6*i)] & 0xC0) >> 6;
+        p_info->point[i].id     = (buf[FT5316_REG_P_YH     + (6*i)] & 0xF0) >> 4;
+        p_info->point[i].event  = (buf[FT5316_REG_P_XH     + (6*i)] & 0xC0) >> 6;
         p_info->point[i].weight = 20;
         p_info->point[i].area   = 20;
 
-        x  = (buf[FT5206_REG_P_XH + (6*i)] & 0x0F) << 8;
-        x |= (buf[FT5206_REG_P_XL + (6*i)] & 0xFF) << 0;
-        y  = (buf[FT5206_REG_P_YH + (6*i)] & 0x0F) << 8;
-        y |= (buf[FT5206_REG_P_YL + (6*i)] & 0xFF) << 0;
+        x  = (buf[FT5316_REG_P_XH + (6*i)] & 0x0F) << 8;
+        x |= (buf[FT5316_REG_P_XL + (6*i)] & 0xFF) << 0;
+        y  = (buf[FT5316_REG_P_YH + (6*i)] & 0x0F) << 8;
+        y |= (buf[FT5316_REG_P_YL + (6*i)] & 0xFF) << 0;
 
         p_info->point[i].x = x;
         p_info->point[i].y = y; 
@@ -190,22 +190,22 @@ void cliCmd(cli_args_t *args)
     cliPrintf("is_init     : %s\n", is_init ? "True" : "False");
     cliPrintf("is_detected : %s\n", is_detected ? "True" : "False");
 
-    readRegs(FT5206_REG_DEV_MODE, &reg_data, 1);
+    readRegs(FT5316_REG_DEV_MODE, &reg_data, 1);
     cliPrintf("DEV_MODE    : 0x%02X (%d)\n", reg_data, reg_data);
 
-    readRegs(FT5206_REG_TH_GROUP, &reg_data, 1);
+    readRegs(FT5316_REG_TH_GROUP, &reg_data, 1);
     cliPrintf("TH_GROUP    : 0x%02X (%d)\n", reg_data, reg_data);
 
-    readRegs(FT5206_REG_TH_DIFF, &reg_data, 1);
+    readRegs(FT5316_REG_TH_DIFF, &reg_data, 1);
     cliPrintf("TH_DIFF     : 0x%02X (%d)\n", reg_data, reg_data);
 
-    readRegs(FT5206_REG_CTRL, &reg_data, 1);
+    readRegs(FT5316_REG_CTRL, &reg_data, 1);
     cliPrintf("CTRL        : 0x%02X (%d)\n", reg_data, reg_data);
 
-    readRegs(FT5206_REG_PERIOID_ACTIVE, &reg_data, 1);
+    readRegs(FT5316_REG_PERIOID_ACTIVE, &reg_data, 1);
     cliPrintf("PERIOID A   : 0x%02X (%d)\n", reg_data, reg_data);
 
-    readRegs(FT5206_REG_PERIOID_MONITOR, &reg_data, 1);
+    readRegs(FT5316_REG_PERIOID_MONITOR, &reg_data, 1);
     cliPrintf("PERIOID M   : 0x%02X (%d)\n", reg_data, reg_data);
 
     ret = true;
@@ -259,14 +259,14 @@ void cliCmd(cli_args_t *args)
 
   if (args->argc == 2 && args->isStr(0, "get") && args->isStr(1, "info"))
   {
-    ft5206_info_t info;
+    ft5316_info_t info;
     uint32_t pre_time;
     uint32_t exe_time;
 
     while(cliKeepLoop())
     {
       pre_time = millis();
-      if (ft5206GetInfo(&info) == true)
+      if (ft5316GetInfo(&info) == true)
       {
         exe_time = millis()-pre_time;
 
@@ -289,7 +289,7 @@ void cliCmd(cli_args_t *args)
       }
       else
       {
-        cliPrintf("ft5206GetInfo() Fail\n");
+        cliPrintf("ft5316GetInfo() Fail\n");
         break;
       }
       delay(10);
@@ -299,8 +299,8 @@ void cliCmd(cli_args_t *args)
 
   if (args->argc == 1 && args->isStr(0, "gui"))
   {
-    ft5206_info_t info;
-    ft5206_info_t info_pre;
+    ft5316_info_t info;
+    ft5316_info_t info_pre;
 
     info.count = 0;
     info_pre.count = 0;
@@ -310,7 +310,7 @@ void cliCmd(cli_args_t *args)
     {
       cliGui()->drawBox(0, 0, 480/10 + 1, 320/20 + 1, "");
 
-      if (ft5206GetInfo(&info) == true)
+      if (ft5316GetInfo(&info) == true)
       {
         uint16_t x;
         uint16_t y;
@@ -347,11 +347,11 @@ void cliCmd(cli_args_t *args)
 
   if (ret == false)
   {
-    cliPrintf("ft5206 info\n");
-    cliPrintf("ft5206 read addr[0~0xFF] len[0~255]\n");
-    cliPrintf("ft5206 write addr[0~0xFF] data \n");
-    cliPrintf("ft5206 get info\n");
-    cliPrintf("ft5206 gui\n");
+    cliPrintf("ft5316 info\n");
+    cliPrintf("ft5316 read addr[0~0xFF] len[0~255]\n");
+    cliPrintf("ft5316 write addr[0~0xFF] data \n");
+    cliPrintf("ft5316 get info\n");
+    cliPrintf("ft5316 gui\n");
   }
 }
 
