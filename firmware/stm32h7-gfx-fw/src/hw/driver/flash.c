@@ -375,15 +375,17 @@ void cliFlash(cli_args_t *args)
   if(args->argc == 3 && args->isStr(0, "check"))
   {
     uint32_t data = 0;
+    uint32_t block = 4;
 
 
-    addr   = (uint32_t)args->getData(1);
-    length = (uint32_t)args->getData(2);
+    addr    = (uint32_t)args->getData(1);
+    length  = (uint32_t)args->getData(2);
+    length -= (length % block);
 
     do
     {
       cliPrintf("flashErase()..");
-      if (flashErase(addr, length*4) == false)
+      if (flashErase(addr, length) == false)
       {
         cliPrintf("Fail\n");
         break;
@@ -391,10 +393,10 @@ void cliFlash(cli_args_t *args)
       cliPrintf("OK\n");
 
       cliPrintf("flashWrite()..");
-      for (uint32_t i=0; i<length; i++)
+      for (uint32_t i=0; i<length; i+=block)
       {
         data = i;
-        if (flashWrite(addr + i*4, (uint8_t *)&data, 4) == false)
+        if (flashWrite(addr + i, (uint8_t *)&data, block) == false)
         {
           cliPrintf("Fail %d\n", i);
           break;
@@ -403,10 +405,10 @@ void cliFlash(cli_args_t *args)
       cliPrintf("OK\n");
 
       cliPrintf("flashRead() ..");
-      for (uint32_t i=0; i<1024*1024/4; i++)
+      for (uint32_t i=0; i<length; i+=block)
       {
         data = 0;
-        if (flashRead(qspiGetAddr() + i*4, (uint8_t *)&data, 4) == false)
+        if (flashRead(addr + i, (uint8_t *)&data, block) == false)
         {
           cliPrintf("Fail %d\n", i);
           break;
@@ -421,7 +423,7 @@ void cliFlash(cli_args_t *args)
 
 
       cliPrintf("flashErase()..");
-      if (flashErase(addr, length*4) == false)
+      if (flashErase(addr, length) == false)
       {
         cliPrintf("Fail\n");
         break;
@@ -439,7 +441,7 @@ void cliFlash(cli_args_t *args)
     cliPrintf( "flash read  [addr] [length]\n");
     cliPrintf( "flash erase [addr] [length]\n");
     cliPrintf( "flash write [addr] [data]\n");
-    cliPrintf( "flash check [addr] [count]\n");
+    cliPrintf( "flash check [addr] [length]\n");
   }
 }
 #endif
