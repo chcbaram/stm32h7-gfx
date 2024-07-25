@@ -718,6 +718,7 @@ void cliI2s(cli_args_t *args)
     cliPrintf("i2s rate      : %d Khz\n", i2s_sample_rate/1000);
     cliPrintf("i2s buf ms    : %d ms\n", I2S_BUF_MS);
     cliPrintf("i2s frame len : %d \n", i2s_frame_len);
+    cliPrintf("i2s volume    : %d \n", i2sGetVolume());
     ret = true;
   }
 
@@ -734,6 +735,26 @@ void cliI2s(cli_args_t *args)
     #else
     i2sPlayBeep(freq, 100, time_ms);
     #endif
+
+    ret = true;
+  }
+
+  if (args->argc >= 1 && args->isStr(0, "volume") == true)
+  {
+    uint8_t volume;
+
+
+    if (args->argc == 1)
+    {
+      cliPrintf("Volume : %d%%\n", i2sGetVolume());
+    }
+    else
+    {
+      volume = args->getData(1);
+      i2sSetVolume(volume);
+      i2sCfgSave();
+      cliPrintf("i2s volume : %d \n", i2sGetVolume());
+    }
 
     ret = true;
   }
@@ -863,6 +884,7 @@ void cliI2s(cli_args_t *args)
   {
     cliPrintf("i2s info\n");
     cliPrintf("i2s melody\n");
+    cliPrintf("i2s volume 0~100\n");
     cliPrintf("i2s beep freq time_ms\n");
     cliPrintf("i2s play-wav filename\n");
   }

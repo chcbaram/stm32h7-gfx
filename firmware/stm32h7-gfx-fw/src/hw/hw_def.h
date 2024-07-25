@@ -10,10 +10,10 @@
 #define _DEF_BOARD_NAME           "STM32H7-GFX-FW"
 
 
-#define LCD_MODEL_4_0_480x480       0
+#define LCD_MODEL_4_0_480x480       1
 #define LCD_MODEL_4_3_800x480       0
 #define LCD_MODEL_4_3_480x272       0
-#define LCD_MODEL_7_0_800x480       1
+#define LCD_MODEL_7_0_800x480       0
 
 
 #define _USE_HW_FAULT
