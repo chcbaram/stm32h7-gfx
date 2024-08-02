@@ -15,18 +15,6 @@
       <Text Id="__SingleUse_TXX3" Alignment="Center" TypographyId="Default">
         <Translation Language="GB">Cancel</Translation>
       </Text>
-      <Text Id="__SingleUse_8KPD" Alignment="Center" TypographyId="Default">
-        <Translation Language="GB">RTP Calibration</Translation>
-      </Text>
-      <Text Id="__SingleUse_3B28" Alignment="Left" TypographyId="Large">
-        <Translation Language="GB">TouchGFX</Translation>
-      </Text>
-      <Text Id="__SingleUse_OY0J" Alignment="Center" TypographyId="Default">
-        <Translation Language="GB">Home</Translation>
-      </Text>
-      <Text Id="__SingleUse_SR1N" Alignment="Center" TypographyId="Default">
-        <Translation Language="GB">Setup</Translation>
-      </Text>
     </TextGroup>
   </Texts>
   <Typographies>

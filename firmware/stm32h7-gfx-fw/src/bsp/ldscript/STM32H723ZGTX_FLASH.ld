@@ -55,7 +55,6 @@ MEMORY
   RAM_D3    (xrw)    : ORIGIN = 0x38000000,   LENGTH = 16K
 
   SDRAM_BUF (xrw)    : ORIGIN = 0xC0000000,   LENGTH = 8192K
-  QSPI_FLASH  (rx)   : ORIGIN = 0x90000000,   LENGTH = 16M
 }
 
 /* Define output sections */
@@ -197,7 +196,7 @@ SECTIONS
     *(.non_cache)
     *(.non_cache*)   
     . = ALIGN(4);       
-  } >RAM_D3 AT> FLASH   
+  } >RAM_D3 AT>FLASH
   
   .noinit(NOLOAD) :
   {
@@ -219,18 +218,10 @@ SECTIONS
   _sdram_buf_size = LENGTH(SDRAM_BUF);
   _sdram_buf_used = _esdram_buf - _ssdram_buf;
 
-  ExtFlashSection :
-  {
-  	*(ExtFlashSection ExtFlashSection.*)
-    *(.gnu.linkonce.r.*)
-    . = ALIGN(0x4);
-  } >QSPI_FLASH
-
   .fw_flash_end :
   {
     _fw_flash_end = .;
   } >FLASH
-
   
   /* Remove information from the standard libraries */
   /DISCARD/ :

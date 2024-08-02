@@ -172,35 +172,11 @@
     <Filter Include="Header Files\generated\simulator\include\simulator\video">
       <UniqueIdentifier>5549901A-1F2C-FB83-0ECA-4609C78A677E</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\gui\menu_screen">
-      <UniqueIdentifier>9EF8BA76-9B17-8C78-953D-0503110443F0</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\gui\menu_screen">
-      <UniqueIdentifier>35D803EB-7087-2529-3D74-737B9EA652CC</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\gui\home_screen">
-      <UniqueIdentifier>70D8E69C-E80D-109A-55E2-15A9508E107C</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\gui\home_screen">
-      <UniqueIdentifier>70E0F629-6884-6D99-0EBD-47F7080900A7</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\gui\containers">
       <UniqueIdentifier>91C41121-8AC9-FA37-943B-101263929A3E</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\gui\containers">
       <UniqueIdentifier>5ECEC950-F8EB-CA65-E2CB-77803EA96EEB</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\generated\gui_generated\menu_screen">
-      <UniqueIdentifier>CBEDD734-0BCD-DF3C-89E0-D158227D3163</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\generated\gui_generated\menu_screen">
-      <UniqueIdentifier>6210061B-8C4F-023B-9C0D-126E38674326</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\generated\gui_generated\home_screen">
-      <UniqueIdentifier>E74D0131-C933-3957-4CF8-F566A86E5C4F</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\generated\gui_generated\home_screen">
-      <UniqueIdentifier>03BD4672-57FC-20EB-B0A2-C4F4A1A7A84F</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\generated\gui_generated\containers">
       <UniqueIdentifier>189C4877-7B1B-1FB4-BA0E-56A67F4B3AF7</UniqueIdentifier>
@@ -257,24 +233,6 @@
     </ClCompile>
     <ClCompile Include="..\..\generated\gui_generated\src\containers\CustomContainer1Base.cpp">
       <Filter>Source Files\generated\gui_generated\containers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gui\src\home_screen\HomePresenter.cpp">
-      <Filter>Source Files\gui\home_screen</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gui\src\home_screen\HomeView.cpp">
-      <Filter>Source Files\gui\home_screen</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\generated\gui_generated\src\home_screen\HomeViewBase.cpp">
-      <Filter>Source Files\generated\gui_generated\home_screen</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gui\src\menu_screen\MenuPresenter.cpp">
-      <Filter>Source Files\gui\menu_screen</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\gui\src\menu_screen\MenuView.cpp">
-      <Filter>Source Files\gui\menu_screen</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\generated\gui_generated\src\menu_screen\MenuViewBase.cpp">
-      <Filter>Source Files\generated\gui_generated\menu_screen</Filter>
     </ClCompile>
     <ClCompile Include="..\..\gui\src\rtpcalibration_screen\RTPCalibrationPresenter.cpp">
       <Filter>Source Files\gui\rtpcalibration_screen</Filter>
@@ -732,24 +690,6 @@
     </ClInclude>
     <ClInclude Include="..\..\generated\gui_generated\include\gui_generated\containers\CustomContainer1Base.hpp">
       <Filter>Header Files\generated\gui_generated\containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\gui\include\gui\home_screen\HomePresenter.hpp">
-      <Filter>Header Files\gui\home_screen</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\gui\include\gui\home_screen\HomeView.hpp">
-      <Filter>Header Files\gui\home_screen</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\generated\gui_generated\include\gui_generated\home_screen\HomeViewBase.hpp">
-      <Filter>Header Files\generated\gui_generated\home_screen</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\gui\include\gui\menu_screen\MenuPresenter.hpp">
-      <Filter>Header Files\gui\menu_screen</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\gui\include\gui\menu_screen\MenuView.hpp">
-      <Filter>Header Files\gui\menu_screen</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\generated\gui_generated\include\gui_generated\menu_screen\MenuViewBase.hpp">
-      <Filter>Header Files\generated\gui_generated\menu_screen</Filter>
     </ClInclude>
     <ClInclude Include="..\..\gui\include\gui\rtpcalibration_screen\RTPCalibrationPresenter.hpp">
       <Filter>Header Files\gui\rtpcalibration_screen</Filter>

@@ -8,8 +8,7 @@
 #include <mvp/View.hpp>
 #include <gui/rtpcalibration_screen/RTPCalibrationPresenter.hpp>
 #include <touchgfx/widgets/Box.hpp>
-#include <touchgfx/widgets/RepeatButton.hpp>
-#include <touchgfx/mixins/ClickListener.hpp>
+#include <touchgfx/widgets/Image.hpp>
 #include <touchgfx/widgets/ButtonWithLabel.hpp>
 #include <touchgfx/widgets/BoxWithBorder.hpp>
 #include <touchgfx/widgets/TextAreaWithWildcard.hpp>
@@ -40,11 +39,11 @@ protected:
      */
     touchgfx::Box __background;
     touchgfx::Box Background;
-    touchgfx::ClickListener< touchgfx::RepeatButton > TouchPoint1;
-    touchgfx::ClickListener< touchgfx::RepeatButton > TouchPoint2;
-    touchgfx::ClickListener< touchgfx::RepeatButton > TouchPoint3;
-    touchgfx::ClickListener< touchgfx::RepeatButton > TouchPoint4;
-    touchgfx::ClickListener< touchgfx::RepeatButton > TouchPoint5;
+    touchgfx::Image TouchPoint1;
+    touchgfx::Image TouchPoint2;
+    touchgfx::Image TouchPoint3;
+    touchgfx::Image TouchPoint4;
+    touchgfx::Image TouchPoint5;
     touchgfx::ButtonWithLabel CalibrationCancelBtn;
     touchgfx::BoxWithBorder boxWithBorder1;
     touchgfx::TextAreaWithOneWildcard textArea1;

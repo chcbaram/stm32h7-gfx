@@ -2,196 +2,6 @@
   "Application": {
     "Screens": [
       {
-        "Name": "Home",
-        "Components": [
-          {
-            "Type": "Box",
-            "Name": "box1",
-            "Width": 800,
-            "Height": 480,
-            "Color": {
-              "Red": 255,
-              "Green": 255,
-              "Blue": 255
-            }
-          },
-          {
-            "Type": "ButtonWithLabel",
-            "Name": "buttonWithLabel1",
-            "X": 280,
-            "Y": 396,
-            "Width": 240,
-            "Height": 50,
-            "Pressed": "__generated\\alternate_theme_images_widgets_button_regular_height_50_medium_rounded_pressed.png",
-            "Released": "__generated\\alternate_theme_images_widgets_button_regular_height_50_medium_rounded_normal.png",
-            "TextId": "__SingleUse_SR1N",
-            "ReleasedColor": {
-              "Red": 255,
-              "Green": 255,
-              "Blue": 255
-            },
-            "PressedColor": {
-              "Red": 255,
-              "Green": 255,
-              "Blue": 255
-            },
-            "TextRotation": "0",
-            "Preset": "alternate_theme\\presets\\button\\regular\\height_50\\medium_rounded_normal.json"
-          },
-          {
-            "Type": "AnalogClock",
-            "Name": "analogClock1",
-            "X": 280,
-            "Y": 120,
-            "Width": 240,
-            "Height": 240,
-            "FileNameBackground": "__generated\\alternate_theme_images_widgets_analogclock_backgrounds_small_plain_dark.png",
-            "RotationCenterX": 120,
-            "RotationCenterY": 120,
-            "Preset": "alternate_theme\\presets\\analogclock\\small_plain_dark.json",
-            "Easing": "Back",
-            "EasingOption": "Out",
-            "ClockHands": [
-              {
-                "Type": "HourClockHand",
-                "FileNameHandImage": "__generated\\alternate_theme_images_widgets_analogclock_hands_small_hour_plain_dark.png",
-                "RotationCenterX": 9,
-                "RotationCenterY": 69
-              },
-              {
-                "Type": "MinuteClockHand",
-                "FileNameHandImage": "__generated\\alternate_theme_images_widgets_analogclock_hands_small_minute_plain_dark.png",
-                "RotationCenterX": 10,
-                "RotationCenterY": 87
-              },
-              {
-                "Type": "SecondClockHand",
-                "FileNameHandImage": "__generated\\alternate_theme_images_widgets_analogclock_hands_small_second_plain_dark.png",
-                "RotationCenterX": 2,
-                "RotationCenterY": 100
-              }
-            ],
-            "InitialHour": 10,
-            "InitialMinute": 10
-          },
-          {
-            "Type": "TextArea",
-            "Name": "textArea1",
-            "X": 302,
-            "Y": 35,
-            "Width": 197,
-            "Height": 41,
-            "TextId": "__SingleUse_3B28",
-            "TextRotation": "0",
-            "AutoSize": true
-          }
-        ],
-        "Interactions": [
-          {
-            "InteractionName": "Interaction1",
-            "Trigger": {
-              "Type": "TriggerClicked",
-              "TriggerComponent": "buttonWithLabel1"
-            },
-            "Action": {
-              "Type": "ActionGotoScreen",
-              "ScreenTransitionType": "ScreenTransitionSlide",
-              "ScreenTransitionDirection": "East",
-              "ActionComponent": "Menu"
-            }
-          }
-        ]
-      },
-      {
-        "Name": "Menu",
-        "Components": [
-          {
-            "Type": "Box",
-            "Name": "box1",
-            "Width": 800,
-            "Height": 480,
-            "Color": {
-              "Red": 255,
-              "Green": 255,
-              "Blue": 255
-            }
-          },
-          {
-            "Type": "ButtonWithLabel",
-            "Name": "buttonWithLabel1",
-            "X": 280,
-            "Y": 38,
-            "Width": 240,
-            "Height": 50,
-            "Pressed": "__generated\\alternate_theme_images_widgets_button_regular_height_50_medium_rounded_pressed.png",
-            "Released": "__generated\\alternate_theme_images_widgets_button_regular_height_50_medium_rounded_normal.png",
-            "TextId": "__SingleUse_OY0J",
-            "ReleasedColor": {
-              "Red": 255,
-              "Green": 255,
-              "Blue": 255
-            },
-            "PressedColor": {
-              "Red": 255,
-              "Green": 255,
-              "Blue": 255
-            },
-            "TextRotation": "0",
-            "Preset": "alternate_theme\\presets\\button\\regular\\height_50\\medium_rounded_normal.json"
-          },
-          {
-            "Type": "ButtonWithLabel",
-            "Name": "RTPCalibrationBtn",
-            "X": 313,
-            "Y": 387,
-            "Width": 175,
-            "Height": 50,
-            "Pressed": "__generated\\alternate_theme_images_widgets_button_regular_height_50_small_rounded_disabled.png",
-            "Released": "__generated\\alternate_theme_images_widgets_button_regular_height_50_small_rounded_disabled.png",
-            "TextId": "__SingleUse_8KPD",
-            "ReleasedColor": {
-              "Red": 255,
-              "Green": 255,
-              "Blue": 255
-            },
-            "PressedColor": {
-              "Red": 255,
-              "Green": 255,
-              "Blue": 255
-            },
-            "TextRotation": "0",
-            "Preset": "alternate_theme\\presets\\button\\regular\\height_50\\small_rounded_disabled.json"
-          }
-        ],
-        "Interactions": [
-          {
-            "InteractionName": "Interaction1",
-            "Trigger": {
-              "Type": "TriggerClicked",
-              "TriggerComponent": "buttonWithLabel1"
-            },
-            "Action": {
-              "Type": "ActionGotoScreen",
-              "ScreenTransitionType": "ScreenTransitionSlide",
-              "ScreenTransitionDirection": "West",
-              "ActionComponent": "Home"
-            }
-          },
-          {
-            "InteractionName": "Interaction2",
-            "Trigger": {
-              "Type": "TriggerClicked",
-              "TriggerComponent": "RTPCalibrationBtn"
-            },
-            "Action": {
-              "Type": "ActionGotoScreen",
-              "ScreenTransitionType": "ScreenTransitionNone",
-              "ActionComponent": "RTPCalibration"
-            }
-          }
-        ]
-      },
-      {
         "Name": "RTPCalibration",
         "Components": [
           {
@@ -207,73 +17,49 @@
             }
           },
           {
-            "Type": "RepeatButton",
+            "Type": "Image",
             "Name": "TouchPoint1",
             "X": 73,
             "Y": 73,
             "Width": 34,
             "Height": 34,
-            "Pressed": "_cross.png",
-            "Released": "_cross.png",
-            "Delay": 1000,
-            "Interval": 1000,
-            "Clickable": true
+            "RelativeFilename": "_cross.png"
           },
           {
-            "Type": "RepeatButton",
+            "Type": "Image",
             "Name": "TouchPoint2",
             "X": 73,
             "Y": 383,
             "Width": 34,
             "Height": 34,
-            "Visible": false,
-            "Pressed": "_cross.png",
-            "Released": "_cross.png",
-            "Delay": 1000,
-            "Interval": 1000,
-            "Clickable": true
+            "RelativeFilename": "_cross.png"
           },
           {
-            "Type": "RepeatButton",
+            "Type": "Image",
             "Name": "TouchPoint3",
             "X": 683,
             "Y": 383,
             "Width": 34,
             "Height": 34,
-            "Visible": false,
-            "Pressed": "_cross.png",
-            "Released": "_cross.png",
-            "Delay": 1000,
-            "Interval": 1000,
-            "Clickable": true
+            "RelativeFilename": "_cross.png"
           },
           {
-            "Type": "RepeatButton",
+            "Type": "Image",
             "Name": "TouchPoint4",
             "X": 683,
             "Y": 73,
             "Width": 34,
             "Height": 34,
-            "Visible": false,
-            "Pressed": "_cross.png",
-            "Released": "_cross.png",
-            "Delay": 1000,
-            "Interval": 1000,
-            "Clickable": true
+            "RelativeFilename": "_cross.png"
           },
           {
-            "Type": "RepeatButton",
+            "Type": "Image",
             "Name": "TouchPoint5",
             "X": 383,
             "Y": 223,
             "Width": 34,
             "Height": 34,
-            "Visible": false,
-            "Pressed": "_cross.png",
-            "Released": "_cross.png",
-            "Delay": 1000,
-            "Interval": 1000,
-            "Clickable": true
+            "RelativeFilename": "_cross.png"
           },
           {
             "Type": "ButtonWithLabel",
@@ -330,71 +116,6 @@
         ],
         "Interactions": [
           {
-            "InteractionName": "TchPoint1Pressed",
-            "Trigger": {
-              "Type": "TriggerClicked",
-              "TriggerComponent": "TouchPoint1"
-            },
-            "Action": {
-              "Type": "ActionCustom2",
-              "ActionCustomTypeName": "Call RTPCalibration calibrationPointPressed",
-              "ParameterValue": "0",
-              "ActionComponent": "RTPCalibration"
-            }
-          },
-          {
-            "InteractionName": "TchPoint2Pressed",
-            "Trigger": {
-              "Type": "TriggerClicked",
-              "TriggerComponent": "TouchPoint2"
-            },
-            "Action": {
-              "Type": "ActionCustom2",
-              "ActionCustomTypeName": "Call RTPCalibration calibrationPointPressed",
-              "ParameterValue": "1",
-              "ActionComponent": "RTPCalibration"
-            }
-          },
-          {
-            "InteractionName": "TchPoint3Pressed",
-            "Trigger": {
-              "Type": "TriggerClicked",
-              "TriggerComponent": "TouchPoint3"
-            },
-            "Action": {
-              "Type": "ActionCustom2",
-              "ActionCustomTypeName": "Call RTPCalibration calibrationPointPressed",
-              "ParameterValue": "2",
-              "ActionComponent": "RTPCalibration"
-            }
-          },
-          {
-            "InteractionName": "TchPoint4Pressed",
-            "Trigger": {
-              "Type": "TriggerClicked",
-              "TriggerComponent": "TouchPoint4"
-            },
-            "Action": {
-              "Type": "ActionCustom2",
-              "ActionCustomTypeName": "Call RTPCalibration calibrationPointPressed",
-              "ParameterValue": "3",
-              "ActionComponent": "RTPCalibration"
-            }
-          },
-          {
-            "InteractionName": "TchPoint5Pressed",
-            "Trigger": {
-              "Type": "TriggerClicked",
-              "TriggerComponent": "TouchPoint5"
-            },
-            "Action": {
-              "Type": "ActionCustom2",
-              "ActionCustomTypeName": "Call RTPCalibration calibrationPointPressed",
-              "ParameterValue": "4",
-              "ActionComponent": "RTPCalibration"
-            }
-          },
-          {
             "InteractionName": "BackPrevScreen",
             "Trigger": {
               "Type": "TriggerClicked",
@@ -442,7 +163,7 @@
       "Height": 480
     },
     "SelectedColorDepth": 16,
-    "StartupScreenName": "Home",
+    "StartupScreenName": "RTPCalibration",
     "SelectedStartupLanguage": "GB",
     "TouchGfxPath": "../../lib/touchgfx",
     "UIPath": ".",

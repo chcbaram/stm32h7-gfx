@@ -9,15 +9,9 @@
 #include <mvp/MVPHeap.hpp>
 
 #include <touchgfx/transitions/NoTransition.hpp>
-#include <touchgfx/transitions/SlideTransition.hpp>
-
 #include <gui/common/FrontendApplication.hpp>
 #include <gui/model/Model.hpp>
 
-#include <gui/home_screen/HomeView.hpp>
-#include <gui/home_screen/HomePresenter.hpp>
-#include <gui/menu_screen/MenuView.hpp>
-#include <gui/menu_screen/MenuPresenter.hpp>
 #include <gui/rtpcalibration_screen/RTPCalibrationView.hpp>
 #include <gui/rtpcalibration_screen/RTPCalibrationPresenter.hpp>
 
@@ -42,10 +36,8 @@ public:
      * A list of all view types. Must end with meta::Nil.
      * @note All view types used in the application MUST be added to this list!
      */
-    typedef touchgfx::meta::TypeList< HomeView,
-            touchgfx::meta::TypeList< MenuView,
-            touchgfx::meta::TypeList< RTPCalibrationView,
-            touchgfx::meta::Nil > >
+    typedef touchgfx::meta::TypeList< RTPCalibrationView,
+            touchgfx::meta::Nil
             > GeneratedViewTypes;
 
     /**
@@ -57,10 +49,8 @@ public:
      * A list of all presenter types. Must end with meta::Nil.
      * @note All presenter types used in the application MUST be added to this list!
      */
-    typedef touchgfx::meta::TypeList< HomePresenter,
-            touchgfx::meta::TypeList< MenuPresenter,
-            touchgfx::meta::TypeList< RTPCalibrationPresenter,
-            touchgfx::meta::Nil > >
+    typedef touchgfx::meta::TypeList< RTPCalibrationPresenter,
+            touchgfx::meta::Nil
             > GeneratedPresenterTypes;
 
     /**
@@ -73,9 +63,7 @@ public:
      * @note All transition types used in the application MUST be added to this list!
      */
     typedef touchgfx::meta::TypeList< touchgfx::NoTransition,
-            touchgfx::meta::TypeList< SlideTransition<EAST>,
-            touchgfx::meta::TypeList< SlideTransition<WEST>,
-            touchgfx::meta::Nil > >
+            touchgfx::meta::Nil
             > GeneratedTransitionTypes;
 
     /**
@@ -85,7 +73,7 @@ public:
 
     virtual void gotoStartScreen(FrontendApplication& app)
     {
-        app.gotoHomeScreenNoTransition();
+        app.gotoRTPCalibrationScreenNoTransition();
     }
 protected:
     FrontendHeapBase(touchgfx::AbstractPartition& presenters, touchgfx::AbstractPartition& views, touchgfx::AbstractPartition& transitions, FrontendApplication& app)

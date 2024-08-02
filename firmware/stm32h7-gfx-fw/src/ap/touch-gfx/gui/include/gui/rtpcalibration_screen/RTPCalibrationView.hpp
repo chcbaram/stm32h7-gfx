@@ -4,20 +4,11 @@
 #include <gui_generated/rtpcalibration_screen/RTPCalibrationViewBase.hpp>
 #include <gui/rtpcalibration_screen/RTPCalibrationPresenter.hpp>
 
-#define PRESS_TIME          3 // Second
+
 class RTPCalibrationView : public RTPCalibrationViewBase
 {
 public:
-    typedef enum
-    {
-        TCH_POINT_1,
-        TCH_POINT_2,
-        TCH_POINT_3,
-        TCH_POINT_4,
-        TCH_POINT_5,
-        TCH_POINT_BACK,
-        TCH_POINT_MAX
-    } RtpCalibrationStep_t ;
+    
 
     RTPCalibrationView();
     virtual ~RTPCalibrationView() {}

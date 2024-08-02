@@ -18,42 +18,23 @@ RTPCalibrationViewBase::RTPCalibrationViewBase() :
     add(Background);
 
     TouchPoint1.setXY(73, 73);
-    TouchPoint1.setBitmaps(touchgfx::Bitmap(BITMAP__CROSS_ID), touchgfx::Bitmap(BITMAP__CROSS_ID));
-    TouchPoint1.setDelay(60);
-    TouchPoint1.setInterval(60);
-    TouchPoint1.setAction(buttonCallback);
+    TouchPoint1.setBitmap(touchgfx::Bitmap(BITMAP__CROSS_ID));
     add(TouchPoint1);
 
     TouchPoint2.setXY(73, 383);
-    TouchPoint2.setBitmaps(touchgfx::Bitmap(BITMAP__CROSS_ID), touchgfx::Bitmap(BITMAP__CROSS_ID));
-    TouchPoint2.setDelay(60);
-    TouchPoint2.setInterval(60);
-    TouchPoint2.setVisible(false);
-    TouchPoint2.setAction(buttonCallback);
+    TouchPoint2.setBitmap(touchgfx::Bitmap(BITMAP__CROSS_ID));
     add(TouchPoint2);
 
     TouchPoint3.setXY(683, 383);
-    TouchPoint3.setBitmaps(touchgfx::Bitmap(BITMAP__CROSS_ID), touchgfx::Bitmap(BITMAP__CROSS_ID));
-    TouchPoint3.setDelay(60);
-    TouchPoint3.setInterval(60);
-    TouchPoint3.setVisible(false);
-    TouchPoint3.setAction(buttonCallback);
+    TouchPoint3.setBitmap(touchgfx::Bitmap(BITMAP__CROSS_ID));
     add(TouchPoint3);
 
     TouchPoint4.setXY(683, 73);
-    TouchPoint4.setBitmaps(touchgfx::Bitmap(BITMAP__CROSS_ID), touchgfx::Bitmap(BITMAP__CROSS_ID));
-    TouchPoint4.setDelay(60);
-    TouchPoint4.setInterval(60);
-    TouchPoint4.setVisible(false);
-    TouchPoint4.setAction(buttonCallback);
+    TouchPoint4.setBitmap(touchgfx::Bitmap(BITMAP__CROSS_ID));
     add(TouchPoint4);
 
     TouchPoint5.setXY(383, 223);
-    TouchPoint5.setBitmaps(touchgfx::Bitmap(BITMAP__CROSS_ID), touchgfx::Bitmap(BITMAP__CROSS_ID));
-    TouchPoint5.setDelay(60);
-    TouchPoint5.setInterval(60);
-    TouchPoint5.setVisible(false);
-    TouchPoint5.setAction(buttonCallback);
+    TouchPoint5.setBitmap(touchgfx::Bitmap(BITMAP__CROSS_ID));
     add(TouchPoint5);
 
     CalibrationCancelBtn.setXY(345, 400);
@@ -91,41 +72,6 @@ void RTPCalibrationViewBase::setupScreen()
 
 void RTPCalibrationViewBase::buttonCallbackHandler(const touchgfx::AbstractButton& src)
 {
-    if (&src == &TouchPoint1)
-    {
-        //TchPoint1Pressed
-        //When TouchPoint1 clicked call calibrationPointPressed on RTPCalibration
-        //Call calibrationPointPressed
-        calibrationPointPressed(0);
-    }
-    if (&src == &TouchPoint2)
-    {
-        //TchPoint2Pressed
-        //When TouchPoint2 clicked call calibrationPointPressed on RTPCalibration
-        //Call calibrationPointPressed
-        calibrationPointPressed(1);
-    }
-    if (&src == &TouchPoint3)
-    {
-        //TchPoint3Pressed
-        //When TouchPoint3 clicked call calibrationPointPressed on RTPCalibration
-        //Call calibrationPointPressed
-        calibrationPointPressed(2);
-    }
-    if (&src == &TouchPoint4)
-    {
-        //TchPoint4Pressed
-        //When TouchPoint4 clicked call calibrationPointPressed on RTPCalibration
-        //Call calibrationPointPressed
-        calibrationPointPressed(3);
-    }
-    if (&src == &TouchPoint5)
-    {
-        //TchPoint5Pressed
-        //When TouchPoint5 clicked call calibrationPointPressed on RTPCalibration
-        //Call calibrationPointPressed
-        calibrationPointPressed(4);
-    }
     if (&src == &CalibrationCancelBtn)
     {
         //BackPrevScreen
