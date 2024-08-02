@@ -2,12 +2,12 @@
   "Application": {
     "Screens": [
       {
-        "Name": "screen",
+        "Name": "Home",
         "Components": [
           {
             "Type": "Box",
             "Name": "box1",
-            "Width": 480,
+            "Width": 800,
             "Height": 480,
             "Color": {
               "Red": 255,
@@ -18,8 +18,8 @@
           {
             "Type": "ButtonWithLabel",
             "Name": "buttonWithLabel1",
-            "X": 120,
-            "Y": 372,
+            "X": 280,
+            "Y": 396,
             "Width": 240,
             "Height": 50,
             "Pressed": "__generated\\alternate_theme_images_widgets_button_regular_height_50_medium_rounded_pressed.png",
@@ -41,8 +41,8 @@
           {
             "Type": "AnalogClock",
             "Name": "analogClock1",
-            "X": 120,
-            "Y": 110,
+            "X": 280,
+            "Y": 120,
             "Width": 240,
             "Height": 240,
             "FileNameBackground": "__generated\\alternate_theme_images_widgets_analogclock_backgrounds_small_plain_dark.png",
@@ -77,8 +77,8 @@
           {
             "Type": "TextArea",
             "Name": "textArea1",
-            "X": 142,
-            "Y": 33,
+            "X": 302,
+            "Y": 35,
             "Width": 197,
             "Height": 41,
             "TextId": "__SingleUse_3B28",
@@ -97,18 +97,18 @@
               "Type": "ActionGotoScreen",
               "ScreenTransitionType": "ScreenTransitionSlide",
               "ScreenTransitionDirection": "East",
-              "ActionComponent": "Screen1"
+              "ActionComponent": "Menu"
             }
           }
         ]
       },
       {
-        "Name": "Screen1",
+        "Name": "Menu",
         "Components": [
           {
             "Type": "Box",
             "Name": "box1",
-            "Width": 480,
+            "Width": 800,
             "Height": 480,
             "Color": {
               "Red": 255,
@@ -119,8 +119,8 @@
           {
             "Type": "ButtonWithLabel",
             "Name": "buttonWithLabel1",
-            "X": 135,
-            "Y": 83,
+            "X": 280,
+            "Y": 38,
             "Width": 240,
             "Height": 50,
             "Pressed": "__generated\\alternate_theme_images_widgets_button_regular_height_50_medium_rounded_pressed.png",
@@ -140,43 +140,27 @@
             "Preset": "alternate_theme\\presets\\button\\regular\\height_50\\medium_rounded_normal.json"
           },
           {
-            "Type": "ToggleButton",
-            "Name": "toggleButton1",
-            "X": 185,
-            "Y": 223,
-            "Width": 110,
+            "Type": "ButtonWithLabel",
+            "Name": "RTPCalibrationBtn",
+            "X": 313,
+            "Y": 387,
+            "Width": 175,
             "Height": 50,
-            "Pressed": "__generated\\alternate_theme_images_widgets_togglebutton_medium_rounded_off_light.png",
-            "Released": "__generated\\alternate_theme_images_widgets_togglebutton_medium_rounded_on_normal.png",
-            "Preset": "alternate_theme\\presets\\togglebutton\\medium\\rounded.json"
-          },
-          {
-            "Type": "RadioButton",
-            "Name": "radioButton1",
-            "X": 149,
-            "Y": 317,
-            "Width": 36,
-            "Height": 36,
-            "FileNameSelected": "__generated\\alternate_theme_images_widgets_radiobutton_radio_medium_rounded_on_dark.png",
-            "FileNameSelectedPressed": "__generated\\alternate_theme_images_widgets_radiobutton_radio_medium_rounded_on_pressed.png",
-            "FileNameUnselected": "__generated\\alternate_theme_images_widgets_radiobutton_radio_medium_rounded_off.png",
-            "FileNameUnselectedPressed": "__generated\\alternate_theme_images_widgets_radiobutton_radio_medium_rounded_off_pressed.png",
-            "RadioButtonGroup": "radioButtonGroup1",
-            "Preset": "alternate_theme\\presets\\radiobutton\\radio\\medium_dark_rounded.json"
-          },
-          {
-            "Type": "RadioButton",
-            "Name": "radioButton2",
-            "X": 288,
-            "Y": 317,
-            "Width": 36,
-            "Height": 36,
-            "FileNameSelected": "__generated\\alternate_theme_images_widgets_radiobutton_radio_medium_rounded_on_dark.png",
-            "FileNameSelectedPressed": "__generated\\alternate_theme_images_widgets_radiobutton_radio_medium_rounded_on_pressed.png",
-            "FileNameUnselected": "__generated\\alternate_theme_images_widgets_radiobutton_radio_medium_rounded_off.png",
-            "FileNameUnselectedPressed": "__generated\\alternate_theme_images_widgets_radiobutton_radio_medium_rounded_off_pressed.png",
-            "RadioButtonGroup": "radioButtonGroup1",
-            "Preset": "alternate_theme\\presets\\radiobutton\\radio\\medium_dark_rounded.json"
+            "Pressed": "__generated\\alternate_theme_images_widgets_button_regular_height_50_small_rounded_disabled.png",
+            "Released": "__generated\\alternate_theme_images_widgets_button_regular_height_50_small_rounded_disabled.png",
+            "TextId": "__SingleUse_8KPD",
+            "ReleasedColor": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            },
+            "PressedColor": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            },
+            "TextRotation": "0",
+            "Preset": "alternate_theme\\presets\\button\\regular\\height_50\\small_rounded_disabled.json"
           }
         ],
         "Interactions": [
@@ -190,20 +174,275 @@
               "Type": "ActionGotoScreen",
               "ScreenTransitionType": "ScreenTransitionSlide",
               "ScreenTransitionDirection": "West",
-              "ActionComponent": "screen"
+              "ActionComponent": "Home"
             }
+          },
+          {
+            "InteractionName": "Interaction2",
+            "Trigger": {
+              "Type": "TriggerClicked",
+              "TriggerComponent": "RTPCalibrationBtn"
+            },
+            "Action": {
+              "Type": "ActionGotoScreen",
+              "ScreenTransitionType": "ScreenTransitionNone",
+              "ActionComponent": "RTPCalibration"
+            }
+          }
+        ]
+      },
+      {
+        "Name": "RTPCalibration",
+        "Components": [
+          {
+            "Type": "Box",
+            "Name": "Background",
+            "Width": 800,
+            "Height": 480,
+            "LockPosition": true,
+            "Color": {
+              "Red": 130,
+              "Green": 130,
+              "Blue": 130
+            }
+          },
+          {
+            "Type": "RepeatButton",
+            "Name": "TouchPoint1",
+            "X": 73,
+            "Y": 73,
+            "Width": 34,
+            "Height": 34,
+            "Pressed": "_cross.png",
+            "Released": "_cross.png",
+            "Delay": 1000,
+            "Interval": 1000,
+            "Clickable": true
+          },
+          {
+            "Type": "RepeatButton",
+            "Name": "TouchPoint2",
+            "X": 73,
+            "Y": 383,
+            "Width": 34,
+            "Height": 34,
+            "Visible": false,
+            "Pressed": "_cross.png",
+            "Released": "_cross.png",
+            "Delay": 1000,
+            "Interval": 1000,
+            "Clickable": true
+          },
+          {
+            "Type": "RepeatButton",
+            "Name": "TouchPoint3",
+            "X": 683,
+            "Y": 383,
+            "Width": 34,
+            "Height": 34,
+            "Visible": false,
+            "Pressed": "_cross.png",
+            "Released": "_cross.png",
+            "Delay": 1000,
+            "Interval": 1000,
+            "Clickable": true
+          },
+          {
+            "Type": "RepeatButton",
+            "Name": "TouchPoint4",
+            "X": 683,
+            "Y": 73,
+            "Width": 34,
+            "Height": 34,
+            "Visible": false,
+            "Pressed": "_cross.png",
+            "Released": "_cross.png",
+            "Delay": 1000,
+            "Interval": 1000,
+            "Clickable": true
+          },
+          {
+            "Type": "RepeatButton",
+            "Name": "TouchPoint5",
+            "X": 383,
+            "Y": 223,
+            "Width": 34,
+            "Height": 34,
+            "Visible": false,
+            "Pressed": "_cross.png",
+            "Released": "_cross.png",
+            "Delay": 1000,
+            "Interval": 1000,
+            "Clickable": true
+          },
+          {
+            "Type": "ButtonWithLabel",
+            "Name": "CalibrationCancelBtn",
+            "X": 345,
+            "Y": 400,
+            "Width": 110,
+            "Height": 50,
+            "LockPosition": true,
+            "Pressed": "__generated\\alternate_theme_images_widgets_button_regular_height_50_tiny_round_disabled.png",
+            "Released": "__generated\\alternate_theme_images_widgets_button_regular_height_50_tiny_round_disabled.png",
+            "TextId": "__SingleUse_TXX3",
+            "ReleasedColor": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            },
+            "PressedColor": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            },
+            "TextRotation": "0",
+            "Preset": "alternate_theme\\presets\\button\\regular\\height_50\\tiny_round_disabled.json"
+          },
+          {
+            "Type": "BoxWithBorder",
+            "Name": "boxWithBorder1",
+            "X": 256,
+            "Y": 11,
+            "Width": 289,
+            "Height": 50,
+            "Color": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            }
+          },
+          {
+            "Type": "TextArea",
+            "Name": "textArea1",
+            "X": 256,
+            "Y": 14,
+            "Width": 289,
+            "Height": 44,
+            "TextId": "__SingleUse_VVAJ",
+            "TextRotation": "0",
+            "Wildcard1": {
+              "TextId": "__SingleUse_L5J5",
+              "UseBuffer": true,
+              "BufferSize": 10
+            }
+          }
+        ],
+        "Interactions": [
+          {
+            "InteractionName": "TchPoint1Pressed",
+            "Trigger": {
+              "Type": "TriggerClicked",
+              "TriggerComponent": "TouchPoint1"
+            },
+            "Action": {
+              "Type": "ActionCustom2",
+              "ActionCustomTypeName": "Call RTPCalibration calibrationPointPressed",
+              "ParameterValue": "0",
+              "ActionComponent": "RTPCalibration"
+            }
+          },
+          {
+            "InteractionName": "TchPoint2Pressed",
+            "Trigger": {
+              "Type": "TriggerClicked",
+              "TriggerComponent": "TouchPoint2"
+            },
+            "Action": {
+              "Type": "ActionCustom2",
+              "ActionCustomTypeName": "Call RTPCalibration calibrationPointPressed",
+              "ParameterValue": "1",
+              "ActionComponent": "RTPCalibration"
+            }
+          },
+          {
+            "InteractionName": "TchPoint3Pressed",
+            "Trigger": {
+              "Type": "TriggerClicked",
+              "TriggerComponent": "TouchPoint3"
+            },
+            "Action": {
+              "Type": "ActionCustom2",
+              "ActionCustomTypeName": "Call RTPCalibration calibrationPointPressed",
+              "ParameterValue": "2",
+              "ActionComponent": "RTPCalibration"
+            }
+          },
+          {
+            "InteractionName": "TchPoint4Pressed",
+            "Trigger": {
+              "Type": "TriggerClicked",
+              "TriggerComponent": "TouchPoint4"
+            },
+            "Action": {
+              "Type": "ActionCustom2",
+              "ActionCustomTypeName": "Call RTPCalibration calibrationPointPressed",
+              "ParameterValue": "3",
+              "ActionComponent": "RTPCalibration"
+            }
+          },
+          {
+            "InteractionName": "TchPoint5Pressed",
+            "Trigger": {
+              "Type": "TriggerClicked",
+              "TriggerComponent": "TouchPoint5"
+            },
+            "Action": {
+              "Type": "ActionCustom2",
+              "ActionCustomTypeName": "Call RTPCalibration calibrationPointPressed",
+              "ParameterValue": "4",
+              "ActionComponent": "RTPCalibration"
+            }
+          },
+          {
+            "InteractionName": "BackPrevScreen",
+            "Trigger": {
+              "Type": "TriggerClicked",
+              "TriggerComponent": "CalibrationCancelBtn"
+            },
+            "Action": {
+              "Type": "ActionCustom2",
+              "ActionCustomTypeName": "Call RTPCalibration calibrationPointPressed",
+              "ParameterValue": "5",
+              "ActionComponent": "RTPCalibration"
+            }
+          }
+        ],
+        "CustomActions": [
+          {
+            "Name": "calibrationPointPressed",
+            "HasValue": true,
+            "ValueType": "uint8_t"
           }
         ]
       }
     ],
-    "CustomContainerDefinitions": [],
+    "CustomContainerDefinitions": [
+      {
+        "Name": "CustomContainer1",
+        "Width": 800,
+        "Height": 480,
+        "Components": [
+          {
+            "Type": "ScalableImage",
+            "Name": "scalableImage1",
+            "X": 73,
+            "Y": 73,
+            "Width": 80,
+            "Height": 80,
+            "ScalingAlgorithm": "Nearest-neighbor"
+          }
+        ],
+        "Interactions": []
+      }
+    ],
     "Name": "stm32h7-gfx",
     "Resolution": {
-      "Width": 480,
+      "Width": 800,
       "Height": 480
     },
     "SelectedColorDepth": 16,
-    "StartupScreenName": "screen",
+    "StartupScreenName": "Home",
     "SelectedStartupLanguage": "GB",
     "TouchGfxPath": "../../lib/touchgfx",
     "UIPath": ".",
@@ -219,7 +458,7 @@
     ],
     "AvailableResolutions": [
       {
-        "Width": 480,
+        "Width": 800,
         "Height": 480
       }
     ],

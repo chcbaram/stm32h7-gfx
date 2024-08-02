@@ -6,6 +6,18 @@
   <Texts>
     <TextGroup Id="Group1" />
     <TextGroup Id="Unsorted">
+      <Text Id="__SingleUse_L5J5" Alignment="Left" TypographyId="han_default">
+        <Translation Language="GB">Press 3 Seconds</Translation>
+      </Text>
+      <Text Id="__SingleUse_VVAJ" Alignment="Center" TypographyId="han_default">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_TXX3" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Cancel</Translation>
+      </Text>
+      <Text Id="__SingleUse_8KPD" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">RTP Calibration</Translation>
+      </Text>
       <Text Id="__SingleUse_3B28" Alignment="Left" TypographyId="Large">
         <Translation Language="GB">TouchGFX</Translation>
       </Text>
@@ -21,6 +33,6 @@
     <Typography Id="Default" Font="verdana.ttf" Size="20" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" />
     <Typography Id="Large" Font="verdana.ttf" Size="40" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" />
     <Typography Id="Small" Font="verdana.ttf" Size="10" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" />
-    <Typography Id="han_default" Font="verdana.ttf" Size="20" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" />
+    <Typography Id="han_default" Font="verdana.ttf" Size="34" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" />
   </Typographies>
 </TextDatabase>

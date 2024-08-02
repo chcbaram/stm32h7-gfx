@@ -14,10 +14,12 @@
 #include <gui/common/FrontendApplication.hpp>
 #include <gui/model/Model.hpp>
 
-#include <gui/screen_screen/screenView.hpp>
-#include <gui/screen_screen/screenPresenter.hpp>
-#include <gui/screen1_screen/Screen1View.hpp>
-#include <gui/screen1_screen/Screen1Presenter.hpp>
+#include <gui/home_screen/HomeView.hpp>
+#include <gui/home_screen/HomePresenter.hpp>
+#include <gui/menu_screen/MenuView.hpp>
+#include <gui/menu_screen/MenuPresenter.hpp>
+#include <gui/rtpcalibration_screen/RTPCalibrationView.hpp>
+#include <gui/rtpcalibration_screen/RTPCalibrationPresenter.hpp>
 
 
 /**
@@ -40,9 +42,10 @@ public:
      * A list of all view types. Must end with meta::Nil.
      * @note All view types used in the application MUST be added to this list!
      */
-    typedef touchgfx::meta::TypeList< screenView,
-            touchgfx::meta::TypeList< Screen1View,
-            touchgfx::meta::Nil >
+    typedef touchgfx::meta::TypeList< HomeView,
+            touchgfx::meta::TypeList< MenuView,
+            touchgfx::meta::TypeList< RTPCalibrationView,
+            touchgfx::meta::Nil > >
             > GeneratedViewTypes;
 
     /**
@@ -54,9 +57,10 @@ public:
      * A list of all presenter types. Must end with meta::Nil.
      * @note All presenter types used in the application MUST be added to this list!
      */
-    typedef touchgfx::meta::TypeList< screenPresenter,
-            touchgfx::meta::TypeList< Screen1Presenter,
-            touchgfx::meta::Nil >
+    typedef touchgfx::meta::TypeList< HomePresenter,
+            touchgfx::meta::TypeList< MenuPresenter,
+            touchgfx::meta::TypeList< RTPCalibrationPresenter,
+            touchgfx::meta::Nil > >
             > GeneratedPresenterTypes;
 
     /**
@@ -81,7 +85,7 @@ public:
 
     virtual void gotoStartScreen(FrontendApplication& app)
     {
-        app.gotoscreenScreenNoTransition();
+        app.gotoHomeScreenNoTransition();
     }
 protected:
     FrontendHeapBase(touchgfx::AbstractPartition& presenters, touchgfx::AbstractPartition& views, touchgfx::AbstractPartition& transitions, FrontendApplication& app)

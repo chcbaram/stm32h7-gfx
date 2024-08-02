@@ -1,3 +1,4 @@
 {
-  "C_Cpp.intelliSenseEngineFallback": "enabled"
+  "C_Cpp.intelliSenseEngineFallback": "enabled",
+  "C_Cpp.default.compilerPath": "C:\\ST\\STM32CubeCLT_1.16.0\\GNU-tools-for-STM32\\bin\\arm-none-eabi-gcc.exe"
 }

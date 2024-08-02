@@ -9,10 +9,12 @@
 #include <touchgfx/Texts.hpp>
 #include <touchgfx/hal/HAL.hpp>
 #include <platform/driver/lcd/LCD16bpp.hpp>
-#include <gui/screen_screen/screenView.hpp>
-#include <gui/screen_screen/screenPresenter.hpp>
-#include <gui/screen1_screen/Screen1View.hpp>
-#include <gui/screen1_screen/Screen1Presenter.hpp>
+#include <gui/home_screen/HomeView.hpp>
+#include <gui/home_screen/HomePresenter.hpp>
+#include <gui/menu_screen/MenuView.hpp>
+#include <gui/menu_screen/MenuPresenter.hpp>
+#include <gui/rtpcalibration_screen/RTPCalibrationView.hpp>
+#include <gui/rtpcalibration_screen/RTPCalibrationPresenter.hpp>
 
 using namespace touchgfx;
 
@@ -33,39 +35,52 @@ FrontendApplicationBase::FrontendApplicationBase(Model& m, FrontendHeap& heap)
  * Screen Transition Declarations
  */
 
-// screen
+// Home
 
-void FrontendApplicationBase::gotoscreenScreenNoTransition()
+void FrontendApplicationBase::gotoHomeScreenNoTransition()
 {
-    transitionCallback = touchgfx::Callback<FrontendApplicationBase>(this, &FrontendApplicationBase::gotoscreenScreenNoTransitionImpl);
+    transitionCallback = touchgfx::Callback<FrontendApplicationBase>(this, &FrontendApplicationBase::gotoHomeScreenNoTransitionImpl);
     pendingScreenTransitionCallback = &transitionCallback;
 }
 
-void FrontendApplicationBase::gotoscreenScreenNoTransitionImpl()
+void FrontendApplicationBase::gotoHomeScreenNoTransitionImpl()
 {
-    touchgfx::makeTransition<screenView, screenPresenter, touchgfx::NoTransition, Model >(&currentScreen, &currentPresenter, frontendHeap, &currentTransition, &model);
+    touchgfx::makeTransition<HomeView, HomePresenter, touchgfx::NoTransition, Model >(&currentScreen, &currentPresenter, frontendHeap, &currentTransition, &model);
 }
 
-void FrontendApplicationBase::gotoscreenScreenSlideTransitionWest()
+void FrontendApplicationBase::gotoHomeScreenSlideTransitionWest()
 {
-    transitionCallback = touchgfx::Callback<FrontendApplicationBase>(this, &FrontendApplicationBase::gotoscreenScreenSlideTransitionWestImpl);
+    transitionCallback = touchgfx::Callback<FrontendApplicationBase>(this, &FrontendApplicationBase::gotoHomeScreenSlideTransitionWestImpl);
     pendingScreenTransitionCallback = &transitionCallback;
 }
 
-void FrontendApplicationBase::gotoscreenScreenSlideTransitionWestImpl()
+void FrontendApplicationBase::gotoHomeScreenSlideTransitionWestImpl()
 {
-    touchgfx::makeTransition<screenView, screenPresenter, touchgfx::SlideTransition<WEST>, Model >(&currentScreen, &currentPresenter, frontendHeap, &currentTransition, &model);
+    touchgfx::makeTransition<HomeView, HomePresenter, touchgfx::SlideTransition<WEST>, Model >(&currentScreen, &currentPresenter, frontendHeap, &currentTransition, &model);
 }
 
-// Screen1
+// Menu
 
-void FrontendApplicationBase::gotoScreen1ScreenSlideTransitionEast()
+void FrontendApplicationBase::gotoMenuScreenSlideTransitionEast()
 {
-    transitionCallback = touchgfx::Callback<FrontendApplicationBase>(this, &FrontendApplicationBase::gotoScreen1ScreenSlideTransitionEastImpl);
+    transitionCallback = touchgfx::Callback<FrontendApplicationBase>(this, &FrontendApplicationBase::gotoMenuScreenSlideTransitionEastImpl);
     pendingScreenTransitionCallback = &transitionCallback;
 }
 
-void FrontendApplicationBase::gotoScreen1ScreenSlideTransitionEastImpl()
+void FrontendApplicationBase::gotoMenuScreenSlideTransitionEastImpl()
 {
-    touchgfx::makeTransition<Screen1View, Screen1Presenter, touchgfx::SlideTransition<EAST>, Model >(&currentScreen, &currentPresenter, frontendHeap, &currentTransition, &model);
+    touchgfx::makeTransition<MenuView, MenuPresenter, touchgfx::SlideTransition<EAST>, Model >(&currentScreen, &currentPresenter, frontendHeap, &currentTransition, &model);
+}
+
+// RTPCalibration
+
+void FrontendApplicationBase::gotoRTPCalibrationScreenNoTransition()
+{
+    transitionCallback = touchgfx::Callback<FrontendApplicationBase>(this, &FrontendApplicationBase::gotoRTPCalibrationScreenNoTransitionImpl);
+    pendingScreenTransitionCallback = &transitionCallback;
+}
+
+void FrontendApplicationBase::gotoRTPCalibrationScreenNoTransitionImpl()
+{
+    touchgfx::makeTransition<RTPCalibrationView, RTPCalibrationPresenter, touchgfx::NoTransition, Model >(&currentScreen, &currentPresenter, frontendHeap, &currentTransition, &model);
 }

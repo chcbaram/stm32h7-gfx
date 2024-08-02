@@ -11,7 +11,6 @@
                 "UNICODE",
                 "_UNICODE"
             ],
-            "compilerPath": "D:\\tools\\baram-tools\\mingw_gcc\\bin\\gcc.exe",
             "cStandard": "c17",
             "cppStandard": "gnu++14",
             "intelliSenseMode": "windows-gcc-x86",

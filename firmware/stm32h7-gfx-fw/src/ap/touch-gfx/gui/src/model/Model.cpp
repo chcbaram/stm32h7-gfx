@@ -10,3 +10,8 @@ void Model::tick()
 {
 
 }
+
+void Model::getCalibrationStep(uint8_t step)
+{
+    
+}

@@ -115,15 +115,15 @@ target_include_directories(${EXECUTABLE} PRIVATE
   src/lib/STM32_AcousticSL_Library/Inc
 
   src/lib/picovoice/include
-
+  
   src/ap/touch-gfx
-  src/ap/touch-gfx/target
-  src/ap/touch-gfx/target/generated    
   src/ap/touch-gfx/gui/include
   src/ap/touch-gfx/generated/gui_generated/include
-  src/ap/touch-gfx/generated/fonts/include
-  src/ap/touch-gfx/generated/texts/include
   src/ap/touch-gfx/generated/images/include
+  src/ap/touch-gfx/generated/texts/include
+  src/ap/touch-gfx/generated/fonts/include
+  src/ap/touch-gfx/target
+  src/ap/touch-gfx/target/generated    
   src/lib/touchgfx/framework/include  
 )
 
@@ -180,5 +180,7 @@ target_link_libraries( ${EXECUTABLE} PRIVATE
 add_custom_command(TARGET ${EXECUTABLE} 
   POST_BUILD
   COMMAND ${CMAKE_OBJCOPY} ARGS -O binary ${EXECUTABLE} ${PROJECT_NAME}.bin
+  COMMAND ${CMAKE_OBJCOPY} -I elf32-littlearm -O elf32-littlearm --only-section=ExtFlashSection ./stm32h7-gfx-fw.elf ./stm32h7-gfx_assets.elf;
+  COMMAND ${CMAKE_OBJCOPY} -I elf32-littlearm -O elf32-littlearm --remove-section=ExtFlashSection ./stm32h7-gfx-fw.elf ./stm32h7-gfx_fw.elf
   COMMENT "Invoking: Make Binary"
   )  

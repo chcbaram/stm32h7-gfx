@@ -15,7 +15,7 @@
 #define LCD_WIDTH             HW_LCD_WIDTH      // LCD PIXEL WIDTH            
 #define LCD_HEIGHT            HW_LCD_HEIGHT     // LCD PIXEL HEIGHT           
 
-#if LCD_MODEL_7_0_800x480
+#if (LCD_MODEL_7_0_800x480_CTP) || (LCD_MODEL_7_0_800x480_RTP)
 #define LCD_HSYNC             ((uint16_t)4)     // Horizontal synchronization 
 #define LCD_HBP               ((uint16_t)8)     // Horizontal back porch      
 #define LCD_HFP               ((uint16_t)8)     // Horizontal front porch     
@@ -83,7 +83,7 @@ bool ltdcInit(void)
 
   hltdc.Instance = LTDC;
 
-#if LCD_MODEL_7_0_800x480
+#if (LCD_MODEL_7_0_800x480_CTP) || (LCD_MODEL_7_0_800x480_RTP)
   hltdc.Init.HSPolarity = LTDC_HSPOLARITY_AH;
   hltdc.Init.VSPolarity = LTDC_VSPOLARITY_AH;
   hltdc.Init.DEPolarity = LTDC_DEPOLARITY_AH;
@@ -375,7 +375,7 @@ void HAL_LTDC_MspInit(LTDC_HandleTypeDef* ltdcHandle)
     PeriphClkInitStruct.PLL3.PLL3N = 224;
     PeriphClkInitStruct.PLL3.PLL3P = 11;
     PeriphClkInitStruct.PLL3.PLL3Q = 2;
-#if LCD_MODEL_7_0_800x480
+#if (LCD_MODEL_7_0_800x480_CTP) || (LCD_MODEL_7_0_800x480_RTP)
     PeriphClkInitStruct.PLL3.PLL3R = 22;
 #else
     PeriphClkInitStruct.PLL3.PLL3R = 34;

@@ -194,6 +194,7 @@ SECTIONS
     _fw_flash_end = .;
   } >FLASH
 
+
   /* Remove information from the standard libraries */
   /DISCARD/ :
   {

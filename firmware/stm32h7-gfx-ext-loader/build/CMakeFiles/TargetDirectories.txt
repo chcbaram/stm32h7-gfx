@@ -1,0 +1,3 @@
+C:/Higenis/work/Higenis/github/stm32h7-gfx/firmware/stm32h7-gfx-ext-loader/build/CMakeFiles/stm32h7-gfx-ext-loader.stldr.dir
+C:/Higenis/work/Higenis/github/stm32h7-gfx/firmware/stm32h7-gfx-ext-loader/build/CMakeFiles/edit_cache.dir
+C:/Higenis/work/Higenis/github/stm32h7-gfx/firmware/stm32h7-gfx-ext-loader/build/CMakeFiles/rebuild_cache.dir
