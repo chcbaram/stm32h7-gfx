@@ -3,6 +3,6 @@
 touchgfx_path := ../../lib/touchgfx
 
 # Location of the TouchGFX Environment
-touchgfx_env := ../../../../../../../tools/TouchGFX/4.22.0/env
+touchgfx_env := ../../../../../../../TouchGFX/4.24.0/env
 # Optional additional compiler flags
 user_cflags := -DUSE_BPP=16

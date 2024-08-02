@@ -1,8 +1,8 @@
 /******************************************************************************
-* Copyright (c) 2018(-2023) STMicroelectronics.
+* Copyright (c) 2018(-2024) STMicroelectronics.
 * All rights reserved.
 *
-* This file is part of the TouchGFX 4.22.0 distribution.
+* This file is part of the TouchGFX 4.24.0 distribution.
 *
 * This software is licensed under terms that can be found in the LICENSE file in
 * the root directory of this software component.
@@ -215,7 +215,9 @@ bool GraphElementArea::drawCanvasWidget(const Rect& invalidatedArea) const
     }
 
     const Rect invalidRect = Rect(graph->getGraphAreaPaddingLeft(), graph->getGraphAreaPaddingTop(), graph->getGraphAreaWidth(), graph->getGraphAreaHeight()) & invalidatedArea;
-    Canvas canvas(this, invalidRect);
+
+    Canvas canvas(getPainter(), getAbsoluteRect(), invalidRect, getAlpha());
+
     canvas.moveTo(roundQ5(indexToScreenXQ5(graph, indexMin)), screenYbaseQ5);
     for (int16_t index = indexMin; index <= indexMax; index++)
     {
@@ -284,7 +286,9 @@ bool GraphElementLine::drawCanvasWidget(const Rect& invalidatedArea) const
     }
 
     const Rect invalidRect = Rect(0, graph->getGraphAreaPaddingTop(), graph->getGraphAreaWidthIncludingPadding(), graph->getGraphAreaHeight()) & invalidatedArea;
-    Canvas canvas(this, invalidRect);
+
+    Canvas canvas(getPainter(), getAbsoluteRect(), invalidRect, getAlpha());
+
     const int16_t gapIndex = graph->getGapBeforeIndex();
     if (gapIndex <= 0 || gapIndex <= indexMin || gapIndex > indexMax)
     {
@@ -529,7 +533,9 @@ bool GraphElementDots::drawCanvasWidget(const Rect& invalidatedArea) const
     }
 
     const bool bigDots = (dotWidth > 6);
-    Canvas canvas(this, invalidatedArea);
+
+    Canvas canvas(getPainter(), getAbsoluteRect(), invalidatedArea, getAlpha());
+
     for (int16_t index = indexMin; index <= indexMax; index++)
     {
         if (isCenterInvisible(graph, index))
@@ -614,7 +620,8 @@ bool GraphElementDiamonds::drawCanvasWidget(const Rect& invalidatedArea) const
         return true;
     }
 
-    Canvas canvas(this, invalidatedArea);
+    Canvas canvas(getPainter(), getAbsoluteRect(), invalidatedArea, getAlpha());
+
     for (int16_t index = indexMin; index <= indexMax; index++)
     {
         if (isCenterInvisible(graph, index))

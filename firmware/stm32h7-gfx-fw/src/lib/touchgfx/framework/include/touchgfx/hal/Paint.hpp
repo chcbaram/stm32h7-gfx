@@ -1,8 +1,8 @@
 /******************************************************************************
-* Copyright (c) 2018(-2023) STMicroelectronics.
+* Copyright (c) 2018(-2024) STMicroelectronics.
 * All rights reserved.
 *
-* This file is part of the TouchGFX 4.22.0 distribution.
+* This file is part of the TouchGFX 4.24.0 distribution.
 *
 * This software is licensed under terms that can be found in the LICENSE file in
 * the root directory of this software component.
@@ -35,6 +35,13 @@ void setL8Palette(const uint8_t* const data);
 /** Tear down painter - wait for pending draw operations to finish. */
 void tearDown(void);
 
+/** Flushes a line of pixels in the data cache if used.
+ *
+ * @param  addr      The address to the line.
+ * @param  sizebytes The size in bytes of the line.
+ */
+void flushLine(uint32_t* addr, int sizebytes);
+
 namespace rgb565
 {
 /**
@@ -53,7 +60,7 @@ void lineFromColor(uint16_t* const ptr, const unsigned count, const uint32_t col
  * data).
  *
  * @param [in] ptr   The pointer to the position in the framebuffer.
- * @param      data  The RGB5656 data.
+ * @param      data  The RGB565 data.
  * @param      count Number of pixels to draw.
  * @param      alpha The alpha.
  */
@@ -106,7 +113,7 @@ namespace rgb888
 void lineFromColor(uint8_t* const ptr, const unsigned count, const uint32_t color, const uint8_t alpha);
 
 /**
- * Draw a horizontal line (one pixel high) using pixels from the given data pointer (RGB565
+ * Draw a horizontal line (one pixel high) using pixels from the given data pointer (RGB888
  * data).
  *
  * @param [in] ptr   The pointer to the position in the framebuffer.
@@ -150,6 +157,75 @@ void lineFromL8RGB888(uint8_t* const ptr, const uint8_t* const data, const unsig
 void lineFromL8ARGB8888(uint8_t* const ptr, const uint8_t* const data, const unsigned count, const uint8_t alpha);
 
 } // namespace rgb888
+
+namespace argb8888
+{
+/**
+ * Draw a horizontal line (one pixel high) using the given color.
+ *
+ * @param [in] ptr   The pointer to the position in the framebuffer.
+ * @param      count Number of pixels to draw.
+ * @param      color The color.
+ * @param      alpha The alpha.
+ */
+void lineFromColor(uint32_t* const ptr, const int16_t count, const uint32_t color, const uint8_t alpha);
+
+/**
+ * Draw a horizontal line (one pixel high) using pixels from the given data pointer (RGB888
+ * data).
+ *
+ * @param [in] ptr   The pointer to the position in the framebuffer.
+ * @param      data  The RGB888 data.
+ * @param      count Number of pixels to draw.
+ * @param      alpha The alpha.
+ */
+void lineFromRGB888(uint8_t* const ptr, const uint8_t* const data, const int16_t count, const uint8_t alpha);
+
+/**
+ * Draw a horizontal line (one pixel high) using pixels from the given data pointer (RGB565
+ * data).
+ *
+ * @param [in] ptr   The pointer to the position in the framebuffer.
+ * @param      data  The RGB565 data.
+ * @param      count Number of pixels to draw.
+ * @param      alpha The alpha.
+ */
+void lineFromRGB565(uint8_t* const ptr, const uint16_t* const data, const int16_t count, const uint8_t alpha);
+
+/**
+ * Draw a horizontal line (one pixel high) using pixels from the given data pointer (ARGB8888
+ * data).
+ *
+ * @param [in] ptr   The pointer to the position in the framebuffer.
+ * @param      data  The ARGB8888 data.
+ * @param      count Number of pixels to draw.
+ * @param      alpha The alpha.
+ */
+void lineFromARGB8888(uint8_t* const ptr, const uint32_t* const data, const int16_t count, const uint8_t alpha);
+
+/**
+ * Draw a horizontal line (one pixel high) using pixels from the given data pointer (L8RGB888
+ * data).
+ *
+ * @param [in] ptr   The pointer to the position in the framebuffer.
+ * @param      data  The palette indices.
+ * @param      count Number of pixels to draw.
+ * @param      alpha The alpha.
+ */
+void lineFromL8RGB888(uint8_t* const ptr, const uint8_t* const data, const int16_t count, const uint8_t alpha);
+
+/**
+ * Draw a horizontal line (one pixel high) using pixels from the given data pointer (L8ARGB8888
+ * data).
+ *
+ * @param [in] ptr   The pointer to the position in the framebuffer.
+ * @param      data  The palette indices.
+ * @param      count Number of pixels to draw.
+ * @param      alpha The alpha.
+ */
+void lineFromL8ARGB8888(uint8_t* const ptr, const uint8_t* const data, const int16_t count, const uint8_t alpha);
+
+} // namespace argb8888
 } // namespace paint
 } // namespace touchgfx
 

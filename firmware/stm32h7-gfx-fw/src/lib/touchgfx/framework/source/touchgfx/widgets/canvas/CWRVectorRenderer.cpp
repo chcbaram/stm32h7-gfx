@@ -1,8 +1,8 @@
 /******************************************************************************
-* Copyright (c) 2018(-2023) STMicroelectronics.
+* Copyright (c) 2018(-2024) STMicroelectronics.
 * All rights reserved.
 *
-* This file is part of the TouchGFX 4.22.0 distribution.
+* This file is part of the TouchGFX 4.24.0 distribution.
 *
 * This software is licensed under terms that can be found in the LICENSE file in
 * the root directory of this software component.
@@ -15,11 +15,11 @@
 
 namespace touchgfx
 {
-void CWRVectorRenderer::setup(const Widget& renderer, const Rect& drawingArea)
+void CWRVectorRenderer::setup(const Rect& canvasAreaAbs, const Rect& invalidatedAreaRel)
 {
-    drawArea = drawingArea;
-    proxyWidget.setPosition(renderer);
-    proxyWidget.setParent(renderer.getParent());
+    canvasAreaAbsolute = canvasAreaAbs;
+    drawArea = invalidatedAreaRel;
+    canvasPainter = 0;
 
     // Clear transformation matrix
     matrix.reset();
@@ -39,9 +39,9 @@ void CWRVectorRenderer::tearDown()
     // Clear drawing area to avoid drawing any paths until next setup
     drawArea = Rect();
     // Wait for the painter to finish
-    if (proxyWidget.getPainter())
+    if (canvasPainter)
     {
-        proxyWidget.getPainter()->tearDown();
+        canvasPainter->tearDown();
     }
 }
 
@@ -92,7 +92,7 @@ bool CWRVectorRenderer::drawFill(const uint8_t* cmds, uint32_t nCmds, const floa
     uint32_t cmdInx = 0;
     uint32_t pointInx = 0;
 
-    Canvas canvas(&proxyWidget, area);
+    Canvas canvas(canvasPainter, canvasAreaAbsolute, area, 255U);
     canvas.setFillingRule((drawMode == FILL_EVEN_ODD) ? Rasterizer::FILL_EVEN_ODD : Rasterizer::FILL_NON_ZERO);
 
     float positionX = 0.0f;
@@ -179,7 +179,7 @@ bool CWRVectorRenderer::drawStroke(const uint8_t* cmds, uint32_t nCmds, const fl
         return true;
     }
 
-    StrokeCanvas canvas(&proxyWidget, area, matrix);
+    StrokeCanvas canvas(canvasPainter, canvasAreaAbsolute, area, 255U, matrix);
     canvas.setStroke(strokeWidth, strokeMiterLimit, strokeLineJoin, strokeLineCap, LCD::div255(colorAlpha * alpha));
 
     float positionX = 0.0f;
@@ -315,17 +315,17 @@ void CWRVectorRenderer::drawStrokeBackwards(uint32_t cmdInxPathStart, uint32_t c
             assert(pointInx >= 4);
             pointInx -= 4;
             getPreviousDestination(positionX, positionY, cmdInx, pointInx, cmds, points);
-            canvas.strokeBezierQuad(points[pointInx + 2], points[pointInx + 3],
-                                    points[pointInx], points[pointInx + 1],
+            canvas.strokeBezierQuad(points[pointInx + 2], points[pointInx + 3], //lint !e662 !e661
+                                    points[pointInx], points[pointInx + 1],     //lint !e662 !e661
                                     positionX, positionY);
             break;
         case VECTOR_PRIM_BEZIER_CUBIC:
             assert(pointInx >= 6);
             pointInx -= 6;
             getPreviousDestination(positionX, positionY, cmdInx, pointInx, cmds, points);
-            canvas.strokeBezierCubic(points[pointInx + 4], points[pointInx + 5],
-                                     points[pointInx + 2], points[pointInx + 3],
-                                     points[pointInx], points[pointInx + 1],
+            canvas.strokeBezierCubic(points[pointInx + 4], points[pointInx + 5], //lint !e662 !e661
+                                     points[pointInx + 2], points[pointInx + 3], //lint !e662 !e661
+                                     points[pointInx], points[pointInx + 1],     //lint !e662 !e661
                                      positionX, positionY);
             break;
         }
@@ -355,11 +355,11 @@ void CWRVectorRenderer::getPreviousDestination(float& positionX, float& position
             pointInx -= 2;
             if (!foundX)
             {
-                positionX = points[pointInx];
+                positionX = points[pointInx]; //lint !e662 !e661
             }
             if (!foundY)
             {
-                positionY = points[pointInx + 1];
+                positionY = points[pointInx + 1]; //lint !e662 !e661
             }
             return;
         case VECTOR_PRIM_HLINE:
@@ -367,7 +367,7 @@ void CWRVectorRenderer::getPreviousDestination(float& positionX, float& position
             pointInx -= 1;
             if (!foundX)
             {
-                positionX = points[pointInx];
+                positionX = points[pointInx]; //lint !e662 !e661
             }
             if (foundY)
             {
@@ -380,7 +380,7 @@ void CWRVectorRenderer::getPreviousDestination(float& positionX, float& position
             pointInx -= 1;
             if (!foundY)
             {
-                positionY = points[pointInx];
+                positionY = points[pointInx]; //lint !e662 !e661
             }
             if (foundX)
             {
@@ -411,7 +411,7 @@ void CWRVectorRenderer::setColor(colortype c)
     colorAlpha = c >> 24;
 
     getColorPainterColor().setColor(c);
-    proxyWidget.setPainter(getColorPainter());
+    canvasPainter = &getColorPainter();
 }
 
 void CWRVectorRenderer::setAlpha(uint8_t a)
@@ -443,7 +443,7 @@ void CWRVectorRenderer::setLinearGradient(float x0, float y0, float x1, float y1
     linearPainter.setGradientEndPoints(x0, y0, x1, y1, width, height, matrix);
     assert(palette && "A gradient palette is required by CWRVectorRenderer");
     linearPainter.setGradientTexture(palette, isSolid);
-    proxyWidget.setPainter(linearPainter);
+    canvasPainter = &linearPainter;
 }
 
 void CWRVectorRenderer::setTransformationMatrix(const Matrix3x3& m)

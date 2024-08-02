@@ -1,7 +1,7 @@
-# Copyright (c) 2018(-2023) STMicroelectronics.
+# Copyright (c) 2018(-2024) STMicroelectronics.
 # All rights reserved.
 #
-# This file is part of the TouchGFX 4.22.0 distribution.
+# This file is part of the TouchGFX 4.24.0 distribution.
 #
 # This software is licensed under terms that can be found in the LICENSE file in
 # the root directory of this software component.
@@ -243,6 +243,9 @@ UPGRADE
       Dir["#{@fonts_output_path}/UnicodeList*.txt"].each do |text_file|
         FileUtils.rm_f(text_file)
       end
+      Dir["#{@fonts_output_path}/VectorUnicodeList*.txt"].each do |text_file|
+        FileUtils.rm_f(text_file)
+      end
       Dir["#{@fonts_output_path}/CharSizes*.csv"].each do |text_file|
         FileUtils.rm_f(text_file)
       end
@@ -259,11 +262,14 @@ UPGRADE
       FileUtils.touch "#{@localization_output_path}/cache/compile_time.cache"
 
     rescue SystemExit => e
+      if e.status != 0
+        abort "" #Do not print anything, already done in original abort call
+      end
 
     rescue Exception => e
       STDERR.puts e
       STDERR.puts e.backtrace if ENV['DEBUG']
-      abort "An error occurred during text convertion"
+      abort "An error occurred during text conversion"
     end
   end
 end

@@ -1,8 +1,8 @@
 /******************************************************************************
-* Copyright (c) 2018(-2023) STMicroelectronics.
+* Copyright (c) 2018(-2024) STMicroelectronics.
 * All rights reserved.
 *
-* This file is part of the TouchGFX 4.22.0 distribution.
+* This file is part of the TouchGFX 4.24.0 distribution.
 *
 * This software is licensed under terms that can be found in the LICENSE file in
 * the root directory of this software component.
@@ -21,13 +21,15 @@
 
 namespace touchgfx
 {
-Canvas::Canvas(const CanvasWidget* _widget, const Rect& invalidatedArea)
-    : widget(_widget),
+Canvas::Canvas(const AbstractPainter* const painter, const Rect& canvasAreaAbs, const Rect& invalidatedAreaRel, uint8_t globalAlpha)
+    : canvasPainter(painter),
+      canvasAreaWidth(canvasAreaAbs.width),
+      canvasAlpha(globalAlpha),
+      rasterizer(),
       invalidatedAreaX(0),
       invalidatedAreaY(0),
       invalidatedAreaWidth(0),
       invalidatedAreaHeight(0),
-      rasterizer(),
       isPenDown(false),
       wasPenDown(false),
       previousX(0),
@@ -40,16 +42,15 @@ Canvas::Canvas(const CanvasWidget* _widget, const Rect& invalidatedArea)
     assert(CanvasWidgetRenderer::hasBuffer() && "No buffer allocated for CanvasWidgetRenderer drawing");
     assert(Rasterizer::POLY_BASE_SHIFT == 5 && "CanvasWidget assumes Q5 but Rasterizer uses a different setting");
 
-    // Area to redraw (relative coordinates)
-    Rect dirtyArea = Rect(0, 0, widget->getWidth(), widget->getHeight()) & invalidatedArea;
-
-    // Absolute position of the scalableImage.
-    dirtyAreaAbsolute = dirtyArea;
-    widget->translateRectToAbsolute(dirtyAreaAbsolute);
+    Rect dirtyArea = invalidatedAreaRel;
+    dirtyAreaAbsolute = Rect(canvasAreaAbs.x + invalidatedAreaRel.x,
+                             canvasAreaAbs.y + invalidatedAreaRel.y,
+                             invalidatedAreaRel.width,
+                             invalidatedAreaRel.height);
 
     // Transform rects to match framebuffer coordinates
     // This is needed if the display is rotated compared to the framebuffer
-    DisplayTransformation::transformDisplayToFrameBuffer(dirtyArea, widget->getRect());
+    DisplayTransformation::transformDisplayToFrameBuffer(dirtyArea, canvasAreaAbs);
     DisplayTransformation::transformDisplayToFrameBuffer(dirtyAreaAbsolute);
 
     // Re-size buffers for optimum memory buffer layout.
@@ -165,7 +166,7 @@ bool Canvas::close()
 
 bool Canvas::render(uint8_t customAlpha)
 {
-    const uint8_t alpha = LCD::div255(widget->getAlpha() * customAlpha);
+    const uint8_t alpha = LCD::div255(canvasAlpha * customAlpha);
     if (alpha == 0 || !wasPenDown)
     {
         return true; // Nothing. Done
@@ -181,7 +182,7 @@ bool Canvas::render(uint8_t customAlpha)
     }
 
     // Create the rendering buffer
-    uint8_t* RESTRICT framebuffer = reinterpret_cast<uint8_t*>(HAL::getInstance()->lockFrameBufferForRenderingMethod(widget->getPainter()->getRenderingMethod()));
+    uint8_t* RESTRICT framebuffer = reinterpret_cast<uint8_t*>(HAL::getInstance()->lockFrameBufferForRenderingMethod(canvasPainter->getRenderingMethod()));
     const int stride = HAL::lcd().framebufferStride();
     uint8_t xAdjust = 0;
     switch (HAL::lcd().framebufferFormat())
@@ -217,10 +218,13 @@ bool Canvas::render(uint8_t customAlpha)
     case Bitmap::BW_RLE:
     case Bitmap::A4:
     case Bitmap::CUSTOM:
+    case Bitmap::COMPRESSED_RGB565:
+    case Bitmap::COMPRESSED_RGB888:
+    case Bitmap::COMPRESSED_ARGB8888:
         assert(false && "Unsupported bit depth");
     }
-    const bool result = rasterizer.render(widget->getPainter(), framebuffer, stride, xAdjust, alpha);
-    widget->getPainter()->tearDown();
+    const bool result = rasterizer.render(canvasPainter, framebuffer, stride, xAdjust, alpha);
+    canvasPainter->tearDown();
     HAL::getInstance()->unlockFrameBuffer();
     return result;
 }
@@ -230,7 +234,7 @@ void Canvas::transformFrameBufferToDisplay(CWRUtil::Q5& x, CWRUtil::Q5& y) const
     if (HAL::DISPLAY_ROTATION == rotate90)
     {
         CWRUtil::Q5 const tmpY = y;
-        y = CWRUtil::toQ5<int>(widget->getWidth()) - x;
+        y = CWRUtil::toQ5<int>(canvasAreaWidth) - x;
         x = tmpY;
     }
 }

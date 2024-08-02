@@ -1,8 +1,8 @@
 /******************************************************************************
-* Copyright (c) 2018(-2023) STMicroelectronics.
+* Copyright (c) 2018(-2024) STMicroelectronics.
 * All rights reserved.
 *
-* This file is part of the TouchGFX 4.22.0 distribution.
+* This file is part of the TouchGFX 4.24.0 distribution.
 *
 * This software is licensed under terms that can be found in the LICENSE file in
 * the root directory of this software component.
@@ -54,13 +54,14 @@ int32_t ScrollWheelBase::getPositionForItem(int16_t itemIndex)
 
 void ScrollWheelBase::animateToPosition(int32_t position, int16_t steps)
 {
-    if (itemSize <= 0)
+    if (itemSize == 0)
     {
         return;
     }
-    if (animateToCallback && animateToCallback->isValid())
+    if (animateToCallback && animateToCallback->isValid() && itemSize > 0)
     {
-        const int16_t itemIndex = ((itemSize / 2) - getNearestAlignedOffset(position)) / itemSize;
+        position = getNearestAlignedOffset(position);
+        const int16_t itemIndex = (-position) / itemSize;
         animateToCallback->execute(itemIndex);
     }
     ScrollBase::animateToPosition(position, steps);
@@ -72,9 +73,12 @@ int ScrollWheelBase::getSelectedItem() const
     {
         return 0;
     }
-    // If Scroll in progress, get the destination value
-    const int ofs = currentAnimationState == ANIMATING_GESTURE ? gestureEnd : getOffset();
-    return ((itemSize / 2) - getNormalizedOffset(ofs)) / itemSize;
+    if (currentAnimationState == ANIMATING_GESTURE)
+    {
+        // Scroll in progress, get the destination value
+        return (-getNormalizedOffset(gestureEnd)) / itemSize;
+    }
+    return (-getNormalizedOffset(getOffset())) / itemSize;
 }
 
 int32_t ScrollWheelBase::keepOffsetInsideLimits(int32_t newOffset, int16_t overShoot) const
@@ -97,6 +101,7 @@ void ScrollWheelBase::handleClickEvent(const ClickEvent& event)
     const int32_t offset = getOffset();
     if (event.getType() == ClickEvent::PRESSED)
     {
+        isPressed = true;
         xClick = event.getX();
         yClick = event.getY();
         initialSwipeOffset = offset;
@@ -135,11 +140,14 @@ void ScrollWheelBase::handleClickEvent(const ClickEvent& event)
         {
             itemSelectedCallback->execute(getSelectedItem());
         }
+        isPressed = false;
     }
+    isScrolling = false;
 }
 
 void ScrollWheelBase::handleDragEvent(const DragEvent& event)
 {
+    isScrolling = true;
     currentAnimationState = ANIMATING_DRAG;
     int newOffset = getOffset() + (getHorizontal() ? event.getDeltaX() : event.getDeltaY()) * dragAcceleration / 10;
     newOffset = keepOffsetInsideLimits(newOffset, overshootPercentage);
@@ -150,6 +158,7 @@ void ScrollWheelBase::handleGestureEvent(const GestureEvent& event)
 {
     if (event.getType() == (getHorizontal() ? GestureEvent::SWIPE_HORIZONTAL : GestureEvent::SWIPE_VERTICAL))
     {
+        isScrolling = true;
         int32_t newOffset = getOffset() + event.getVelocity() * swipeAcceleration / 10;
         if (maxSwipeItems > 0)
         {

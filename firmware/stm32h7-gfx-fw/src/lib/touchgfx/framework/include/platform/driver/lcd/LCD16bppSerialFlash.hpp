@@ -1,8 +1,8 @@
 /******************************************************************************
-* Copyright (c) 2018(-2023) STMicroelectronics.
+* Copyright (c) 2018(-2024) STMicroelectronics.
 * All rights reserved.
 *
-* This file is part of the TouchGFX 4.22.0 distribution.
+* This file is part of the TouchGFX 4.24.0 distribution.
 *
 * This software is licensed under terms that can be found in the LICENSE file in
 * the root directory of this software component.
@@ -314,6 +314,12 @@ public:
      * This allows drawing LZW9 compressed L8 images.
      */
     void enableDecompressorL8_LZW9();
+
+    /**
+     * Enables the decompressor for RGB images compressed with the QOI algorithm.
+     * This allows drawing compressed RGB images.
+     */
+    void enableDecompressorRGB();
 
 protected:
     virtual DrawTextureMapScanLineBase* getTextureMapperDrawScanLine(const TextureSurface& texture, RenderingVariant renderVariant, uint8_t alpha);
@@ -878,6 +884,17 @@ private:
         virtual void blitCopyARGB8888(const uint8_t* sourceData, const uint8_t* clutData, const Rect& source, const Rect& blitRect, uint8_t alpha) = 0;
     };
 
+    class DecompressorRGBBase
+    {
+    public:
+        virtual ~DecompressorRGBBase()
+        {
+        }
+
+        virtual void blitCopyRGB565(const uint8_t* sourceData, const Rect& source, const Rect& blitRect, uint8_t alpha) = 0;
+        virtual void blitCopyARGB8888(const uint8_t* sourceData, const Rect& source, const Rect& blitRect, uint8_t alpha) = 0;
+    };
+
     class DecompressorL8_L4 : public DecompressorL8Base
     {
     public:
@@ -941,6 +958,33 @@ private:
     DecompressorL8Base* decompressorL8_L4;
     DecompressorL8Base* decompressorL8_RLE;
     DecompressorL8Base* decompressorL8_LZW9;
+
+    class DecompressorRGB_QOI : public DecompressorRGBBase
+    {
+    public:
+        DecompressorRGB_QOI(FlashDataReader& _flashReader)
+            : flashDataProvider(_flashReader)
+        {
+        }
+
+        virtual void blitCopyRGB565(const uint8_t* sourceData, const Rect& source, const Rect& blitRect, uint8_t alpha);
+        virtual void blitCopyARGB8888(const uint8_t* sourceData, const Rect& source, const Rect& blitRect, uint8_t alpha);
+
+    private:
+        FlashDataProvider flashDataProvider;
+        static const uint16_t BLOCK_SIZE = 1024U;
+        static const uint16_t INDEX_TABLE_SIZE = 64U;
+
+        union
+        {
+            PixelRGB565 indexTable16[INDEX_TABLE_SIZE];
+            PixelARGB8888 indexTable32[INDEX_TABLE_SIZE];
+        };
+
+        PixelRGB565 uniqueColorsBuffer[INDEX_TABLE_SIZE];
+    };
+
+    DecompressorRGBBase* decompressorRGB_QOI;
 };
 
 } // namespace touchgfx

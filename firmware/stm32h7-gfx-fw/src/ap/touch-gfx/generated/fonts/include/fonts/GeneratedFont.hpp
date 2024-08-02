@@ -57,6 +57,73 @@ private:
     GlyphNode& fusedNode;
 };
 
+struct VectorFontNode
+{
+    uint32_t dataOffset;          ///< The index to the data of this glyph in words
+    Unicode::UnicodeChar unicode; ///< The Unicode of this glyph.
+    uint16_t width;               ///< Width of the actual glyph data
+    uint16_t height;              ///< Height of the actual glyph data
+    int16_t  top;                 ///< Vertical offset from baseline of the glyph
+    int16_t  left;                ///< Horizontal offset from the left of the glyph
+    uint16_t advance;             ///< Width of the glyph (including space to the left and right)
+    uint16_t kerningTablePos;     ///< Where are the kerning information for this glyph stored in the kerning table
+    uint8_t  kerningTableSize;    ///< How many entries are there in the kerning table (following kerningTablePos) for this glyph
+};
+
+struct VectorKerningNode
+{
+    Unicode::UnicodeChar unicodePrevChar; ///< The Unicode for the first character in the kerning pair
+    int16_t distance;                     ///< The kerning distance
+};
+
+struct VectorFontData
+{
+   uint16_t numberOfGlyphs;
+   uint16_t baselineHeight;
+   uint16_t maxLeft;
+   uint16_t maxRight;
+   uint16_t maxAboveTop;
+   uint16_t maxBelowBottom;
+   const Unicode::UnicodeChar fallbackChar;
+   const Unicode::UnicodeChar ellipsisChar;
+};
+
+class GeneratedVectorFont : public Font
+{
+public:
+    GeneratedVectorFont(uint16_t baseline, float scale, const VectorFontNode* vectorGlyphs, const VectorFontData& fontData,
+                        const uint16_t* const* glyphData, const VectorKerningNode* kerningTable,
+                        const uint16_t* const gsubData, const FontContextualFormsTable* formsTable);
+
+    virtual const GlyphNode* getGlyph(Unicode::UnicodeChar unicode) const;
+
+    virtual const GlyphNode* getGlyph(Unicode::UnicodeChar unicode, const uint8_t*& pixelData, uint8_t& bitsPerPixel) const;
+
+    virtual int8_t getKerning(Unicode::UnicodeChar prevChar, const GlyphNode* glyph) const;
+
+    virtual bool isVectorBasedFont() const { return true; }
+
+    virtual float getScaleFactor() const { return scaleFactor; }
+
+    virtual const uint16_t* getGSUBTable() const { return gsubTable; }
+
+    virtual const FontContextualFormsTable* getContextualFormsTable() const { return arabicTable; }
+private:
+
+    const VectorFontNode* find(Unicode::UnicodeChar unicode) const;
+    const GlyphNode* getGlyphNode(const VectorFontNode* node) const;
+
+    float scaleFactor;
+    const VectorFontNode* vectorNodes;
+    const uint16_t* const* vectorTable;
+    const VectorKerningNode* kerningTable;
+    const uint16_t* gsubTable;
+    const FontContextualFormsTable* arabicTable;
+    uint16_t numberOfGlyphs;
+
+    static GlyphNode glyphNode;
+};
+
 struct BinaryFontData
 {
     uint32_t fontIndex;                // The font index (as used by TypedTextDatabase)

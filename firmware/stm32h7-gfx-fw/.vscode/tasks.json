@@ -5,12 +5,9 @@
       "label": "configure",
       "type": "shell",
       "command": "cmake -S . -B build",
-      "problemMatcher": []
-    },  
-    {
-      "label": "configure for win",
-      "type": "shell",
-      "command": "cmake -S . -B build -G 'MinGW Makefiles'",
+      "windows":{
+        "command": "cmake -S . -B build -G 'MinGW Makefiles'"
+      },
       "problemMatcher": []
     },       
     {

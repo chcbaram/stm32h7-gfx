@@ -278,7 +278,7 @@ public:
         return stream.isPlaying;
     }
 
-    void setFrameRateCompensation(const bool allow)
+    void setVideoFrameRateCompensation(const bool allow)
     {
         allowSkipFrames = allow;
     }

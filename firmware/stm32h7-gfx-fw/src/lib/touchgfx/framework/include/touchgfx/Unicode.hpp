@@ -1,8 +1,8 @@
 /******************************************************************************
-* Copyright (c) 2018(-2023) STMicroelectronics.
+* Copyright (c) 2018(-2024) STMicroelectronics.
 * All rights reserved.
 *
-* This file is part of the TouchGFX 4.22.0 distribution.
+* This file is part of the TouchGFX 4.24.0 distribution.
 *
 * This software is licensed under terms that can be found in the LICENSE file in
 * the root directory of this software component.
@@ -471,7 +471,6 @@ private:
 
     static void parseFlagsAndPrecision(const UnicodeChar*& ucFormat, const char*& cFormat, UnicodeChar& numberSign, bool& alignLeft, bool& forceDecimalPoint, bool& zeroPrefix, bool& hasWidth, int& width, bool& hasPrecision, int& precision);
 
-    static const UnicodeChar* skip_spaces(const UnicodeChar* str);
     static const UnicodeChar* skip_whitespace(const UnicodeChar* str);
 
     FORCE_INLINE_FUNCTION static UnicodeChar peekChar(const UnicodeChar* ucFormat, const char* cFormat);

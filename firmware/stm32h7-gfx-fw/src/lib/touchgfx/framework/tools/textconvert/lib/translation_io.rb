@@ -1,7 +1,7 @@
-# Copyright (c) 2018(-2023) STMicroelectronics.
+# Copyright (c) 2018(-2024) STMicroelectronics.
 # All rights reserved.
 #
-# This file is part of the TouchGFX 4.22.0 distribution.
+# This file is part of the TouchGFX 4.24.0 distribution.
 #
 # This software is licensed under terms that can be found in the LICENSE file in
 # the root directory of this software component.
@@ -153,8 +153,6 @@ class TranslationIO
             if languages.empty? || languages.any? { |l| l.upcase == lang_upcase }
               import_columns += [ column ]
             end
-            puts "header: #{header}"
-            puts "orig: #{orig_lang}"
             fail "ERROR: Multiple columns contain translations for language \"#{orig_lang}\"" if header.include?(orig_lang)
             header << orig_lang if not orig_lang.nil?
           end

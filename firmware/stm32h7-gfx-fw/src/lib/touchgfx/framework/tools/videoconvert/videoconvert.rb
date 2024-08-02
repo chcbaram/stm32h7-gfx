@@ -1,7 +1,7 @@
-# Copyright (c) 2018(-2023) STMicroelectronics.
+# Copyright (c) 2018(-2024) STMicroelectronics.
 # All rights reserved.
 #
-# This file is part of the TouchGFX 4.22.0 distribution.
+# This file is part of the TouchGFX 4.24.0 distribution.
 #
 # This software is licensed under terms that can be found in the LICENSE file in
 # the root directory of this software component.
@@ -141,6 +141,52 @@ BANNER
       end
     end
 
+    # Locate .ioc file
+    project_file = Dir['../*.ioc'].first
+    if project_file.nil? # search in next parent directory if .ioc file not found
+      project_file = Dir['../../*.ioc'].first
+    end
+
+    # Determine if keil is toolchain and structure of project
+    touchgfx_folder_path = "../TouchGFX"
+    toolchain_is_keil = false # Assume it is not Keil
+    dual_core = false # Assume it is not dual core
+    context_enabled = false # Assume not context enabled
+    trust_zone = false # Assume not trust zone
+    if project_file
+      # From cubemx_project_selector.rb in touchgfx-cli:
+      content = File.read(project_file, :encoding=>'utf-8')
+      target_toolchain = content.match(/ProjectManager.TargetToolchain=([\w\s\d\.\-]+)/) || abort("Unable to parse #{File.expand_path(@project_file)}")
+      toolchain = target_toolchain.captures.first
+      toolchain_is_keil = toolchain.match(/MDK-ARM/) # "ProjectManager.TargetToolchain=MDK-ARM..." is Keil
+
+      # Determine if dual core
+      # From cubemx_project_selector.rb in touchgfx-cli:
+      content = File.read(project_file, :encoding=>'utf-8')
+      dual_core = content.match(/Mcu.ThirdParty\d+_Instance=STMicroelectronics.X-CUBE-TOUCHGFX.\d+.\d+.\d+_M(\d+)/)
+      if dual_core then
+        touchgfx_folder_path = "../CM#{$1}/TouchGFX" 
+      end
+
+      # Determine if context enabled project
+      # From cubemx_project_selector.rb in touchgfx-cli:
+      content = File.read(project_file, :encoding=>'utf-8')
+      context_enabled = content.match(/Mcu.ThirdParty\d+_Instance=STMicroelectronics.X-CUBE-TOUCHGFX.\d+.\d+.\d+_App/)
+      if context_enabled then
+        touchgfx_folder_path = "../../Appli/TouchGFX" 
+      end
+
+      # Determine if trust zone (non secure only) project
+      # From cubemx_project_selector.rb in touchgfx-cli:
+      content = File.read(project_file, :encoding=>'utf-8')
+      trust_zone = content.match(/Mcu.ThirdParty\d+_Instance=STMicroelectronics.X-CUBE-TOUCHGFX.\d+.\d+.\d+_M\d+NS/)
+      if trust_zone
+        # match expression is for dual is also true for trust zone, so we must disable dual core
+        dual_core = false
+        touchgfx_folder_path = "../NonSecure/TouchGFX" 
+      end
+    end
+    
     # Generate header file
     hpp_content = ""
     keil_export = ""
@@ -162,7 +208,7 @@ BANNER
       hpp_content += "#endif\n\n"
 
       keil_export += "\tEXPORT\t#{start_symbol}\n"
-      keil_incbin += "\n#{start_symbol}\n\tINCBIN\t../TouchGFX/#{bin}\n"
+      keil_incbin += "\n#{start_symbol}\n\tINCBIN\t#{touchgfx_folder_path}/#{bin}\n"
     end
 
     hpp_file = File.join(out_dir, 'include', 'videos', 'VideoDatabase.hpp')
@@ -173,16 +219,6 @@ BANNER
                "\n#include <touchgfx/hal/Types.hpp>\n\n"+
                hpp_content+
                "#endif // TOUCHGFX_VIDEODATABASE_HPP\n")
-
-    project_file = Dir['../*.ioc'].first
-    toolchain_is_keil = false # Assume it is not Keil
-    if project_file
-      # From cubemx_project_selector.rb in touchgfx-cli:
-      content = File.read(project_file, :encoding=>'utf-8')
-      target_toolchain = content.match(/ProjectManager.TargetToolchain=([\w\s\d\.\-]+)/) || abort("Unable to parse #{File.expand_path(@project_file)}")
-      toolchain = target_toolchain.captures.first
-      toolchain_is_keil = toolchain.match(/MDK-ARM/) # "ProjectManager.TargetToolchain=MDK-ARM..." is Keil
-    end
 
     keil_path = [out_dir, 'src', 'keil', 'Videos.s']
     keil_file = File.join(keil_path)

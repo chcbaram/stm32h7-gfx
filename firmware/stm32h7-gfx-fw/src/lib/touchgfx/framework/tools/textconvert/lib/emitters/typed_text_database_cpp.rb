@@ -1,7 +1,7 @@
-# Copyright (c) 2018(-2023) STMicroelectronics.
+# Copyright (c) 2018(-2024) STMicroelectronics.
 # All rights reserved.
 #
-# This file is part of the TouchGFX 4.22.0 distribution.
+# This file is part of the TouchGFX 4.24.0 distribution.
 #
 # This software is licensed under terms that can be found in the LICENSE file in
 # the root directory of this software component.
@@ -82,8 +82,26 @@ class TypedTextDatabaseCpp < Template
     !text_entries.empty?
   end
 
-  def get_font_class_name
-    @generate_font_format == "1" ? "UnmappedDataFont" : "GeneratedFont"
+  def get_font_class_names
+    includes = []
+    if @generate_font_format == "1"
+      includes << "UnmappedDataFont"
+      #see if we have any vector fonts, then we also need the GeneratedVectorFont.hpp include
+      if typographies.any?{|t| t.is_vector }
+        includes << "GeneratedFont"
+      end
+    else
+      includes << "GeneratedFont"
+    end
+    includes
+  end
+
+  def get_font_class_name(font)
+    if font=~/^getFont_vector_/
+      "GeneratedVectorFont"
+    else
+      @generate_font_format == "1" ? "UnmappedDataFont" : "GeneratedFont"
+    end
   end
 
   def get_touchgfx_aligment(alignment)
@@ -101,7 +119,7 @@ class TypedTextDatabaseCpp < Template
   def get_fonts
     @cached_fonts ||=
       begin
-        typographies.map{ |t| Typography.new("", t.font_file, t.font_size, t.bpp) }.uniq.collect do |t|
+        typographies.map{ |t| Typography.new("", t.font_file, t.font_size, t.bpp, t.is_vector) }.uniq.collect do |t|
           get_getFont_name(t)
         end
       end
