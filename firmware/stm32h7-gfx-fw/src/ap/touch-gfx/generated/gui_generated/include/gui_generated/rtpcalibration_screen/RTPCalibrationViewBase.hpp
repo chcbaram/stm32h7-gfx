@@ -8,6 +8,7 @@
 #include <mvp/View.hpp>
 #include <gui/rtpcalibration_screen/RTPCalibrationPresenter.hpp>
 #include <touchgfx/widgets/Box.hpp>
+#include <touchgfx/mixins/ClickListener.hpp>
 #include <touchgfx/widgets/Image.hpp>
 #include <touchgfx/widgets/ButtonWithLabel.hpp>
 #include <touchgfx/widgets/BoxWithBorder.hpp>
@@ -38,7 +39,7 @@ protected:
      * Member Declarations
      */
     touchgfx::Box __background;
-    touchgfx::Box Background;
+    touchgfx::ClickListener< touchgfx::Box > Background;
     touchgfx::Image TouchPoint1;
     touchgfx::Image TouchPoint2;
     touchgfx::Image TouchPoint3;

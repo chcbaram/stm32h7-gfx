@@ -4,6 +4,9 @@
 #include <gui_generated/rtpcalibration_screen/RTPCalibrationViewBase.hpp>
 #include <gui/rtpcalibration_screen/RTPCalibrationPresenter.hpp>
 
+extern "C" {
+    #include "ap.h"
+}
 
 class RTPCalibrationView : public RTPCalibrationViewBase
 {
@@ -15,13 +18,15 @@ public:
     virtual void setupScreen();
     virtual void tearDownScreen();
     
+    
+protected:
     uint32_t getSecond()
     {
         return sec;
     }
-protected:
-   
+
     void handleTickEvent();
+
     uint32_t frameTick;
     uint32_t sec;
     uint8_t tchPointStep;

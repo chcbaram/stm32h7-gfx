@@ -4,13 +4,21 @@
 
 FONT_TABLE_LOCATION_FLASH_PRAGMA
 KEEP extern const touchgfx::GlyphNode glyphs_verdana_20_4bpp[] FONT_TABLE_LOCATION_FLASH_ATTRIBUTE = {
-    {     0, 0x003F,   9,  14,  14,   1,  11,   0,   0, 0x00 },
-    {    70, 0x0043,  13,  14,  14,   1,  14,   0,   0, 0x00 },
-    {   168, 0x0061,  10,  11,  11,   1,  12,   0,   0, 0x00 },
-    {   223, 0x0063,   9,  11,  11,   1,  10,   0,   0, 0x00 },
-    {   278, 0x0065,  10,  11,  11,   1,  12,   0,   0, 0x00 },
-    {   333, 0x006C,   3,  15,  15,   1,   5,   0,   0, 0x00 },
-    {   363, 0x006E,  10,  11,  11,   1,  13,   0,   0, 0x00 }
+    {     0, 0x0020,   0,   0,   0,   0,   7,   0,   0, 0x00 },
+    {     0, 0x0033,  11,  14,  14,   1,  13,   0,   0, 0x00 },
+    {    84, 0x003F,   9,  14,  14,   1,  11,   0,   0, 0x00 },
+    {   154, 0x0043,  13,  14,  14,   1,  14,   0,   0, 0x00 },
+    {   252, 0x0050,  11,  14,  14,   1,  12,   0,   0, 0x00 },
+    {   336, 0x0053,  12,  14,  14,   1,  14,   0,   0, 0x00 },
+    {   420, 0x0061,  10,  11,  11,   1,  12,   0,   0, 0x00 },
+    {   475, 0x0063,   9,  11,  11,   1,  10,   0,   0, 0x00 },
+    {   530, 0x0064,  10,  15,  15,   1,  12,   0,   0, 0x00 },
+    {   605, 0x0065,  10,  11,  11,   1,  12,   0,   0, 0x00 },
+    {   660, 0x006C,   3,  15,  15,   1,   5,   0,   0, 0x00 },
+    {   690, 0x006E,  10,  11,  11,   1,  13,   0,   0, 0x00 },
+    {   745, 0x006F,  11,  11,  11,   1,  12,   0,   0, 0x00 },
+    {   811, 0x0072,   8,  11,  11,   1,   9,   0,   0, 0x00 },
+    {   855, 0x0073,   9,  11,  11,   1,  10,   0,   0, 0x00 }
 };
 
 // verdana_20_4bpp
@@ -28,6 +36,6 @@ touchgfx::GeneratedFont& getFont_verdana_20_4bpp();
 
 touchgfx::GeneratedFont& getFont_verdana_20_4bpp()
 {
-    static touchgfx::GeneratedFont verdana_20_4bpp(glyphs_verdana_20_4bpp, 7, 20, 20, 0, 0, 4, 1, 0, 0, unicodes_verdana_20_4bpp, kerning_verdana_20_4bpp, 63, 0, 0, 0);
+    static touchgfx::GeneratedFont verdana_20_4bpp(glyphs_verdana_20_4bpp, 15, 20, 20, 0, 0, 4, 1, 0, 0, unicodes_verdana_20_4bpp, kerning_verdana_20_4bpp, 63, 0, 0, 0);
     return verdana_20_4bpp;
 }

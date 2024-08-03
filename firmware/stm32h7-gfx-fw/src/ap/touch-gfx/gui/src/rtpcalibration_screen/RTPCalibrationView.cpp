@@ -12,6 +12,7 @@ RTPCalibrationView::RTPCalibrationView() :
 void RTPCalibrationView::setupScreen()
 {
     RTPCalibrationViewBase::setupScreen();
+	rtpCalibrationOn();
 }
 
 void RTPCalibrationView::tearDownScreen()

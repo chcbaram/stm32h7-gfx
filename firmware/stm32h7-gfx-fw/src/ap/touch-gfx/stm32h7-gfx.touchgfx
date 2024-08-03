@@ -14,7 +14,8 @@
               "Red": 130,
               "Green": 130,
               "Blue": 130
-            }
+            },
+            "Clickable": true
           },
           {
             "Type": "Image",
@@ -23,6 +24,7 @@
             "Y": 73,
             "Width": 34,
             "Height": 34,
+            "LockPosition": true,
             "RelativeFilename": "_cross.png"
           },
           {
@@ -32,6 +34,7 @@
             "Y": 383,
             "Width": 34,
             "Height": 34,
+            "LockPosition": true,
             "RelativeFilename": "_cross.png"
           },
           {
@@ -41,6 +44,7 @@
             "Y": 383,
             "Width": 34,
             "Height": 34,
+            "LockPosition": true,
             "RelativeFilename": "_cross.png"
           },
           {
@@ -50,6 +54,7 @@
             "Y": 73,
             "Width": 34,
             "Height": 34,
+            "LockPosition": true,
             "RelativeFilename": "_cross.png"
           },
           {
@@ -59,6 +64,7 @@
             "Y": 223,
             "Width": 34,
             "Height": 34,
+            "LockPosition": true,
             "RelativeFilename": "_cross.png"
           },
           {
@@ -101,10 +107,10 @@
           {
             "Type": "TextArea",
             "Name": "textArea1",
-            "X": 256,
-            "Y": 14,
-            "Width": 289,
-            "Height": 44,
+            "X": 308,
+            "Y": 22,
+            "Width": 185,
+            "Height": 28,
             "TextId": "__SingleUse_VVAJ",
             "TextRotation": "0",
             "Wildcard1": {

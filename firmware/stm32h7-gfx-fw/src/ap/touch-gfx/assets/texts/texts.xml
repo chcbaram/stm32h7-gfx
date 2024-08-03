@@ -6,10 +6,10 @@
   <Texts>
     <TextGroup Id="Group1" />
     <TextGroup Id="Unsorted">
-      <Text Id="__SingleUse_L5J5" Alignment="Left" TypographyId="han_default">
+      <Text Id="__SingleUse_L5J5" Alignment="Left" TypographyId="Default">
         <Translation Language="GB">Press 3 Seconds</Translation>
       </Text>
-      <Text Id="__SingleUse_VVAJ" Alignment="Center" TypographyId="han_default">
+      <Text Id="__SingleUse_VVAJ" Alignment="Center" TypographyId="Default">
         <Translation Language="GB">&lt;value&gt;</Translation>
       </Text>
       <Text Id="__SingleUse_TXX3" Alignment="Center" TypographyId="Default">

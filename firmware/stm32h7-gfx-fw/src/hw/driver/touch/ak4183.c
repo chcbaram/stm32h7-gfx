@@ -6,6 +6,7 @@
 #include "cli.h"
 #include "cli_gui.h"
 
+
 #ifdef _USE_HW_RTOS
 #define lock()      xSemaphoreTake(mutex_lock, portMAX_DELAY);
 #define unLock()    xSemaphoreGive(mutex_lock);
@@ -13,6 +14,8 @@
 #define lock()
 #define unLock()
 #endif
+
+#undef AK4183_TCH_POINT_ADC_TRIM
 
 #define AK4183_TOUCH_WIDTH    HW_LCD_WIDTH
 #define AK4183_TOUCH_HEIGHT   HW_LCD_HEIGHT
@@ -337,6 +340,50 @@ bool ak4183GetInfo(ak4183_info_t *p_info)
 
   return ret;
 }
+
+#ifdef AK4183_TCH_POINT_ADC_TRIM
+#define ADC_TRIM_CNT      (2)
+#define CYCLE     20
+
+int ak4183GetAdc(void)
+{
+	int avg = 0;
+	int sum = 0;
+	int tmp[CYCLE];
+
+	for(int i=0;i<CYCLE;i++)
+	{
+	  tmp[i] = hx711_get_raw();
+	  HAL_Delay(13);
+	}
+
+	for (uint8_t i = 0; i < (CYCLE-1); i++)
+	{
+		for (uint8_t j = (i+1); j < CYCLE; j++)
+		{
+			if (tmp[i] > tmp[j]) 
+			{
+				SWAP(tmp[i], tmp[j]); 
+			}
+		}
+	}
+
+	printf("------------\r\n");
+	for (uint8_t i = 0; i < CYCLE; i++)
+	{
+		printf("%ld \r\n", tmp[i]);		
+	}	
+
+	for (uint8_t i = ADC_TRIM_CNT; i < (CYCLE-ADC_TRIM_CNT); i++)
+	{
+		sum += tmp[i];
+	}
+
+	avg = sum/(CYCLE-(ADC_TRIM_CNT*2));
+
+	return avg;
+}
+#endif 
 
 void cliCmd(cli_args_t *args)
 {
