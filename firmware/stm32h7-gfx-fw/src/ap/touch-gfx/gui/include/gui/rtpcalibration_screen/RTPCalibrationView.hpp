@@ -20,8 +20,7 @@ public:
         return sec;
     }
 protected:
-    void touchPointBtnCallbackHandler(const RepeatButton& btn, const ClickEvent& event);
-    Callback <RTPCalibrationView, const RepeatButton&, const ClickEvent&> touchPointBtnCallback;
+   
     void handleTickEvent();
     uint32_t frameTick;
     uint32_t sec;

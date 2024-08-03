@@ -28,7 +28,7 @@
     },
     {
       "cwd": "${workspaceRoot}",
-      "executable": "./build/stm32h7-gfx_fw.elf", 
+      "executable": "./build/stm32h7-gfx-fw.elf", 
       "name": "Debug with STLINK (Firmware)",
       "request": "launch",
       "type": "cortex-debug",
@@ -42,27 +42,6 @@
         "enable breakpoint",
         "monitor reset"
       ],      
-    },
-    {
-      "cwd": "${workspaceRoot}",
-      "executable": "./build/stm32h7-gfx_assets.elf", 
-      "name": "Debug with STLINK (Assets)",
-      "request": "attach",
-      "type": "cortex-debug",
-      "showDevDebugOutput": "none",      
-      "servertype": "stlink",
-      "serverArgs": [
-        "--external-init", "--extload", "${workspaceFolder}/tools/stm32h7-gfx-ext-loader.stldr" 
-      ],
-      "runToEntryPoint": "main",  
-      "windows": {
-        "gdbPath": "${env:ARM_TOOLCHAIN_DIR}/arm-none-eabi-gdb.exe",
-      },
-      "preRestartCommands": [
-        "enable breakpoint",
-        "monitor reset"
-      ],      
-     
     }
   ]
 }
