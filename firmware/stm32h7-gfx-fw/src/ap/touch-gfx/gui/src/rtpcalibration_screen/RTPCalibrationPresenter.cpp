@@ -16,8 +16,3 @@ void RTPCalibrationPresenter::deactivate()
 {
 
 }
-
-void RTPCalibrationPresenter::notifyRtpCalibrationStep(uint8_t step)
-{
-    model->getCalibrationStep(step);
-}

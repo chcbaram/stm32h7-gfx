@@ -5,7 +5,7 @@
 #include "gpio.h"
 #include "cli.h"
 #include "cli_gui.h"
-
+#include "eeprom.h"
 
 #ifdef _USE_HW_RTOS
 #define lock()      xSemaphoreTake(mutex_lock, portMAX_DELAY);
@@ -20,11 +20,28 @@
 #define AK4183_TOUCH_WIDTH    HW_LCD_WIDTH
 #define AK4183_TOUCH_HEIGHT   HW_LCD_HEIGHT
 
+#define AK4183_EEPROM_MAGIC_NUMBER   0x34313833 // "4183"
+
+#define AK4183_DEFAULT_ADC_X1   512
+#define AK4183_DEFAULT_ADC_X2   529
+#define AK4183_DEFAULT_ADC_X3   3535
+#define AK4183_DEFAULT_ADC_X4   3535
+#define AK4183_DEFAULT_ADC_X5   2087
+
+#define AK4183_DEFAULT_ADC_Y1   1011
+#define AK4183_DEFAULT_ADC_Y2   3376
+#define AK4183_DEFAULT_ADC_Y3   3367
+#define AK4183_DEFAULT_ADC_Y4   993
+#define AK4183_DEFAULT_ADC_Y5   2243
+
 typedef struct
 {
   uint32_t x_adc;
   uint32_t y_adc;
 } ak4183_adc_t;
+
+
+
 
 
 static void cliCmd(cli_args_t *args);
@@ -37,6 +54,7 @@ static void do_calibration(int touch_x, int touch_y, int *px, int *py);
 static int calculate_calibration_coefficient(uint8_t points, uint32_t* screen_x,  uint32_t* screen_y, uint32_t* cali_x, uint32_t* cali_y);
 
 
+
 static uint8_t i2c_ch   = _DEF_I2C1;
 static uint8_t i2c_addr = 0x48;
 static bool is_cali = false;
@@ -46,13 +64,19 @@ static bool is_detected = false;
 static SemaphoreHandle_t mutex_lock = NULL;
 #endif
 
+/* 좌표값 (수정 금지)*/
 static uint32_t x_scr_ref[5] = {90, 90, 700, 700, 400};
 static uint32_t y_scr_ref[5] = {90, 400, 400, 90, 250};
+
 
 static uint32_t x_buf[5] = {512,  529,  3535, 3535, 2087};
 static uint32_t y_buf[5] = {1011, 3376, 3367, 993,  2243};
 
 double KX1, KX2, KX3, KY1, KY2, KY3;             // coefficients for calibration algorithm
+
+static ak4183_cali_t tch_adc;
+
+
 
 bool ak4183Init(void)
 {
@@ -73,6 +97,26 @@ bool ak4183Init(void)
   else
     ret = i2cBegin(i2c_ch, 400);
 
+  if (eepromIsInit())
+  {
+    ak4183touchDataRead(&tch_adc);
+    if (tch_adc.tch_magic_number != AK4183_EEPROM_MAGIC_NUMBER)
+    {
+      logPrintf("[E_] ak4183 magic number failed\n");
+      tch_adc.x_adc[0] = AK4183_DEFAULT_ADC_X1;
+      tch_adc.x_adc[1] = AK4183_DEFAULT_ADC_X2;
+      tch_adc.x_adc[2] = AK4183_DEFAULT_ADC_X3;
+      tch_adc.x_adc[3] = AK4183_DEFAULT_ADC_X4;
+      tch_adc.x_adc[4] = AK4183_DEFAULT_ADC_X5;
+
+      tch_adc.y_adc[0] = AK4183_DEFAULT_ADC_Y1;
+      tch_adc.y_adc[1] = AK4183_DEFAULT_ADC_Y2;
+      tch_adc.y_adc[2] = AK4183_DEFAULT_ADC_Y3;
+      tch_adc.y_adc[3] = AK4183_DEFAULT_ADC_Y4;
+      tch_adc.y_adc[4] = AK4183_DEFAULT_ADC_Y5;
+      ak4183touchDataWrite(&tch_adc);
+    }
+  }
 
   if (ret == true && i2cIsDeviceReady(i2c_ch, i2c_addr))
   {    
@@ -99,8 +143,11 @@ bool ak4183Init(void)
 
 bool ak4183InitRegs(void)
 {
+  uint32_t* p_x_buf = tch_adc.x_adc;
+  uint32_t* p_y_buf = tch_adc.y_adc;
+  int calibration_coefficient = calculate_calibration_coefficient(5, x_scr_ref, y_scr_ref, p_x_buf, p_y_buf);
 
-  if(calculate_calibration_coefficient(5, x_scr_ref, y_scr_ref, x_buf, y_buf) == 0)
+  if(calibration_coefficient == 0)
   {
     logPrintf("[  ] no cali\n");
   }
@@ -341,6 +388,36 @@ bool ak4183GetInfo(ak4183_info_t *p_info)
   return ret;
 }
 
+bool ak4183CalibrationProc(int16_t x, int16_t y)
+{
+  bool ret = false;
+
+  if (x < 0 || y < 0)
+  {
+    return false;
+  }
+
+  ak4183_adc_t coordinate;
+  
+  coordinate.x_adc = (uint32_t)x;
+  coordinate.y_adc = (uint32_t)y;  
+  
+  if (ak4183ReadAdc(&coordinate))
+  {
+    logPrintf("[  ] coordinate.x : %d, coordinate.y : %d\n", coordinate.x_adc, coordinate.y_adc);
+
+    // ADC 값 정렬 및 잘라내기 (배열)
+    //
+    // 평균값
+    //
+    
+
+    ret = true;
+  }
+
+  return ret;
+}
+
 #ifdef AK4183_TCH_POINT_ADC_TRIM
 #define ADC_TRIM_CNT      (2)
 #define CYCLE     20
@@ -384,6 +461,68 @@ int ak4183GetAdc(void)
 	return avg;
 }
 #endif 
+
+bool ak4183SaveCaliData(tch_cali_info_t tch_info)
+{
+  bool ret = false;
+
+  if (eepromIsInit())
+  {
+    ak4183touchDataWrite(&tch_adc);
+    ret = true;
+  }
+  else
+  {
+    logPrintf("[E_] ak4183SaveCaliData()\n");
+  }
+
+  return ret;
+}
+
+bool ak4183IsCaliResultErr(tch_cali_info_t tch_info)
+{
+  bool ret = false;
+  uint8_t next_state = tch_info.state + 1;
+
+  if (next_state != R_TOUCH_CALI_END)
+  {
+    return false;
+  }
+
+  int result = calculate_calibration_coefficient(5, x_scr_ref, y_scr_ref, tch_info.x_adc, tch_info.y_adc);
+
+  if (result == 0)
+  {
+    ret = false;
+  }
+  else
+  {
+    ret = true;
+  }
+
+  return ret;
+}
+
+bool ak4183touchDataWrite(ak4183_cali_t* p_data)
+{
+  bool ret = false;
+  uint16_t tch_adc_data_size = sizeof(ak4183_cali_t);
+
+  p_data->tch_magic_number = AK4183_EEPROM_MAGIC_NUMBER;
+  ret = eepromWrite(HW_EEPROM_ADDR_TOUCH, (uint8_t*)p_data, tch_adc_data_size);
+
+  return ret;
+}
+
+
+bool ak4183touchDataRead(ak4183_cali_t* p_data)
+{
+  bool ret = false;
+  uint16_t tch_adc_data_size = sizeof(ak4183_cali_t);
+  ret = eepromRead(HW_EEPROM_ADDR_TOUCH, (uint8_t*)p_data, tch_adc_data_size);
+
+  return ret;
+}
 
 void cliCmd(cli_args_t *args)
 {

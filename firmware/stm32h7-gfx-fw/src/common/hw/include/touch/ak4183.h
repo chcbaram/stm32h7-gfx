@@ -48,15 +48,23 @@ typedef enum
     R_TOUCH_CALI_END
 } CalibrationStep_t;
 
+typedef struct
+{
+  uint32_t x_adc[5];          // 20
+  uint32_t y_adc[5];          // 20
+  uint32_t tch_magic_number;  // 4
+} ak4183_cali_t; // 44
+
 bool ak4183Init(void);
 bool ak4183GetInfo(ak4183_info_t *p_info);
 uint16_t ak4183GetWidth(void);
 uint16_t ak4183GetHeight(void);
 
 bool ak4183IsCaliResultErr(tch_cali_info_t tch_info);
-bool ak4183GetAdc(uint16_t* x_adc, uint16_t* y_adc);
+bool ak4183CalibrationProc(int16_t x, int16_t y);
 bool ak4183SaveCaliData(tch_cali_info_t tch_info);
-
+bool ak4183touchDataWrite(ak4183_cali_t* p_data);
+bool ak4183touchDataRead(ak4183_cali_t* p_data);
 #endif
 
 #ifdef __cplusplus

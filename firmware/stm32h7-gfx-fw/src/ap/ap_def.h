@@ -13,14 +13,14 @@
 #define PRESS_TIME          3 // Second
 typedef enum
 {
+    CALIBRATION_START,
     TCH_POINT_1,
     TCH_POINT_2,
     TCH_POINT_3,
     TCH_POINT_4,
     TCH_POINT_5,
-    TCH_POINT_BACK,
-    TCH_POINT_MAX
-} RtpCalibrationStep_t ;
+    CALIBRATION_END
+} RtpCalibrationStep_t;
 
 #endif
 

@@ -26,7 +26,6 @@ public:
     virtual void deactivate();
 
     virtual ~RTPCalibrationPresenter() {}
-    void notifyRtpCalibrationStep(uint8_t step);
 private:
     RTPCalibrationPresenter();
 
