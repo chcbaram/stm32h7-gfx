@@ -9,17 +9,33 @@ extern "C" {
     #include "touch/ak4183.h"
 }
 
+#define MAX_ADC_CNT         120
+#define PRESSED_LATENCY     300
+#define OBTAIN_TIME         2000
+
 class RTPCalibrationView : public RTPCalibrationViewBase
 {
 public:
-    
-
     RTPCalibrationView();
     virtual ~RTPCalibrationView() {}
     virtual void setupScreen();
     virtual void tearDownScreen();
+
     void showTchPoint(uint8_t point)
     {
+      touchgfx::Image *btns[] = {
+        &TouchPoint1,
+        &TouchPoint2,
+        &TouchPoint3,
+        &TouchPoint4,
+        &TouchPoint5
+      };
+      for(uint8_t i=0;i<TCH_POINT_5;i++)
+      {
+        btns[i]->setVisible(i == point);
+        btns[i]->invalidate();
+      }
+
         TouchPoint1.setVisible(false);
         TouchPoint2.setVisible(false);
         TouchPoint3.setVisible(false);
@@ -52,13 +68,15 @@ public:
 
     void handleClickEvent(const ClickEvent& evt);
     void handleTickEvent(void);
-		
 protected:
-		int16_t x;
-		int16_t y;
     bool pressed;
-    uint32_t click_debounce_time;
+    uint32_t pressed_time;
     RtpCalibrationStep_t rtp_cali_step;
+    ak4183_adc_t adc;
+    uint32_t x_adc_sum;
+    uint32_t y_adc_sum;
+    ak4183_adc_t adc_avg;
+    uint32_t adc_cnt;
 };
 
 #endif // RTPCALIBRATIONVIEW_HPP

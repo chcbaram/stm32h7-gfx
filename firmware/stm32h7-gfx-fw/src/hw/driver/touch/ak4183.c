@@ -34,11 +34,6 @@
 #define AK4183_DEFAULT_ADC_Y4   993
 #define AK4183_DEFAULT_ADC_Y5   2243
 
-typedef struct
-{
-  uint32_t x_adc;
-  uint32_t y_adc;
-} ak4183_adc_t;
 
 
 
@@ -47,7 +42,7 @@ typedef struct
 static void cliCmd(cli_args_t *args);
 static bool readRegs(uint8_t reg_addr, uint8_t *p_data, uint32_t length);
 static bool ak4183InitRegs(void);
-static bool ak4183ReadAdc(ak4183_adc_t *p_adc);
+bool ak4183ReadAdc(ak4183_adc_t *p_adc);
 static bool ak4183IsReady(void);
 
 static void do_calibration(int touch_x, int touch_y, int *px, int *py);
@@ -399,8 +394,8 @@ bool ak4183CalibrationProc(int16_t x, int16_t y)
 
   ak4183_adc_t coordinate;
   
-  coordinate.x_adc = (uint32_t)x;
-  coordinate.y_adc = (uint32_t)y;  
+  //coordinate.x_adc = (uint32_t)x; //10 x_adc = 10
+  //coordinate.y_adc = (uint32_t)y;  
   
   if (ak4183ReadAdc(&coordinate))
   {
@@ -410,7 +405,7 @@ bool ak4183CalibrationProc(int16_t x, int16_t y)
     //
     // 평균값
     //
-    
+
 
     ret = true;
   }
@@ -484,7 +479,7 @@ bool ak4183IsCaliResultErr(tch_cali_info_t tch_info)
   bool ret = false;
   uint8_t next_state = tch_info.state + 1;
 
-  if (next_state != R_TOUCH_CALI_END)
+  if (next_state != TCH_POINT_5)
   {
     return false;
   }

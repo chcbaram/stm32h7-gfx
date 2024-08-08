@@ -11,7 +11,7 @@
 
 
 #define AK4183_MAX_TOUCH_POINT             1
-
+#define PRESS_TIME          3 // Second
 
 typedef struct
 {
@@ -39,14 +39,12 @@ typedef struct
 
 typedef enum
 {
-    R_TOUCH_CALI_IDLE,
-    R_TOUCH_CALI_1,
-    R_TOUCH_CALI_2,
-    R_TOUCH_CALI_3,
-    R_TOUCH_CALI_4,
-    R_TOUCH_CALI_5,
-    R_TOUCH_CALI_END
-} CalibrationStep_t;
+	TCH_POINT_1,
+	TCH_POINT_2,
+	TCH_POINT_3,
+	TCH_POINT_4,
+	TCH_POINT_5
+} RtpCalibrationStep_t;
 
 typedef struct
 {
@@ -55,11 +53,20 @@ typedef struct
   uint32_t tch_magic_number;  // 4
 } ak4183_cali_t; // 44
 
+typedef struct
+{
+  uint32_t x_adc;
+  uint32_t y_adc;
+} ak4183_adc_t;
+
+
+
 bool ak4183Init(void);
 bool ak4183GetInfo(ak4183_info_t *p_info);
 uint16_t ak4183GetWidth(void);
 uint16_t ak4183GetHeight(void);
 
+bool ak4183ReadAdc(ak4183_adc_t *p_adc);
 bool ak4183IsCaliResultErr(tch_cali_info_t tch_info);
 bool ak4183CalibrationProc(int16_t x, int16_t y);
 bool ak4183SaveCaliData(tch_cali_info_t tch_info);
