@@ -17,6 +17,7 @@ public:
     void showTchPoint(uint8_t point);
     void handleClickEvent(const ClickEvent& evt);
     void handleTickEvent(void);
+    void showPopupText(const char* text);
 
 protected:
     bool pressed;
@@ -28,6 +29,7 @@ protected:
     ak4183_adc_t adc_avg;
     ak4183_cali_t calibration_info;
     uint32_t adc_cnt;
+    uint32_t popup_show_time;
 };
 
 #endif // RTPCALIBRATIONVIEW_HPP

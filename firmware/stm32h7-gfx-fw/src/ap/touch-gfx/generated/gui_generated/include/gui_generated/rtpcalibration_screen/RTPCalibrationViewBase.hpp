@@ -13,6 +13,7 @@
 #include <touchgfx/widgets/ButtonWithLabel.hpp>
 #include <touchgfx/widgets/BoxWithBorder.hpp>
 #include <touchgfx/widgets/TextAreaWithWildcard.hpp>
+#include <touchgfx/containers/Container.hpp>
 
 class RTPCalibrationViewBase : public touchgfx::View<RTPCalibrationPresenter>
 {
@@ -39,12 +40,17 @@ protected:
     touchgfx::ButtonWithLabel CalibrationCancelBtn;
     touchgfx::BoxWithBorder boxWithBorder1;
     touchgfx::TextAreaWithOneWildcard textArea1;
+    touchgfx::Container Popup;
+    touchgfx::Box PopupBox;
+    touchgfx::TextAreaWithOneWildcard PopupText;
 
     /*
      * Wildcard Buffers
      */
     static const uint16_t TEXTAREA1_SIZE = 50;
     touchgfx::Unicode::UnicodeChar textArea1Buffer[TEXTAREA1_SIZE];
+    static const uint16_t POPUPTEXT_SIZE = 50;
+    touchgfx::Unicode::UnicodeChar PopupTextBuffer[POPUPTEXT_SIZE];
 
 private:
 

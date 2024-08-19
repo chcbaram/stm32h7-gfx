@@ -183,6 +183,44 @@
               "UseBuffer": true,
               "BufferSize": 50
             }
+          },
+          {
+            "Type": "Container",
+            "Name": "Popup",
+            "X": 275,
+            "Y": 175,
+            "Width": 250,
+            "Height": 125,
+            "Visible": false,
+            "Components": [
+              {
+                "Type": "Box",
+                "Name": "PopupBox",
+                "Width": 250,
+                "Height": 125,
+                "Color": {
+                  "Red": 255,
+                  "Green": 255,
+                  "Blue": 255
+                }
+              },
+              {
+                "Type": "TextArea",
+                "Name": "PopupText",
+                "X": 21,
+                "Y": 50,
+                "Width": 208,
+                "Height": 24,
+                "TextId": "__SingleUse_5DLU",
+                "TextRotation": "0",
+                "AutoSize": true,
+                "Wildcard1": {
+                  "TextId": "__SingleUse_9MBW",
+                  "UseBuffer": true,
+                  "BufferSize": 50
+                }
+              }
+            ]
           }
         ],
         "Interactions": [

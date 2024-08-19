@@ -59,6 +59,23 @@ RTPCalibrationViewBase::RTPCalibrationViewBase() :
     textArea1.resizeToCurrentText();
     textArea1.setTypedText(touchgfx::TypedText(T___SINGLEUSE_VVAJ));
     add(textArea1);
+
+    Popup.setPosition(275, 175, 250, 125);
+    Popup.setVisible(false);
+    PopupBox.setPosition(0, 0, 250, 125);
+    PopupBox.setColor(touchgfx::Color::getColorFromRGB(255, 255, 255));
+    Popup.add(PopupBox);
+
+    PopupText.setXY(21, 50);
+    PopupText.setColor(touchgfx::Color::getColorFromRGB(0, 0, 0));
+    PopupText.setLinespacing(0);
+    Unicode::snprintf(PopupTextBuffer, POPUPTEXT_SIZE, "%s", touchgfx::TypedText(T___SINGLEUSE_9MBW).getText());
+    PopupText.setWildcard(PopupTextBuffer);
+    PopupText.resizeToCurrentText();
+    PopupText.setTypedText(touchgfx::TypedText(T___SINGLEUSE_5DLU));
+    Popup.add(PopupText);
+
+    add(Popup);
 }
 
 RTPCalibrationViewBase::~RTPCalibrationViewBase()

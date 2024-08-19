@@ -9,7 +9,8 @@ RTPCalibrationView::RTPCalibrationView() :
   y_adc_sum(0),
   adc_avg{ },
   calibration_info{ },
-	adc_cnt(0)
+	adc_cnt(0),
+  popup_show_time(0)
 {
 
 }
@@ -30,16 +31,17 @@ void RTPCalibrationView::tearDownScreen()
 
 void RTPCalibrationView::handleClickEvent(const ClickEvent& evt)
 {
+  if (evt.getX() >= CalibrationCancelBtn.getX() && evt.getX() <= (CalibrationCancelBtn.getX() + CalibrationCancelBtn.getWidth()))
+  {
+    if (evt.getY() >= CalibrationCancelBtn.getY() && evt.getY() <= (CalibrationCancelBtn.getY() + CalibrationCancelBtn.getHeight()))
+    {
+      application().changeToStartScreen();
+    }
+  }
+
   if (evt.getType() == touchgfx::ClickEvent::PRESSED)
   {
-    if (evt.getX() >= CalibrationCancelBtn.getX() && evt.getX() <= (CalibrationCancelBtn.getX() + CalibrationCancelBtn.getWidth()))
-    {
-      if (evt.getY() >= CalibrationCancelBtn.getY() && evt.getY() <= (CalibrationCancelBtn.getY() + CalibrationCancelBtn.getHeight()))
-      {
-        application().changeToStartScreen();
-      }
-    }
-    logPrintf("[  ] pressed\n");
+    logPrintf("[  ] pressed X : %d, Y : %d\n", evt.getX(), evt.getY());
     pressed = true;
     pressed_time = millis();
   }
@@ -51,6 +53,16 @@ void RTPCalibrationView::handleClickEvent(const ClickEvent& evt)
   }
 }
 
+void RTPCalibrationView::showPopupText(const char* text)
+{
+  if (text != NULL)
+  {
+    popup_show_time = millis();
+    Unicode::snprintf(PopupTextBuffer, POPUPTEXT_SIZE, text);
+    Popup.setVisible(true);
+    Popup.invalidate();
+  }
+}
 
 void RTPCalibrationView::handleTickEvent()
 {
@@ -98,15 +110,14 @@ void RTPCalibrationView::handleTickEvent()
       }
       else
       {
-        if (ak4183IsCaliResultErr(&calibration_info))
+        if (ak4183IsCaliResultErr(calibration_info))
         {
+          showPopupText("Calibration Success");
           #if LOG
           logPrintf("[  ] success\n");
           #endif
-
           if (ak4183SaveCaliData(&calibration_info))
           {
-            // Popup - Success
             #if LOG
             logPrintf("\n");
             for (uint8_t i=0; i<=TCH_POINT_5; i++)
@@ -123,11 +134,14 @@ void RTPCalibrationView::handleTickEvent()
             logPrintf("[E_] saving data to eeprom failed\n");
             #endif
           }
-        } 
+        }
+        else
+        {
+          showPopupText("Calibration Failed");
+        }
 
         memset(&calibration_info, 0, sizeof(calibration_info));
         rtp_cali_step = TCH_POINT_1;
-        showTchPoint(TCH_POINT_1);
       }
 
       // Initialize Parameter
@@ -137,6 +151,13 @@ void RTPCalibrationView::handleTickEvent()
       memset(&adc_avg, 0, sizeof(adc_avg));
       pressed = false;
     }
+  }
+
+  if (millis() - popup_show_time >= 3000 && Popup.isVisible())
+  {
+    Popup.setVisible(false);
+    Popup.invalidate();
+    showTchPoint(TCH_POINT_1);
   }
 }
 

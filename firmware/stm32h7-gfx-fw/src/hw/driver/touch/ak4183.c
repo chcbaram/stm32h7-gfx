@@ -473,16 +473,11 @@ bool ak4183SaveCaliData(ak4183_cali_t* tch_info)
   return ret;
 }
 
-bool ak4183IsCaliResultErr(ak4183_cali_t *tch_info)
+bool ak4183IsCaliResultErr(ak4183_cali_t tch_info)
 {
   bool ret = false;
-
-  if (tch_info == NULL)
-  {
-    return false;
-  }
   
-  int result = calculate_calibration_coefficient(5, x_scr_ref, y_scr_ref, tch_info->x_adc, tch_info->y_adc);
+  int result = calculate_calibration_coefficient(5, x_scr_ref, y_scr_ref, tch_info.x_adc, tch_info.y_adc);
 
   if (result == 0)
   {

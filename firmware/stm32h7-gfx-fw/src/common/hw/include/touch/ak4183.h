@@ -60,7 +60,7 @@ uint16_t ak4183GetWidth(void);
 uint16_t ak4183GetHeight(void);
 
 bool ak4183ReadAdc(ak4183_adc_t *p_adc);
-bool ak4183IsCaliResultErr(ak4183_cali_t* tch_info);
+bool ak4183IsCaliResultErr(ak4183_cali_t tch_info);
 bool ak4183CalibrationProc(int16_t x, int16_t y);
 bool ak4183SaveCaliData(ak4183_cali_t* tch_info);
 bool ak4183touchDataWrite(ak4183_cali_t* p_data);
