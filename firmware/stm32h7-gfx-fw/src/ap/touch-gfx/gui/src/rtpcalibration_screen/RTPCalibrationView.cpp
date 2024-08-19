@@ -137,6 +137,9 @@ void RTPCalibrationView::handleTickEvent()
         }
         else
         {
+          // 기본 세팅값으로 설정
+          // 
+          
           showPopupText("Calibration Failed");
         }
 
