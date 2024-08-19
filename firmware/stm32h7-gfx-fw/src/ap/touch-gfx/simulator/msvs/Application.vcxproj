@@ -26,6 +26,9 @@
     <ClCompile Include="..\..\gui\src\rtpcalibration_screen\RTPCalibrationPresenter.cpp"/>
     <ClCompile Include="..\..\gui\src\rtpcalibration_screen\RTPCalibrationView.cpp"/>
     <ClCompile Include="..\..\generated\gui_generated\src\rtpcalibration_screen\RTPCalibrationViewBase.cpp"/>
+    <ClCompile Include="..\..\gui\src\home_screen\HomePresenter.cpp"/>
+    <ClCompile Include="..\..\gui\src\home_screen\HomeView.cpp"/>
+    <ClCompile Include="..\..\generated\gui_generated\src\home_screen\HomeViewBase.cpp"/>
   </ItemGroup>
   <ItemGroup>
     <None Include="$(ApplicationRoot)\assets\texts\texts.xml"/>
@@ -181,6 +184,9 @@
     <ClInclude Include="..\..\gui\include\gui\rtpcalibration_screen\RTPCalibrationPresenter.hpp"/>
     <ClInclude Include="..\..\gui\include\gui\rtpcalibration_screen\RTPCalibrationView.hpp"/>
     <ClInclude Include="..\..\generated\gui_generated\include\gui_generated\rtpcalibration_screen\RTPCalibrationViewBase.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\home_screen\HomePresenter.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\home_screen\HomeView.hpp"/>
+    <ClInclude Include="..\..\generated\gui_generated\include\gui_generated\home_screen\HomeViewBase.hpp"/>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="$(ApplicationRoot)\generated\simulator\touchgfx.rc"/>

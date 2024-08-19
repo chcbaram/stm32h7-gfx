@@ -6,7 +6,14 @@
 #include "touchgfx/Utils.hpp"
 #endif
 
+extern "C" {
+    #include "ap.h"
+    #include "touch/ak4183.h"
+}
 
+#define LOG                   1
+#define MAX_ADC_CNT         120
+#define PRESSED_LATENCY     300
 
 class ModelListener;
 

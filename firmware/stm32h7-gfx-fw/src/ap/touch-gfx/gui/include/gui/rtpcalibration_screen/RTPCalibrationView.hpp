@@ -4,15 +4,7 @@
 #include <gui_generated/rtpcalibration_screen/RTPCalibrationViewBase.hpp>
 #include <gui/rtpcalibration_screen/RTPCalibrationPresenter.hpp>
 
-extern "C" {
-    #include "ap.h"
-    #include "touch/ak4183.h"
-}
 
-#define MAX_ADC_CNT         120
-#define PRESSED_LATENCY     300
-#define OBTAIN_TIME         2000
-#define LOG
 
 class RTPCalibrationView : public RTPCalibrationViewBase
 {
@@ -26,10 +18,7 @@ public:
     void handleClickEvent(const ClickEvent& evt);
     void handleTickEvent(void);
 
-    
 protected:
-    void (*calibrationEndCallback)(void);
-    
     bool pressed;
     uint32_t pressed_time;
     uint8_t rtp_cali_step;

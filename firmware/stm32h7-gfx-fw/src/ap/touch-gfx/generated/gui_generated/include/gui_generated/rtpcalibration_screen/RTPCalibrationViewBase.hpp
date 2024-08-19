@@ -21,15 +21,6 @@ public:
     virtual ~RTPCalibrationViewBase();
     virtual void setupScreen();
 
-    /*
-     * Custom Actions
-     */
-    virtual void calibrationPointPressed(uint8_t value)
-    {
-        // Override and implement this function in Screen1
-    }
-    
-
 protected:
     FrontendApplication& application() {
         return *static_cast<FrontendApplication*>(touchgfx::Application::getInstance());

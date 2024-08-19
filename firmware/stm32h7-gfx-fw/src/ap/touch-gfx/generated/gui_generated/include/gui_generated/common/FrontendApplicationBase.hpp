@@ -17,8 +17,11 @@ public:
 
     virtual void changeToStartScreen()
     {
-        gotoRTPCalibrationScreenNoTransition();
+        gotoHomeScreenNoTransition();
     }
+
+    // Home
+    void gotoHomeScreenNoTransition();
 
     // RTPCalibration
     void gotoRTPCalibrationScreenNoTransition();
@@ -27,6 +30,9 @@ protected:
     touchgfx::Callback<FrontendApplicationBase> transitionCallback;
     FrontendHeap& frontendHeap;
     Model& model;
+
+    // Home
+    void gotoHomeScreenNoTransitionImpl();
 
     // RTPCalibration
     void gotoRTPCalibrationScreenNoTransitionImpl();

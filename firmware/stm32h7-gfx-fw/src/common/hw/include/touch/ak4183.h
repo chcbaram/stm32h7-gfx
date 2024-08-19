@@ -36,8 +36,7 @@ typedef enum
 	TCH_POINT_2,
 	TCH_POINT_3,
 	TCH_POINT_4,
-	TCH_POINT_5,
-  TCH_POINT_MAX
+	TCH_POINT_5
 } RtpCalibrationStep_t;
 
 typedef struct

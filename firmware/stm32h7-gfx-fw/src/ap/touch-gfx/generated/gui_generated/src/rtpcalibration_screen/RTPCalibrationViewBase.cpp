@@ -76,8 +76,8 @@ void RTPCalibrationViewBase::buttonCallbackHandler(const touchgfx::AbstractButto
     if (&src == &CalibrationCancelBtn)
     {
         //BackPrevScreen
-        //When CalibrationCancelBtn clicked call calibrationPointPressed on RTPCalibration
-        //Call calibrationPointPressed
-        calibrationPointPressed(5);
+        //When CalibrationCancelBtn clicked change screen to Home
+        //Go to Home with no screen transition
+        application().gotoHomeScreenNoTransition();
     }
 }

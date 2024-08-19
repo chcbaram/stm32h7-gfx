@@ -12,6 +12,8 @@
 #include <gui/common/FrontendApplication.hpp>
 #include <gui/model/Model.hpp>
 
+#include <gui/home_screen/HomeView.hpp>
+#include <gui/home_screen/HomePresenter.hpp>
 #include <gui/rtpcalibration_screen/RTPCalibrationView.hpp>
 #include <gui/rtpcalibration_screen/RTPCalibrationPresenter.hpp>
 
@@ -36,8 +38,9 @@ public:
      * A list of all view types. Must end with meta::Nil.
      * @note All view types used in the application MUST be added to this list!
      */
-    typedef touchgfx::meta::TypeList< RTPCalibrationView,
-            touchgfx::meta::Nil
+    typedef touchgfx::meta::TypeList< HomeView,
+            touchgfx::meta::TypeList< RTPCalibrationView,
+            touchgfx::meta::Nil >
             > GeneratedViewTypes;
 
     /**
@@ -49,8 +52,9 @@ public:
      * A list of all presenter types. Must end with meta::Nil.
      * @note All presenter types used in the application MUST be added to this list!
      */
-    typedef touchgfx::meta::TypeList< RTPCalibrationPresenter,
-            touchgfx::meta::Nil
+    typedef touchgfx::meta::TypeList< HomePresenter,
+            touchgfx::meta::TypeList< RTPCalibrationPresenter,
+            touchgfx::meta::Nil >
             > GeneratedPresenterTypes;
 
     /**
@@ -73,7 +77,7 @@ public:
 
     virtual void gotoStartScreen(FrontendApplication& app)
     {
-        app.gotoRTPCalibrationScreenNoTransition();
+        app.gotoHomeScreenNoTransition();
     }
 protected:
     FrontendHeapBase(touchgfx::AbstractPartition& presenters, touchgfx::AbstractPartition& views, touchgfx::AbstractPartition& transitions, FrontendApplication& app)
