@@ -31,16 +31,16 @@ void RTPCalibrationView::tearDownScreen()
 
 void RTPCalibrationView::handleClickEvent(const ClickEvent& evt)
 {
-  if (evt.getX() >= CalibrationCancelBtn.getX() && evt.getX() <= (CalibrationCancelBtn.getX() + CalibrationCancelBtn.getWidth()))
-  {
-    if (evt.getY() >= CalibrationCancelBtn.getY() && evt.getY() <= (CalibrationCancelBtn.getY() + CalibrationCancelBtn.getHeight()))
-    {
-      application().changeToStartScreen();
-    }
-  }
-
   if (evt.getType() == touchgfx::ClickEvent::PRESSED)
   {
+    if (evt.getX() >= CalibrationCancelBtn.getX() && evt.getX() <= (CalibrationCancelBtn.getX() + CalibrationCancelBtn.getWidth()))
+    {
+      if (evt.getY() >= CalibrationCancelBtn.getY() && evt.getY() <= (CalibrationCancelBtn.getY() + CalibrationCancelBtn.getHeight()))
+      {
+        application().changeToStartScreen();
+      }
+    }
+
     logPrintf("[  ] pressed X : %d, Y : %d\n", evt.getX(), evt.getY());
     pressed = true;
     pressed_time = millis();
