@@ -49,8 +49,8 @@ typedef struct
 
 static i2c_tbl_t i2c_tbl[I2C_MAX_CH] =
     {
-        { I2C1, &hi2c1, GPIOB, GPIO_PIN_6,  GPIOB, GPIO_PIN_7},
         { I2C4, &hi2c4, GPIOD, GPIO_PIN_12, GPIOD, GPIO_PIN_13},
+        { I2C1, &hi2c1, GPIOB, GPIO_PIN_6,  GPIOB, GPIO_PIN_7},
     };
 
 

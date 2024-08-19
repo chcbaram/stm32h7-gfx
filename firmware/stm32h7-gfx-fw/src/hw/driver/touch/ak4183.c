@@ -20,7 +20,7 @@
 #define AK4183_TOUCH_WIDTH    HW_LCD_WIDTH
 #define AK4183_TOUCH_HEIGHT   HW_LCD_HEIGHT
 
-#define AK4183_EEPROM_MAGIC_NUMBER   0x34313833 // "4183"
+
 
 #define AK4183_DEFAULT_ADC_X1   512
 #define AK4183_DEFAULT_ADC_X2   529
@@ -50,7 +50,7 @@ static int calculate_calibration_coefficient(uint8_t points, uint32_t* screen_x,
 
 
 
-static uint8_t i2c_ch   = _DEF_I2C1;
+static uint8_t i2c_ch   = HW_I2C_CH_TOUCH;
 static uint8_t i2c_addr = 0x48;
 static bool is_cali = false;
 static bool is_init = false;
@@ -457,14 +457,13 @@ int ak4183GetAdc(void)
 }
 #endif 
 
-bool ak4183SaveCaliData(tch_cali_info_t tch_info)
+bool ak4183SaveCaliData(ak4183_cali_t* tch_info)
 {
   bool ret = false;
 
   if (eepromIsInit())
   {
-    ak4183touchDataWrite(&tch_adc);
-    ret = true;
+    ret = ak4183touchDataWrite(tch_info);
   }
   else
   {
@@ -474,17 +473,16 @@ bool ak4183SaveCaliData(tch_cali_info_t tch_info)
   return ret;
 }
 
-bool ak4183IsCaliResultErr(tch_cali_info_t tch_info)
+bool ak4183IsCaliResultErr(ak4183_cali_t *tch_info)
 {
   bool ret = false;
-  uint8_t next_state = tch_info.state + 1;
 
-  if (next_state != TCH_POINT_5)
+  if (tch_info == NULL)
   {
     return false;
   }
-
-  int result = calculate_calibration_coefficient(5, x_scr_ref, y_scr_ref, tch_info.x_adc, tch_info.y_adc);
+  
+  int result = calculate_calibration_coefficient(5, x_scr_ref, y_scr_ref, tch_info->x_adc, tch_info->y_adc);
 
   if (result == 0)
   {

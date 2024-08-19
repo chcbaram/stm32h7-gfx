@@ -107,16 +107,17 @@
           {
             "Type": "TextArea",
             "Name": "textArea1",
-            "X": 308,
-            "Y": 22,
-            "Width": 185,
-            "Height": 28,
+            "X": 319,
+            "Y": 24,
+            "Width": 163,
+            "Height": 24,
             "TextId": "__SingleUse_VVAJ",
             "TextRotation": "0",
+            "AutoSize": true,
             "Wildcard1": {
               "TextId": "__SingleUse_L5J5",
               "UseBuffer": true,
-              "BufferSize": 10
+              "BufferSize": 50
             }
           }
         ],

@@ -52,7 +52,7 @@ protected:
     /*
      * Wildcard Buffers
      */
-    static const uint16_t TEXTAREA1_SIZE = 10;
+    static const uint16_t TEXTAREA1_SIZE = 50;
     touchgfx::Unicode::UnicodeChar textArea1Buffer[TEXTAREA1_SIZE];
 
 private:

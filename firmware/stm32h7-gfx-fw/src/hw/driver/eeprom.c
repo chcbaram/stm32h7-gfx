@@ -16,7 +16,7 @@ void cliEeprom(cli_args_t *args);
 
 
 static bool is_init = false;
-static uint8_t i2c_ch = _DEF_I2C2;
+static uint8_t i2c_ch = HW_I2C_CH_EEPROM;
 static uint8_t i2c_addr = (0xA0>>1);
 
 
@@ -119,7 +119,7 @@ bool eepromRead(uint32_t addr, uint8_t *p_data, uint32_t length)
 
   for (i=0; i<length; i++)
   {
-    ret = eepromReadByte(addr, &p_data[i]);
+    ret = eepromReadByte(addr+i, &p_data[i]);
     if (ret != true)
     {
       break;
@@ -137,7 +137,7 @@ bool eepromWrite(uint32_t addr, uint8_t *p_data, uint32_t length)
 
   for (i=0; i<length; i++)
   {
-    ret = eepromWriteByte(addr, p_data[i]);
+    ret = eepromWriteByte(addr+i, p_data[i]);
     if (ret == false)
     {
       break;

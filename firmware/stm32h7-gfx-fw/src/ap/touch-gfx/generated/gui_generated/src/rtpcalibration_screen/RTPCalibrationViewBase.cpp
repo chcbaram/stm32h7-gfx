@@ -51,11 +51,12 @@ RTPCalibrationViewBase::RTPCalibrationViewBase() :
     boxWithBorder1.setBorderSize(0);
     add(boxWithBorder1);
 
-    textArea1.setPosition(308, 22, 185, 28);
+    textArea1.setXY(319, 24);
     textArea1.setColor(touchgfx::Color::getColorFromRGB(0, 0, 0));
     textArea1.setLinespacing(0);
     Unicode::snprintf(textArea1Buffer, TEXTAREA1_SIZE, "%s", touchgfx::TypedText(T___SINGLEUSE_L5J5).getText());
     textArea1.setWildcard(textArea1Buffer);
+    textArea1.resizeToCurrentText();
     textArea1.setTypedText(touchgfx::TypedText(T___SINGLEUSE_VVAJ));
     add(textArea1);
 }
