@@ -27,7 +27,6 @@ protected:
     uint32_t x_adc_sum;
     uint32_t y_adc_sum;
     ak4183_adc_t adc_avg;
-    ak4183_cali_t calibration_info;
     uint32_t adc_cnt;
     uint32_t popup_show_time;
 };

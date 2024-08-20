@@ -8,7 +8,6 @@ RTPCalibrationView::RTPCalibrationView() :
   x_adc_sum(0),
   y_adc_sum(0),
   adc_avg{ },
-  calibration_info{ },
 	adc_cnt(0),
   popup_show_time(0)
 {
@@ -74,12 +73,12 @@ void RTPCalibrationView::handleTickEvent()
       {
         if (ak4183ReadAdc(&adc) == true)
         {
-          x_adc_sum += adc.x_adc;
-          y_adc_sum += adc.y_adc;
+          x_adc_sum += (adc.x_adc >> 2);
+          y_adc_sum += (adc.y_adc >> 2);
           adc_cnt++;
 
           #if LOG
-          logPrintf("[  ] adc count : %3d, adc x : %4d, adc y : %4d\n", adc_cnt, adc.x_adc, adc.y_adc);
+          logPrintf("[%3d] adc x : %4d, adc y : %4d\n", adc_cnt, adc.x_adc, adc.y_adc);
           #endif
         }
         else
@@ -93,15 +92,14 @@ void RTPCalibrationView::handleTickEvent()
     else
     {
       // avg 
-      adc_avg.x_adc = x_adc_sum / MAX_ADC_CNT;
-      adc_avg.y_adc = y_adc_sum / MAX_ADC_CNT;
+      adc_avg.x_adc = (x_adc_sum << 2) / MAX_ADC_CNT;
+      adc_avg.y_adc = (y_adc_sum << 2) / MAX_ADC_CNT;
 
       #if LOG
-      logPrintf("[  ] adc count : %d, adc_avg x : %d, adc_avg y : %d\n", adc_cnt, adc_avg.x_adc, adc_avg.y_adc);
+      logPrintf("[  ] adc_avg x : %d, adc_avg y : %d\n", adc_avg.x_adc, adc_avg.y_adc);
       #endif
 
-      calibration_info.x_adc[rtp_cali_step] = adc_avg.x_adc;
-      calibration_info.y_adc[rtp_cali_step] = adc_avg.y_adc;
+      ak4183updateTchInfo(rtp_cali_step, &adc_avg);
       
       if (rtp_cali_step < TCH_POINT_5)
       {  
@@ -110,24 +108,13 @@ void RTPCalibrationView::handleTickEvent()
       }
       else
       {
-        if (ak4183IsCaliResultErr(calibration_info))
+        if (ak4183IsCaliResultErr())
         {
           showPopupText("Calibration Success");
           #if LOG
           logPrintf("[  ] success\n");
           #endif
-          if (ak4183SaveCaliData(&calibration_info))
-          {
-            #if LOG
-            logPrintf("\n");
-            for (uint8_t i=0; i<=TCH_POINT_5; i++)
-            {
-              logPrintf("[%d] calibration_info x adc[%d] : %4d, y adc[%d] : %4d\n", i, i, calibration_info.x_adc[i], i, calibration_info.y_adc[i]);
-            }
-            logPrintf("\n");
-            #endif
-          }
-          else
+          if (ak4183SaveCaliData() == false)
           {
             // eeprom save error
             #if LOG
@@ -139,11 +126,9 @@ void RTPCalibrationView::handleTickEvent()
         {
           // 기본 세팅값으로 설정
           // 
-          
           showPopupText("Calibration Failed");
+          ak4183SetDefault();
         }
-
-        memset(&calibration_info, 0, sizeof(calibration_info));
         rtp_cali_step = TCH_POINT_1;
       }
 
