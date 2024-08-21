@@ -96,11 +96,11 @@ void cliCmd(cli_args_t *args)
   {
     button_event_t btn_evt;
 
-
     HAL::getInstance()->flushFrameBuffer();
     delay(50);
     HAL::getInstance()->flushFrameBuffer();
-    delay(50);    
+    delay(50); 
+      
     is_enable = true;
    
     buttonEventInit(&btn_evt, 5);

@@ -29,7 +29,7 @@
     {
       "cwd": "${workspaceRoot}",
       "executable": "./build/stm32h7-gfx-fw.elf", 
-      "name": "Debug with STLINK (Firmware)",
+      "name": "Debug with STLINK",
       "request": "launch",
       "type": "cortex-debug",
       "showDevDebugOutput": "none",      

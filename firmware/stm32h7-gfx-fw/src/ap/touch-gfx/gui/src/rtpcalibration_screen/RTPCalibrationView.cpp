@@ -67,14 +67,14 @@ void RTPCalibrationView::handleTickEvent()
 {
 	if (pressed)
 	{
-    if (adc_cnt < MAX_ADC_CNT)
+    if (adc_cnt < AK4183_READ_ADC_CNT)
     {
       if (millis() - pressed_time > PRESSED_LATENCY) // 300ms 동안의 ADC 는 무시
       {
         if (ak4183ReadAdc(&adc) == true)
         {
-          x_adc_sum += (adc.x_adc >> 2);
-          y_adc_sum += (adc.y_adc >> 2);
+          x_adc_sum += adc.x_adc;
+          y_adc_sum += adc.y_adc;
           adc_cnt++;
 
           #if LOG
@@ -92,8 +92,8 @@ void RTPCalibrationView::handleTickEvent()
     else
     {
       // avg 
-      adc_avg.x_adc = (x_adc_sum << 2) / MAX_ADC_CNT;
-      adc_avg.y_adc = (y_adc_sum << 2) / MAX_ADC_CNT;
+      adc_avg.x_adc = x_adc_sum / AK4183_READ_ADC_CNT;
+      adc_avg.y_adc = y_adc_sum / AK4183_READ_ADC_CNT;
 
       #if LOG
       logPrintf("[  ] adc_avg x : %d, adc_avg y : %d\n", adc_avg.x_adc, adc_avg.y_adc);

@@ -12,6 +12,7 @@
 
 #define AK4183_MAX_TOUCH_POINT             1
 #define AK4183_EEPROM_MAGIC_NUMBER   0x34313833 // "4183"
+#define AK4183_READ_ADC_CNT     50
 
 typedef struct
 {
