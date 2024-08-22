@@ -527,8 +527,11 @@ bool ak4183touchDataWrite(ak4183_data_t* p_data)
   }
   
   p_data->tch_magic_number = AK4183_EEPROM_MAGIC_NUMBER;
-  ret = eepromWrite(HW_EEPROM_ADDR_TOUCH, (uint8_t*)p_data, tch_adc_data_size);
-
+  #if LCD_MODEL_7_0_800x480_RTP
+  ret = eepromWrite(HW_EEPROM_ADDR_TOUCH_7_0, (uint8_t*)p_data, tch_adc_data_size);
+  #elif LCD_MODEL_4_3_480x272_RTP
+  ret = eepromWrite(HW_EEPROM_ADDR_TOUCH_4_3, (uint8_t*)p_data, tch_adc_data_size);
+  #endif
   return ret;
 }
 
@@ -537,8 +540,11 @@ bool ak4183touchDataRead(ak4183_data_t* p_data)
 {
   bool ret = false;
   uint16_t tch_adc_data_size = sizeof(ak4183_data_t);
-  ret = eepromRead(HW_EEPROM_ADDR_TOUCH, (uint8_t*)p_data, tch_adc_data_size);
-
+  #if LCD_MODEL_7_0_800x480_RTP
+  ret = eepromRead(HW_EEPROM_ADDR_TOUCH_7_0, (uint8_t*)p_data, tch_adc_data_size);
+  #elif LCD_MODEL_4_3_480x272_RTP
+  ret = eepromRead(HW_EEPROM_ADDR_TOUCH_4_3, (uint8_t*)p_data, tch_adc_data_size);
+  #endif
   return ret;
 }
 
@@ -750,6 +756,7 @@ void cliCmd(cli_args_t *args)
     cliPrintf("ak4183 get adc\n");
     cliPrintf("ak4183 get info\n");
     cliPrintf("ak4183 gui\n");
+    cliPrintf("ak4183 cali\n");
   }
 }
 
