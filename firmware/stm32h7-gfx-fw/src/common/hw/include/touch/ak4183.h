@@ -45,7 +45,7 @@ typedef struct
   uint32_t x_adc[5];          // 20
   uint32_t y_adc[5];          // 20
   uint32_t tch_magic_number;  // 4
-} ak4183_cali_t; // 44
+} ak4183_data_t; // 44
 
 typedef struct
 {
@@ -61,12 +61,12 @@ uint16_t ak4183GetWidth(void);
 uint16_t ak4183GetHeight(void);
 
 bool ak4183ReadAdc(ak4183_adc_t *p_adc);
-bool ak4183IsCaliResultErr(void);
-bool ak4183SaveCaliData(void);
-bool ak4183touchDataWrite(ak4183_cali_t* p_data);
-bool ak4183touchDataRead(ak4183_cali_t* p_data);
+bool ak4183IsCaliResultErr(ak4183_data_t *p_data);
+bool ak4183SaveCaliData(ak4183_data_t* p_data);
+bool ak4183touchDataWrite(ak4183_data_t* p_data);
+bool ak4183touchDataRead(ak4183_data_t* p_data);
 bool ak4183SetDefault(void);
-bool ak4183updateTchInfo(uint8_t point, ak4183_adc_t* p_adc);
+
 #endif
 
 #ifdef __cplusplus

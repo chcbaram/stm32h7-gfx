@@ -15,6 +15,7 @@
 #define LCD_MODEL_4_3_480x272         0
 #define LCD_MODEL_7_0_800x480_CTP     0
 #define LCD_MODEL_7_0_800x480_RTP     1
+#define LCD_MODEL_4_3_480x272_RTP     0
 
 #define _USE_HW_FAULT
 #define _USE_HW_QSPI
@@ -35,7 +36,7 @@
 #if LCD_MODEL_7_0_800x480_CTP
 #define _USE_HW_FT5316
 #endif
-#if LCD_MODEL_7_0_800x480_RTP
+#if LCD_MODEL_7_0_800x480_RTP || LCD_MODEL_4_3_480x272_RTP
 #define _USE_HW_AK4183
 #endif
 
@@ -110,8 +111,8 @@
 #define      HW_FS_MAX_SIZE         (8*1024*1024)
 
 #define _USE_HW_EEPROM
-#define      HW_EEPROM_MAX_SIZE     (8*1024)
-#define      HW_EEPROM_ADDR_TOUCH   0
+#define      HW_EEPROM_MAX_SIZE             (8*1024)
+#define      HW_EEPROM_ADDR_TOUCH           0
 
 #define _USE_HW_SDRAM
 #define      HW_SDRAM_MEM_ADDR      0xC0000000
@@ -130,7 +131,7 @@
 #elif LCD_MODEL_4_3_800x480
 #define      HW_ST7701_WIDTH       800
 #define      HW_ST7701_HEIGHT      480
-#elif LCD_MODEL_4_3_480x272
+#elif (LCD_MODEL_4_3_480x272) || (LCD_MODEL_4_3_480x272_RTP)
 #define      HW_ST7701_WIDTH       480
 #define      HW_ST7701_HEIGHT      272
 #elif (LCD_MODEL_7_0_800x480_CTP) || (LCD_MODEL_7_0_800x480_RTP)

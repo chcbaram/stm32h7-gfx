@@ -69,7 +69,7 @@ static uint32_t y_buf[5] = {1011, 3376, 3367, 993,  2243};
 
 double KX1, KX2, KX3, KY1, KY2, KY3;             // coefficients for calibration algorithm
 
-static ak4183_cali_t tch_adc;
+static ak4183_data_t tch_adc;
 
 
 
@@ -477,13 +477,18 @@ int ak4183GetAdc(void)
 }
 #endif 
 
-bool ak4183SaveCaliData(void)
+bool ak4183SaveCaliData(ak4183_data_t* p_data)
 {
   bool ret = false;
 
+  if (p_data == NULL)
+  {
+    return false;
+  }
+
   if (eepromIsInit())
   {
-    ret = ak4183touchDataWrite(&tch_adc);
+    ret = ak4183touchDataWrite(p_data);
   }
   else
   {
@@ -493,11 +498,11 @@ bool ak4183SaveCaliData(void)
   return ret;
 }
 
-bool ak4183IsCaliResultErr(void)
+bool ak4183IsCaliResultErr(ak4183_data_t *p_data)
 {
   bool ret = false;
-  
-  int result = calculate_calibration_coefficient(5, x_scr_ref, y_scr_ref, tch_adc.x_adc, tch_adc.y_adc);
+
+  int result = calculate_calibration_coefficient(5, x_scr_ref, y_scr_ref, data.x_adc, data.y_adc);
 
   if (result == 0)
   {
@@ -511,10 +516,10 @@ bool ak4183IsCaliResultErr(void)
   return ret;
 }
 
-bool ak4183touchDataWrite(ak4183_cali_t* p_data)
+bool ak4183touchDataWrite(ak4183_data_t* p_data)
 {
   bool ret = false;
-  uint16_t tch_adc_data_size = sizeof(ak4183_cali_t);
+  uint16_t tch_adc_data_size = sizeof(ak4183_data_t);
   
   if (p_data == NULL)
   {
@@ -528,10 +533,10 @@ bool ak4183touchDataWrite(ak4183_cali_t* p_data)
 }
 
 
-bool ak4183touchDataRead(ak4183_cali_t* p_data)
+bool ak4183touchDataRead(ak4183_data_t* p_data)
 {
   bool ret = false;
-  uint16_t tch_adc_data_size = sizeof(ak4183_cali_t);
+  uint16_t tch_adc_data_size = sizeof(ak4183_data_t);
   ret = eepromRead(HW_EEPROM_ADDR_TOUCH, (uint8_t*)p_data, tch_adc_data_size);
 
   return ret;
@@ -560,21 +565,11 @@ bool ak4183SetDefault(void)
   p_y_buf = tch_adc.y_adc;
   
   ret = (calculate_calibration_coefficient(5, x_scr_ref, y_scr_ref, p_x_buf, p_y_buf) != 0);
-  
-  return ret;
-}
-
-bool ak4183updateTchInfo(uint8_t point, ak4183_adc_t* p_adc)
-{
-  if (p_adc == NULL || point > TCH_POINT_5)
+  if (ret)
   {
-    return false;
+    ak4183touchDataWrite(&tch_adc);
   }
-
-  tch_adc.x_adc[point] = p_adc->x_adc;
-  tch_adc.y_adc[point] = p_adc->y_adc;
-
-  return true;
+  return ret;
 }
 
 void cliCmd(cli_args_t *args)

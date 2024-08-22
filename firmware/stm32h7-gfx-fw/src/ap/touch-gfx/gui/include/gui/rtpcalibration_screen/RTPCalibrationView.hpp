@@ -29,6 +29,7 @@ protected:
     ak4183_adc_t adc_avg;
     uint32_t adc_cnt;
     uint32_t popup_show_time;
+    ak4183_data_t cali_data;
 };
 
 #endif // RTPCALIBRATIONVIEW_HPP

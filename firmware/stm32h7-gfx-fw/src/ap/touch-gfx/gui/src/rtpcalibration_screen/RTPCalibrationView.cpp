@@ -9,7 +9,8 @@ RTPCalibrationView::RTPCalibrationView() :
   y_adc_sum(0),
   adc_avg{ },
 	adc_cnt(0),
-  popup_show_time(0)
+  popup_show_time(0),
+  cali_data{ }
 {
 
 }
@@ -32,6 +33,7 @@ void RTPCalibrationView::handleClickEvent(const ClickEvent& evt)
 {
   if (evt.getType() == touchgfx::ClickEvent::PRESSED)
   {
+    // 터치 영역이 캘리브레이션 취소 버튼 영역이면 초기 화면으로 이동
     if (evt.getX() >= CalibrationCancelBtn.getX() && evt.getX() <= (CalibrationCancelBtn.getX() + CalibrationCancelBtn.getWidth()))
     {
       if (evt.getY() >= CalibrationCancelBtn.getY() && evt.getY() <= (CalibrationCancelBtn.getY() + CalibrationCancelBtn.getHeight()))
@@ -99,7 +101,8 @@ void RTPCalibrationView::handleTickEvent()
       logPrintf("[  ] adc_avg x : %d, adc_avg y : %d\n", adc_avg.x_adc, adc_avg.y_adc);
       #endif
 
-      ak4183updateTchInfo(rtp_cali_step, &adc_avg);
+      cali_data.x_adc[rtp_cali_step] = adc_avg.x_adc;
+      cali_data.y_adc[rtp_cali_step] = adc_avg.y_adc;
       
       if (rtp_cali_step < TCH_POINT_5)
       {  
@@ -108,13 +111,14 @@ void RTPCalibrationView::handleTickEvent()
       }
       else
       {
-        if (ak4183IsCaliResultErr())
+        if (ak4183IsCaliResultErr(&cali_data))
         {
           showPopupText("Calibration Success");
+
           #if LOG
           logPrintf("[  ] success\n");
           #endif
-          if (ak4183SaveCaliData() == false)
+          if (ak4183SaveCaliData(&cali_data) == false)
           {
             // eeprom save error
             #if LOG
@@ -130,12 +134,14 @@ void RTPCalibrationView::handleTickEvent()
           ak4183SetDefault();
         }
         rtp_cali_step = TCH_POINT_1;
+        memset(&cali_data, 0, sizeof(cali_data));
       }
 
       // Initialize Parameter
       x_adc_sum = 0;
       y_adc_sum = 0;
       adc_cnt = 0;
+      
       memset(&adc_avg, 0, sizeof(adc_avg));
       pressed = false;
     }
