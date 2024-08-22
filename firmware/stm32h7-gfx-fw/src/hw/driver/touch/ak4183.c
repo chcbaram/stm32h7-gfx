@@ -502,7 +502,7 @@ bool ak4183IsCaliResultErr(ak4183_data_t *p_data)
 {
   bool ret = false;
 
-  int result = calculate_calibration_coefficient(5, x_scr_ref, y_scr_ref, data.x_adc, data.y_adc);
+  int result = calculate_calibration_coefficient(5, x_scr_ref, y_scr_ref, p_data->x_adc, p_data->y_adc);
 
   if (result == 0)
   {
