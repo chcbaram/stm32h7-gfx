@@ -112,8 +112,8 @@
 
 #define _USE_HW_EEPROM
 #define      HW_EEPROM_MAX_SIZE             (8*1024)
-#define      HW_EEPROM_ADDR_TOUCH_7_0           0
-#define      HW_EEPROM_ADDR_TOUCH_4_3           50
+#define      HW_EEPROM_ADDR_TOUCH_4_3           0
+#define      HW_EEPROM_ADDR_TOUCH_7_0           50
 
 #define _USE_HW_SDRAM
 #define      HW_SDRAM_MEM_ADDR      0xC0000000

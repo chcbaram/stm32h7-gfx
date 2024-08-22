@@ -22,18 +22,6 @@
 
 
 
-#define AK4183_DEFAULT_ADC_X1   512
-#define AK4183_DEFAULT_ADC_X2   529
-#define AK4183_DEFAULT_ADC_X3   3535
-#define AK4183_DEFAULT_ADC_X4   3535
-#define AK4183_DEFAULT_ADC_X5   2087
-
-#define AK4183_DEFAULT_ADC_Y1   1011
-#define AK4183_DEFAULT_ADC_Y2   3376
-#define AK4183_DEFAULT_ADC_Y3   3367
-#define AK4183_DEFAULT_ADC_Y4   993
-#define AK4183_DEFAULT_ADC_Y5   2243
-
 
 
 
@@ -60,12 +48,11 @@ static SemaphoreHandle_t mutex_lock = NULL;
 #endif
 
 /* 좌표값 (수정 금지)*/
-static uint32_t x_scr_ref[5] = {90, 90, 700, 700, 400};
-static uint32_t y_scr_ref[5] = {90, 400, 400, 90, 250};
+static uint32_t x_scr_ref[5] = { AK4183_COORDINATE_X1, AK4183_COORDINATE_X2, AK4183_COORDINATE_X3, AK4183_COORDINATE_X4, AK4183_COORDINATE_X5 };
+static uint32_t y_scr_ref[5] = { AK4183_COORDINATE_Y1, AK4183_COORDINATE_Y2, AK4183_COORDINATE_Y3, AK4183_COORDINATE_Y4, AK4183_COORDINATE_Y5 };
 
-
-static uint32_t x_buf[5] = {512,  529,  3535, 3535, 2087};
-static uint32_t y_buf[5] = {1011, 3376, 3367, 993,  2243};
+static uint32_t x_buf[5] = { AK4183_DEFAULT_ADC_X1, AK4183_DEFAULT_ADC_X2, AK4183_DEFAULT_ADC_X3, AK4183_DEFAULT_ADC_X4, AK4183_DEFAULT_ADC_X5 };
+static uint32_t y_buf[5] = { AK4183_DEFAULT_ADC_Y1, AK4183_DEFAULT_ADC_Y2, AK4183_DEFAULT_ADC_Y3, AK4183_DEFAULT_ADC_Y4, AK4183_DEFAULT_ADC_Y5 };
 
 double KX1, KX2, KX3, KY1, KY2, KY3;             // coefficients for calibration algorithm
 
