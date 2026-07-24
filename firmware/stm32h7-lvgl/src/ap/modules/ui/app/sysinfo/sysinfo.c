@@ -29,22 +29,22 @@ bool sysinfoEnter(lv_obj_t *scr)
   lv_obj_t *spinner;
 
 
-  label = uiCreateLabel(scr, _DEF_BOARD_NAME, uiStyleTextTitle());
-  lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 24);
+  label = uiCreateLabel(scr, UI_TITLE, uiStyleTextTitle());
+  lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 32);
 
   label = uiCreateLabel(scr, _DEF_FIRMWATRE_VERSION, uiStyleTextDim());
-  lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 84);
+  lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 90);
 
   spinner = lv_spinner_create(scr);
-  lv_obj_set_size(spinner, 100, 100);
-  lv_obj_align(spinner, LV_ALIGN_TOP_MID, 0, 124);
+  lv_obj_set_size(spinner, 108, 108);
+  lv_obj_align(spinner, LV_ALIGN_TOP_MID, 0, 134);
   lv_spinner_set_anim_params(spinner, 1000, 60);
   lv_obj_set_style_arc_color(spinner, lv_color_hex(UI_COLOR_SURFACE_ALT), LV_PART_MAIN);
   lv_obj_set_style_arc_color(spinner, lv_color_hex(UI_COLOR_ACCENT), LV_PART_INDICATOR);
 
-  /* 스피너 아래(224) 부터 뒤로가기 버튼 위(392) 사이에 놓는다. */
-  card = uiCreateCard(scr, LCD_WIDTH - UI_MARGIN*2, 160);
-  lv_obj_align(card, LV_ALIGN_TOP_MID, 0, 230);
+  /* 스피너(~242) 아래, 뒤로가기 버튼(392~) 위 사이에 여백을 두고 놓는다. */
+  card = uiCreateCard(scr, LCD_WIDTH - UI_MARGIN*2, 120);
+  lv_obj_align(card, LV_ALIGN_TOP_MID, 0, 262);
 
   label = uiCreateLabel(card, "LVGL", uiStyleTextDim());
   lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
