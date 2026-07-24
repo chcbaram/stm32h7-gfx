@@ -13,6 +13,11 @@
 #define LV_ATTRIBUTE_IMG_LOGO_IMG
 #endif
 
+/* LVGL v9 에서는 없어진 정의라 이미지 데이터 선택용으로만 사용한다. */
+#ifndef LV_COLOR_16_SWAP
+#define LV_COLOR_16_SWAP  0
+#endif
+
 const LV_ATTRIBUTE_MEM_ALIGN LV_ATTRIBUTE_LARGE_CONST LV_ATTRIBUTE_IMG_LOGO_IMG uint8_t logo_img_map[] = {
 #if LV_COLOR_DEPTH == 1 || LV_COLOR_DEPTH == 8
   /*Pixel format: Red: 3 bit, Green: 3 bit, Blue: 2 bit*/
@@ -188,12 +193,11 @@ const LV_ATTRIBUTE_MEM_ALIGN LV_ATTRIBUTE_LARGE_CONST LV_ATTRIBUTE_IMG_LOGO_IMG 
 #endif
 };
 
-const lv_img_dsc_t logo_img = {
-  .header.cf = LV_IMG_CF_TRUE_COLOR,
-  .header.always_zero = 0,
-  .header.reserved = 0,
-  .header.w = 172,
-  .header.h = 40,
-  .data_size = 6880 * LV_COLOR_SIZE / 8,
-  .data = logo_img_map,
+const lv_image_dsc_t logo_img = {
+  .header.cf    = LV_COLOR_FORMAT_RGB565,
+  .header.magic = LV_IMAGE_HEADER_MAGIC,
+  .header.w     = 172,
+  .header.h     = 40,
+  .data_size    = 172 * 40 * 2,
+  .data         = logo_img_map,
 };

@@ -702,8 +702,13 @@ void lcdDrawFillScreen(uint16_t color)
 
 void lcdFillBuffer(void * pDst, uint32_t xSize, uint32_t ySize, uint32_t OffLine, uint32_t ColorIndex)
 {
-  /* Set up mode */
-  DMA2D->CR      = 0x00030000UL | (1 << 9);
+  /* Set up mode
+   *
+   * 전송 완료를 아래에서 폴링하므로 TCIE(bit 9)는 켜지 않는다.
+   * 켜두면 플래그가 남은 상태에서 다른 곳이 DMA2D NVIC 를 활성화했을 때
+   * 곧바로 인터럽트가 걸린다.
+   */
+  DMA2D->CR      = 0x00030000UL;
   DMA2D->OCOLR   = ColorIndex;
 
   /* Set up pointers */
@@ -724,6 +729,10 @@ void lcdFillBuffer(void * pDst, uint32_t xSize, uint32_t ySize, uint32_t OffLine
   while (DMA2D->CR & DMA2D_CR_START)
   {
   }
+
+  /* 남은 상태 플래그를 지운다. */
+  DMA2D->IFCR = DMA2D_IFCR_CTEIF  | DMA2D_IFCR_CTCIF | DMA2D_IFCR_CTWIF |
+                DMA2D_IFCR_CAECIF | DMA2D_IFCR_CCTCIF | DMA2D_IFCR_CCEIF;
 }
 
 void lcdPrintf(int x, int y, uint16_t color,  const char *fmt, ...)

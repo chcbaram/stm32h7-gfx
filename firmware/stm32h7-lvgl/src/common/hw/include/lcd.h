@@ -18,6 +18,7 @@ extern "C" {
 
 #if HW_LCD_LVGL == 1
 #include "lvgl/lvgl.h"
+#define lvgl_img_t lv_image_dsc_t
 #endif
 
 

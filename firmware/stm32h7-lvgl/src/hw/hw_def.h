@@ -143,6 +143,8 @@
 #define _USE_HW_LTDC
 #define      HW_LTDC_BUF_ADDR      HW_SDRAM_MEM_ADDR
 
+#define _USE_HW_LVGL
+
 #define _USE_HW_LCD
 #define      HW_LCD_LOGO            1
 #define      HW_LCD_LVGL            1

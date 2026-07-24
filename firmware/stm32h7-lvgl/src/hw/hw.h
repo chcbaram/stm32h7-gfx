@@ -44,6 +44,7 @@ extern "C" {
 #include "mem.h"
 #include "event.h"
 #include "osal/thread.h"
+#include "lvgl.h"
 
 bool hwInit(void);
 

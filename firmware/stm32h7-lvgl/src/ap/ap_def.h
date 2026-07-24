@@ -8,5 +8,6 @@
 #include "module.h"
 #include "cli/cli_mgr.h"
 #include "info/info.h"
+#include "ui/ui.h"
 
 #endif

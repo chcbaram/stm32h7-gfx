@@ -1,99 +1,220 @@
-/*
- * lvgl.h
- *
- *  Created on: 2021. 2. 28.
- *      Author: baram
+/**
+ * @file lvgl.h
+ * Include all LVGL related headers
  */
 
-#ifndef SRC_LIB_LVGL_LVGL_H_
-#define SRC_LIB_LVGL_LVGL_H_
+#ifndef LVGL_H
+#define LVGL_H
 
-
-#include "hw_def.h"
-
-
-#define LV_COLOR_DEPTH     16
-#define LV_COLOR_16_SWAP   0
-#define LV_ATTRIBUTE_LARGE_CONST
-
-#if LV_COLOR_DEPTH == 1
-#define LV_COLOR_SIZE 8
-#elif LV_COLOR_DEPTH == 8
-#define LV_COLOR_SIZE 8
-#elif LV_COLOR_DEPTH == 16
-#define LV_COLOR_SIZE 16
-#elif LV_COLOR_DEPTH == 32
-#define LV_COLOR_SIZE 32
-#else
-#error "Invalid LV_COLOR_DEPTH in lv_conf.h! Set it to 1, 8, 16 or 32!"
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#define lv_img_dsc_t lvgl_img_t
+/***************************
+ * CURRENT VERSION OF LVGL
+ ***************************/
+#include "lv_version.h"
+
+/*********************
+ *      INCLUDES
+ *********************/
+#include "src/lv_init.h"
+
+#include "src/stdlib/lv_mem.h"
+#include "src/stdlib/lv_string.h"
+#include "src/stdlib/lv_sprintf.h"
+
+#include "src/misc/lv_log.h"
+#include "src/misc/lv_timer.h"
+#include "src/misc/lv_math.h"
+#include "src/misc/lv_array.h"
+#include "src/misc/lv_async.h"
+#include "src/misc/lv_anim_timeline.h"
+#include "src/misc/lv_profiler_builtin.h"
+#include "src/misc/lv_rb.h"
+#include "src/misc/lv_utils.h"
+#include "src/misc/lv_iter.h"
+#include "src/misc/lv_circle_buf.h"
+#include "src/misc/lv_tree.h"
+
+#include "src/osal/lv_os.h"
+
+#include "src/tick/lv_tick.h"
+
+#include "src/core/lv_obj.h"
+#include "src/core/lv_group.h"
+#include "src/core/lv_refr.h"
+#include "src/core/lv_observer.h"
+#include "src/indev/lv_indev.h"
+#include "src/indev/lv_indev_gesture.h"
+#include "src/indev/lv_gridnav.h"
+#include "src/display/lv_display.h"
+
+#include "src/font/lv_font.h"
+#include "src/font/binfont_loader/lv_binfont_loader.h"
+#include "src/font/fmt_txt/lv_font_fmt_txt.h"
+#include "src/font/imgfont/lv_imgfont.h"
+#include "src/font/font_manager/lv_font_manager.h"
+
+#include "src/widgets/animimage/lv_animimage.h"
+#include "src/widgets/arc/lv_arc.h"
+#include "src/widgets/arclabel/lv_arclabel.h"
+#include "src/widgets/bar/lv_bar.h"
+#include "src/widgets/button/lv_button.h"
+#include "src/widgets/buttonmatrix/lv_buttonmatrix.h"
+#include "src/widgets/calendar/lv_calendar.h"
+#include "src/widgets/canvas/lv_canvas.h"
+#include "src/widgets/chart/lv_chart.h"
+#include "src/widgets/checkbox/lv_checkbox.h"
+#include "src/widgets/dropdown/lv_dropdown.h"
+#include "src/widgets/gif/lv_gif.h"
+#include "src/widgets/image/lv_image.h"
+#include "src/widgets/imagebutton/lv_imagebutton.h"
+#include "src/widgets/keyboard/lv_keyboard.h"
+#include "src/widgets/label/lv_label.h"
+#include "src/widgets/led/lv_led.h"
+#include "src/widgets/line/lv_line.h"
+#include "src/widgets/list/lv_list.h"
+#include "src/widgets/lottie/lv_lottie.h"
+#include "src/widgets/menu/lv_menu.h"
+#include "src/widgets/msgbox/lv_msgbox.h"
+#include "src/widgets/roller/lv_roller.h"
+#include "src/widgets/scale/lv_scale.h"
+#include "src/widgets/slider/lv_slider.h"
+#include "src/widgets/span/lv_span.h"
+#include "src/widgets/spinbox/lv_spinbox.h"
+#include "src/widgets/spinner/lv_spinner.h"
+#include "src/widgets/switch/lv_switch.h"
+#include "src/widgets/table/lv_table.h"
+#include "src/widgets/tabview/lv_tabview.h"
+#include "src/widgets/textarea/lv_textarea.h"
+#include "src/widgets/tileview/lv_tileview.h"
+#include "src/widgets/win/lv_win.h"
+#include "src/widgets/3dtexture/lv_3dtexture.h"
+#include "src/widgets/ime/lv_ime_pinyin.h"
+
+#include "src/debugging/sysmon/lv_sysmon.h"
+#include "src/debugging/monkey/lv_monkey.h"
+#include "src/debugging/test/lv_test.h"
+
+#include "src/others/fragment/lv_fragment.h"
+#include "src/others/file_explorer/lv_file_explorer.h"
+#include "src/others/translation/lv_translation.h"
+
+#include "src/libs/barcode/lv_barcode.h"
+#include "src/libs/bin_decoder/lv_bin_decoder.h"
+#include "src/libs/bmp/lv_bmp.h"
+#include "src/libs/rle/lv_rle.h"
+#include "src/libs/fsdrv/lv_fsdrv.h"
+#include "src/libs/lodepng/lv_lodepng.h"
+#include "src/libs/libpng/lv_libpng.h"
+#include "src/libs/libwebp/lv_libwebp.h"
+#include "src/libs/gltf/gltf_data/lv_gltf_model.h"
+#include "src/libs/gltf/gltf_view/lv_gltf.h"
+#include "src/libs/gstreamer/lv_gstreamer.h"
+#include "src/libs/qrcode/lv_qrcode.h"
+#include "src/libs/tjpgd/lv_tjpgd.h"
+#include "src/libs/libjpeg_turbo/lv_libjpeg_turbo.h"
+#include "src/libs/freetype/lv_freetype.h"
+#include "src/libs/rlottie/lv_rlottie.h"
+#include "src/libs/ffmpeg/lv_ffmpeg.h"
+#include "src/libs/tiny_ttf/lv_tiny_ttf.h"
+#include "src/libs/svg/lv_svg.h"
+#include "src/libs/svg/lv_svg_render.h"
+
+#include "src/layouts/lv_layout.h"
+
+#include "src/draw/lv_draw_buf.h"
+#include "src/draw/lv_draw_vector.h"
+#include "src/draw/sw/lv_draw_sw_utils.h"
+#include "src/draw/eve/lv_draw_eve_target.h"
+#include "src/draw/snapshot/lv_snapshot.h"
+
+#include "src/themes/lv_theme.h"
+
+#include "src/drivers/lv_drivers.h"
+
+/* Define LV_DISABLE_API_MAPPING using a compiler option
+ * to make sure your application is not using deprecated names */
+#ifndef LV_DISABLE_API_MAPPING
+#include "src/lv_api_map_v8.h"
+#include "src/lv_api_map_v9_0.h"
+#include "src/lv_api_map_v9_1.h"
+#include "src/lv_api_map_v9_2.h"
+#include "src/lv_api_map_v9_3.h"
+#include "src/lv_api_map_v9_4.h"
+#endif /*LV_DISABLE_API_MAPPING*/
+
+#if LV_USE_PRIVATE_API
+#include "src/lvgl_private.h"
+#endif
 
 
-/*Image color format*/
-enum {
-    LV_IMG_CF_UNKNOWN = 0,
+/*********************
+ *      DEFINES
+ *********************/
 
-    LV_IMG_CF_RAW,              /**< Contains the file as it is. Needs custom decoder function*/
-    LV_IMG_CF_RAW_ALPHA,        /**< Contains the file as it is. The image has alpha. Needs custom decoder
-                                   function*/
-    LV_IMG_CF_RAW_CHROMA_KEYED, /**< Contains the file as it is. The image is chroma keyed. Needs
-                                   custom decoder function*/
+/**********************
+ *      TYPEDEFS
+ **********************/
 
-    LV_IMG_CF_TRUE_COLOR,              /**< Color format and depth should match with LV_COLOR settings*/
-    LV_IMG_CF_TRUE_COLOR_ALPHA,        /**< Same as `LV_IMG_CF_TRUE_COLOR` but every pixel has an alpha byte*/
-    LV_IMG_CF_TRUE_COLOR_CHROMA_KEYED, /**< Same as `LV_IMG_CF_TRUE_COLOR` but LV_COLOR_TRANSP pixels
-                                          will be transparent*/
+/**********************
+ * GLOBAL PROTOTYPES
+ **********************/
 
-    LV_IMG_CF_INDEXED_1BIT, /**< Can have 2 different colors in a palette (always chroma keyed)*/
-    LV_IMG_CF_INDEXED_2BIT, /**< Can have 4 different colors in a palette (always chroma keyed)*/
-    LV_IMG_CF_INDEXED_4BIT, /**< Can have 16 different colors in a palette (always chroma keyed)*/
-    LV_IMG_CF_INDEXED_8BIT, /**< Can have 256 different colors in a palette (always chroma keyed)*/
+/**********************
+ *      MACROS
+ **********************/
 
-    LV_IMG_CF_ALPHA_1BIT, /**< Can have one color and it can be drawn or not*/
-    LV_IMG_CF_ALPHA_2BIT, /**< Can have one color but 4 different alpha value*/
-    LV_IMG_CF_ALPHA_4BIT, /**< Can have one color but 16 different alpha value*/
-    LV_IMG_CF_ALPHA_8BIT, /**< Can have one color but 256 different alpha value*/
+/** Gives 1 if the x.y.z version is supported in the current version
+ * Usage:
+ *
+ * - Require v6
+ * #if LV_VERSION_CHECK(6,0,0)
+ *   new_func_in_v6();
+ * #endif
+ *
+ *
+ * - Require at least v5.3
+ * #if LV_VERSION_CHECK(5,3,0)
+ *   new_feature_from_v5_3();
+ * #endif
+ *
+ *
+ * - Require v5.3.2 bugfixes
+ * #if LV_VERSION_CHECK(5,3,2)
+ *   bugfix_in_v5_3_2();
+ * #endif
+ *
+ */
+#define LV_VERSION_CHECK(x,y,z) (x == LVGL_VERSION_MAJOR && (y < LVGL_VERSION_MINOR || (y == LVGL_VERSION_MINOR && z <= LVGL_VERSION_PATCH)))
 
-    LV_IMG_CF_RESERVED_15,              /**< Reserved for further use. */
-    LV_IMG_CF_RESERVED_16,              /**< Reserved for further use. */
-    LV_IMG_CF_RESERVED_17,              /**< Reserved for further use. */
-    LV_IMG_CF_RESERVED_18,              /**< Reserved for further use. */
-    LV_IMG_CF_RESERVED_19,              /**< Reserved for further use. */
-    LV_IMG_CF_RESERVED_20,              /**< Reserved for further use. */
-    LV_IMG_CF_RESERVED_21,              /**< Reserved for further use. */
-    LV_IMG_CF_RESERVED_22,              /**< Reserved for further use. */
-    LV_IMG_CF_RESERVED_23,              /**< Reserved for further use. */
+/**
+ * Wrapper functions for VERSION macros
+ */
 
-    LV_IMG_CF_USER_ENCODED_0,          /**< User holder encoding format. */
-    LV_IMG_CF_USER_ENCODED_1,          /**< User holder encoding format. */
-    LV_IMG_CF_USER_ENCODED_2,          /**< User holder encoding format. */
-    LV_IMG_CF_USER_ENCODED_3,          /**< User holder encoding format. */
-    LV_IMG_CF_USER_ENCODED_4,          /**< User holder encoding format. */
-    LV_IMG_CF_USER_ENCODED_5,          /**< User holder encoding format. */
-    LV_IMG_CF_USER_ENCODED_6,          /**< User holder encoding format. */
-    LV_IMG_CF_USER_ENCODED_7,          /**< User holder encoding format. */
-};
+static inline int lv_version_major(void)
+{
+    return LVGL_VERSION_MAJOR;
+}
 
-typedef struct {
+static inline int lv_version_minor(void)
+{
+    return LVGL_VERSION_MINOR;
+}
 
-    uint32_t cf : 5;          /* Color format: See `lv_img_color_format_t`*/
-    uint32_t always_zero : 3; /*It the upper bits of the first byte. Always zero to look like a
-                                 non-printable character*/
+static inline int lv_version_patch(void)
+{
+    return LVGL_VERSION_PATCH;
+}
 
-    uint32_t reserved : 2; /*Reserved to be used later*/
+static inline const char * lv_version_info(void)
+{
+    return LVGL_VERSION_INFO;
+}
 
-    uint32_t w : 11; /*Width of the image map*/
-    uint32_t h : 11; /*Height of the image map*/
-} lv_img_header_t;
+#ifdef __cplusplus
+} /*extern "C"*/
+#endif
 
-/** Image header it is compatible with
- * the result from image converter utility*/
-typedef struct {
-    lv_img_header_t header;
-    uint32_t data_size;
-    const uint8_t * data;
-} lv_img_dsc_t;
-
-#endif /* SRC_LIB_LVGL_LVGL_H_ */
+#endif /*LVGL_H*/

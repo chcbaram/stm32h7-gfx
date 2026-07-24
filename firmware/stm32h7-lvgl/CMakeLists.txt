@@ -52,11 +52,13 @@ file(GLOB_RECURSE SRC_FILES_RECURSE CONFIGURE_DEPENDS
   src/hw/*.c
   src/lib/STM32H7xx_HAL_Driver/Src/*.c
   src/lib/littlefs/*.c
+  src/lib/lvgl/*.c
 )
 
 # 특정 폴더를 빌드에서 제외한다.
 #
 set(EXCLUDE_PATHS
+  src/lib/lvgl/src/drivers
 )
 
 foreach(TMP_PATH ${SRC_FILES_RECURSE}) 
@@ -81,6 +83,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   src/ap
   src/ap/modules
   src/ap/modules/common
+  src/ap/modules/ui
   src/bsp
   src/bsp/device
   src/bsp/rtos
@@ -147,6 +150,19 @@ target_link_options(${EXECUTABLE} PRIVATE
   -Wl,--gc-sections
   -Xlinker -print-memory-usage -Xlinker
   )
+
+# binutils 2.39 부터 RWX 세그먼트 경고가 추가되었다.
+# 구버전 링커는 이 옵션을 모르므로 지원할 때만 붙인다.
+#
+execute_process(
+  COMMAND ${CMAKE_C_COMPILER} -Wl,--help
+  OUTPUT_VARIABLE LINKER_HELP_OUTPUT
+  ERROR_QUIET
+  )
+string(FIND "${LINKER_HELP_OUTPUT}" "no-warn-rwx-segments" LINKER_HAS_NO_WARN_RWX)
+if(NOT LINKER_HAS_NO_WARN_RWX EQUAL -1)
+  target_link_options(${EXECUTABLE} PRIVATE -Wl,--no-warn-rwx-segments)
+endif()
 
 
 set (CMAKE_CXX_FLAGS "-fno-rtti")
