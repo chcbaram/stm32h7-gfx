@@ -4,6 +4,7 @@
 
 
 #include "bsp.h"
+#include "err_code.h"
 
 
 #define _DEF_FIRMWATRE_VERSION    "V240322R1"
@@ -32,6 +33,9 @@
 #define _USE_HW_EVENT
 #define      HW_EVENT_Q_MAX         8
 #define      HW_EVENT_NODE_MAX      16
+
+#define _USE_HW_CMD
+#define      HW_CMD_MAX_DATA_LENGTH (1024)
 
 #if LCD_MODEL_4_0_480x480
 #define _USE_HW_GT911

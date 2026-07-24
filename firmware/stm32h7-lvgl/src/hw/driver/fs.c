@@ -198,6 +198,18 @@ bool fsIsDir(const char *dirname)
   return true;
 }
 
+bool fsMakeDir(const char *dirname)
+{
+  int err;
+
+  err = lfs_mkdir(&lfs, dirname);
+  if (err < 0 && err != LFS_ERR_EXIST)
+  {
+    return false;
+  }
+  return true;
+}
+
 int32_t fsGetFree(void)
 {
   int free_size = 0;

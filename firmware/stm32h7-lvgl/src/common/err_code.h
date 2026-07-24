@@ -30,5 +30,14 @@
 
 #define ERR_CMD_AUDIO_RATE            0x0030
 
+#define ERR_FILE_OPEN                 0x0040
+#define ERR_FILE_WRITE                0x0041
+#define ERR_FILE_READ                 0x0042
+#define ERR_FILE_NOT_BEGIN            0x0043
+#define ERR_FILE_SIZE                 0x0044
+#define ERR_FILE_CRC                  0x0045
+#define ERR_FILE_NAME                 0x0046
+#define ERR_FILE_DEL                  0x0047
+
 
 #endif 

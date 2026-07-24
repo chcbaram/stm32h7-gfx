@@ -82,6 +82,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   src
   src/ap
   src/ap/modules
+  src/ap/modules/cmd
   src/ap/modules/common
   src/ap/modules/ui
   src/ap/modules/ui/launcher
