@@ -29,38 +29,39 @@ bool sysinfoEnter(lv_obj_t *scr)
 
 
   label = uiCreateLabel(scr, UI_TITLE, uiStyleTextTitle());
-  lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 32);
+  lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 40);
 
   label = uiCreateLabel(scr, _DEF_FIRMWATRE_VERSION, uiStyleTextDim());
-  lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 90);
+  lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 100);
 
   spinner = lv_spinner_create(scr);
   lv_obj_set_size(spinner, 108, 108);
-  lv_obj_align(spinner, LV_ALIGN_TOP_MID, 0, 134);
+  lv_obj_align(spinner, LV_ALIGN_TOP_MID, 0, 150);
   lv_spinner_set_anim_params(spinner, 1000, 60);
   lv_obj_set_style_arc_color(spinner, lv_color_hex(UI_COLOR_SURFACE_ALT), LV_PART_MAIN);
   lv_obj_set_style_arc_color(spinner, lv_color_hex(UI_COLOR_ACCENT), LV_PART_INDICATOR);
 
-  /* 스피너(~242) 아래, 뒤로가기 버튼(392~) 위 사이에 여백을 두고 놓는다. */
-  card = uiCreateCard(scr, LCD_WIDTH - UI_MARGIN*2, 120);
-  lv_obj_align(card, LV_ALIGN_TOP_MID, 0, 262);
+  /* 카드를 키워 세 줄(버전/frame/mem)의 간격을 넓게. */
+  card = uiCreateCard(scr, LCD_WIDTH - UI_MARGIN*2, 168);
+  lv_obj_align(card, LV_ALIGN_BOTTOM_MID, 0, -UI_MARGIN);
+  lv_obj_set_style_pad_ver(card, UI_SPACE_LG, LV_PART_MAIN);
 
   label = uiCreateLabel(card, "LVGL", uiStyleTextDim());
   lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
   label = uiCreateLabel(card, "", uiStyleTextBody());
   lv_label_set_text_fmt(label, "v%d.%d.%d",
                         LVGL_VERSION_MAJOR, LVGL_VERSION_MINOR, LVGL_VERSION_PATCH);
-  lv_obj_align(label, LV_ALIGN_TOP_RIGHT, 0, -2);
+  lv_obj_align(label, LV_ALIGN_TOP_RIGHT, 0, 0);
 
   label = uiCreateLabel(card, "frame", uiStyleTextDim());
   lv_obj_align(label, LV_ALIGN_LEFT_MID, 0, 0);
   label_fps = uiCreateLabel(card, "-", uiStyleTextBody());
-  lv_obj_align(label_fps, LV_ALIGN_RIGHT_MID, 0, -2);
+  lv_obj_align(label_fps, LV_ALIGN_RIGHT_MID, 0, 0);
 
   label = uiCreateLabel(card, "lvgl mem", uiStyleTextDim());
   lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
   label_mem = uiCreateLabel(card, "-", uiStyleTextBody());
-  lv_obj_align(label_mem, LV_ALIGN_BOTTOM_RIGHT, 0, -2);
+  lv_obj_align(label_mem, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
 
 
   frame_cnt = 0;
