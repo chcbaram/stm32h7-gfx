@@ -185,6 +185,11 @@ bool fsIsExist(const char *name)
   return ret;
 }
 
+void *fsGetHandle(void)
+{
+  return (void *)&lfs;
+}
+
 bool fsIsDir(const char *dirname)
 {
   int err;

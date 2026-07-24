@@ -4,6 +4,7 @@
 #ifdef _USE_HW_CMD
 #include "driver/drv_uart.h"
 #include "process/cmd_file.h"
+#include "process/cmd_screen.h"
 
 
 #define CMD_DRIVER_MAX_CH   1
@@ -39,6 +40,7 @@ bool cmdTaskInit(void)
   cmdOpen(&cmd[0]);
 
   cmdFileInit();
+  cmdScreenInit();
 
   ret = threadCreate("cmd", cmdThread, NULL, osPriorityNormal, CMD_THREAD_STACK);
 
@@ -71,7 +73,11 @@ bool cmdTaskUpdate(void)
     {
       bool ret = true;
 
-      ret &= cmdFileProcess(&cmd[i]);
+      ret  = cmdFileProcess(&cmd[i]);
+      if (ret != true)
+      {
+        ret = cmdScreenProcess(&cmd[i]);
+      }
 
       if (ret != true)
       {

@@ -7,6 +7,7 @@ extern "C" {
 
 #include "ap_def.h"
 #include "app.h"
+#include "ui_theme.h"
 
 
 bool uiInit(void);

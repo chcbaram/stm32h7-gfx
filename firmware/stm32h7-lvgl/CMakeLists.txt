@@ -105,6 +105,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
   src/lib/CMSIS/DSP/Include
   src/lib/STM32H7xx_HAL_Driver/Inc
   src/lib/FatFs/src
+  src/lib/littlefs
   src/lib/STM32_USB_Device_Library/Core/Inc
 
   src/lib/FreeRTOS/Source/CMSIS_RTOS

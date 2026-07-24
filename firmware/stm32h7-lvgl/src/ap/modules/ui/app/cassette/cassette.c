@@ -1,4 +1,5 @@
 #include "cassette.h"
+#include "cassette_audio.h"
 #include "launcher.h"
 
 
@@ -7,23 +8,17 @@
 #define REEL_SPOKE_CNT      3
 #define REEL_HUB_R          16
 #define REEL_PACK_R_MIN     22
-#define REEL_PACK_R_MAX     52
+#define REEL_PACK_R_MAX     46
+#define REEL_GAP            118         /* 좌우 릴 중심 간격의 절반 */
 
-#define TAPE_TOTAL_MS       (3*60*1000)   /* 껍데기 단계의 가상 길이 */
+#define SPEC_BAR_W          7
+#define SPEC_BAR_GAP        3
+#define SPEC_MAX_H          92
 
-
-typedef enum
-{
-  CASSETTE_STOP,
-  CASSETTE_PLAY,
-  CASSETTE_REC,
-  CASSETTE_FF,
-  CASSETTE_REW,
-} CassetteState_t;
 
 typedef struct
 {
-  lv_obj_t *pack;                       /* 감긴 테이프 뭉치 */
+  lv_obj_t *pack;
   lv_obj_t *hub;
   lv_obj_t *spoke[REEL_SPOKE_CNT];
   int32_t   cx;
@@ -36,199 +31,238 @@ static void cassetteUpdate(void);
 static void cassetteExit(void);
 
 static void createShell(lv_obj_t *parent);
+static void createTransport(lv_obj_t *parent);
 static void createReel(lv_obj_t *parent, reel_t *p_reel, int32_t cx, int32_t cy);
+static void createSpectrum(lv_obj_t *parent);
 static void updateReel(reel_t *p_reel, int32_t angle, int32_t pack_r);
-static void setState(CassetteState_t state);
-static void btnEventCb(lv_event_t *e);
+static void refreshTape(void);
+static void btnPlayCb(lv_event_t *e);
+static void btnStopCb(lv_event_t *e);
+static void btnPrevCb(lv_event_t *e);
+static void btnNextCb(lv_event_t *e);
+static void btnRecCb(lv_event_t *e);
+static void backEventCb(lv_event_t *e);
 
 
-static reel_t   reel_l;
-static reel_t   reel_r;
+static reel_t    reel_l;
+static reel_t    reel_r;
 static lv_obj_t *label_title;
-static lv_obj_t *label_time;
 static lv_obj_t *label_state;
+static lv_obj_t *label_time;
+static lv_obj_t *bar_progress;
+static lv_obj_t *spec_bar[CASS_SPECTRUM_BARS];
 
-static CassetteState_t cassette_state = CASSETTE_STOP;
-static int32_t  reel_angle = 0;
-static int32_t  pos_ms     = 0;
-static uint32_t pre_time   = 0;
+static int32_t   reel_angle = 0;
+static int       sel_idx = 0;
 
 
 
 
 bool cassetteInit(void)
 {
-  return true;
+  return cassetteAudioInit();
 }
 
 bool cassetteEnter(lv_obj_t *scr)
 {
+  cassetteAudioScan();
+
   createShell(scr);
+  createTransport(scr);
 
-  cassette_state = CASSETTE_STOP;
   reel_angle = 0;
-  pos_ms     = 0;
-  pre_time   = millis();
+  sel_idx    = 0;
+  if (cassetteAudioGetIndex() >= 0)
+    sel_idx = cassetteAudioGetIndex();
 
-  setState(CASSETTE_STOP);
+  refreshTape();
   return true;
 }
 
 void cassetteExit(void)
 {
-  /* TODO 오디오 연결 후 : 재생/녹음 정지, 파일 닫기 */
-  cassette_state = CASSETTE_STOP;
+  cassetteAudioStop();
 }
 
 void cassetteUpdate(void)
 {
-  uint32_t now = millis();
-  int32_t  diff_ms;
-  int32_t  speed = 0;
+  CassAudioState_t st = cassetteAudioGetState();
+  uint32_t pos = cassetteAudioGetPosMs();
+  uint32_t dur = cassetteAudioGetDurMs();
   int32_t  pack_l;
   int32_t  pack_r;
+  int32_t  ratio;               /* 0..1000 */
+  uint8_t  bars[CASS_SPECTRUM_BARS];
 
 
-  diff_ms  = (int32_t)(now - pre_time);
-  pre_time = now;
-
-  switch(cassette_state)
+  /* 재생/녹음 중이면 릴을 돌린다. */
+  if (st != CASS_AUDIO_IDLE)
   {
-    case CASSETTE_PLAY:
-    case CASSETTE_REC:
-      speed = 1;
-      break;
-    case CASSETTE_FF:
-      speed = 8;
-      break;
-    case CASSETTE_REW:
-      speed = -8;
-      break;
-    default:
-      speed = 0;
-      break;
+    reel_angle = (reel_angle + 12) % 360;
   }
 
-  if (speed != 0)
-  {
-    pos_ms += diff_ms * speed;
-    if (pos_ms < 0)            pos_ms = 0;
-    if (pos_ms > TAPE_TOTAL_MS) pos_ms = TAPE_TOTAL_MS;
+  ratio = (dur > 0) ? (int32_t)((uint64_t)pos * 1000 / dur) : 0;
+  if (ratio > 1000) ratio = 1000;
 
-    /* 릴 반지름이 커질수록 각속도는 느려진다. */
-    reel_angle = (reel_angle + (diff_ms * speed) / 4) % 360;
-    if (reel_angle < 0) reel_angle += 360;
-  }
-
-  /* 왼쪽은 풀리고 오른쪽은 감긴다. */
-  pack_l = REEL_PACK_R_MAX - ((REEL_PACK_R_MAX - REEL_PACK_R_MIN) * pos_ms) / TAPE_TOTAL_MS;
-  pack_r = REEL_PACK_R_MIN + ((REEL_PACK_R_MAX - REEL_PACK_R_MIN) * pos_ms) / TAPE_TOTAL_MS;
+  pack_l = REEL_PACK_R_MAX - ((REEL_PACK_R_MAX - REEL_PACK_R_MIN) * ratio) / 1000;
+  pack_r = REEL_PACK_R_MIN + ((REEL_PACK_R_MAX - REEL_PACK_R_MIN) * ratio) / 1000;
 
   updateReel(&reel_l, reel_angle, pack_l);
   updateReel(&reel_r, reel_angle, pack_r);
 
-  lv_label_set_text_fmt(label_time, "%02d:%02d", (int)(pos_ms/1000)/60, (int)(pos_ms/1000)%60);
+  /* 진행바 */
+  lv_obj_set_width(bar_progress, (LCD_WIDTH - UI_MARGIN*2 - UI_SPACE_MD*2) * ratio / 1000);
+
+  /* 시간 : 경과 / 전체 */
+  lv_label_set_text_fmt(label_time, "%02d:%02d / %02d:%02d",
+                        (int)(pos/1000)/60, (int)(pos/1000)%60,
+                        (int)(dur/1000)/60, (int)(dur/1000)%60);
+
+  /* 스펙트럼 */
+  cassetteAudioGetSpectrum(bars, CASS_SPECTRUM_BARS);
+  for (int i = 0; i < CASS_SPECTRUM_BARS; i++)
+  {
+    int h = 2 + (SPEC_MAX_H - 2) * bars[i] / 100;
+    lv_obj_set_height(spec_bar[i], h);
+  }
+
+  /* 상태 라벨은 오디오 스레드가 스스로 IDLE 로 돌아갈 수 있으므로 매번 반영 */
+  {
+    const char *s = (st == CASS_AUDIO_PLAY) ? "PLAY" :
+                    (st == CASS_AUDIO_REC)  ? "REC"  : "STOP";
+    lv_label_set_text(label_state, s);
+    lv_obj_set_style_text_color(label_state,
+                                st == CASS_AUDIO_REC ? lv_color_hex(UI_COLOR_ACCENT)
+                                                     : lv_color_hex(0x6B6B6B),
+                                LV_PART_MAIN);
+  }
 }
 
 void createShell(lv_obj_t *parent)
 {
   lv_obj_t *shell;
-  lv_obj_t *label_win;
-  lv_obj_t *btn_area;
-  const char *btn_txt[] = {LV_SYMBOL_PREV, LV_SYMBOL_PLAY, LV_SYMBOL_STOP, LV_SYMBOL_NEXT};
-  const int   btn_id[]  = {CASSETTE_REW, CASSETTE_PLAY, CASSETTE_STOP, CASSETTE_FF};
+  lv_obj_t *sticker;
+  lv_obj_t *window;
+  lv_obj_t *track;
 
-
-  lv_obj_set_style_pad_all(parent, 0, LV_PART_MAIN);
-  lv_obj_set_style_border_width(parent, 0, LV_PART_MAIN);
 
   /* --- 카세트 셸 --- */
-  shell = lv_obj_create(parent);
-  lv_obj_set_size(shell, 420, 260);
-  lv_obj_align(shell, LV_ALIGN_TOP_MID, 0, 40);
-  lv_obj_set_style_radius(shell, 12, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(shell, lv_color_hex(0x2A2E33), LV_PART_MAIN);
-  lv_obj_set_style_border_color(shell, lv_color_hex(0x4A5058), LV_PART_MAIN);
-  lv_obj_set_style_border_width(shell, 2, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(shell, 0, LV_PART_MAIN);
-  lv_obj_remove_flag(shell, LV_OBJ_FLAG_SCROLLABLE);
+  shell = uiCreateCard(parent, LCD_WIDTH - UI_MARGIN*2, 288);
+  lv_obj_align(shell, LV_ALIGN_TOP_MID, 0, 12);
+  lv_obj_set_style_radius(shell, UI_RADIUS_LG, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(shell, UI_SPACE_MD, LV_PART_MAIN);
 
-  /* --- 라벨 --- */
-  label_win = lv_obj_create(shell);
-  lv_obj_set_size(label_win, 380, 76);
-  lv_obj_align(label_win, LV_ALIGN_TOP_MID, 0, 14);
-  lv_obj_set_style_radius(label_win, 6, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(label_win, lv_color_hex(0xE8E4D8), LV_PART_MAIN);
-  lv_obj_set_style_border_width(label_win, 0, LV_PART_MAIN);
-  lv_obj_remove_flag(label_win, LV_OBJ_FLAG_SCROLLABLE);
+  /* --- 종이 스티커 --- */
+  sticker = lv_obj_create(shell);
+  lv_obj_remove_style_all(sticker);
+  lv_obj_set_size(sticker, LV_PCT(100), 92);
+  lv_obj_align(sticker, LV_ALIGN_TOP_MID, 0, 0);
+  lv_obj_set_style_radius(sticker, UI_RADIUS_SM, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(sticker, lv_color_hex(0xE9E4D6), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(sticker, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(sticker, UI_SPACE_SM + 2, LV_PART_MAIN);
+  lv_obj_remove_flag(sticker, LV_OBJ_FLAG_SCROLLABLE);
 
-  label_title = lv_label_create(label_win);
+  label_title = lv_label_create(sticker);
   lv_label_set_text(label_title, "No Tape");
-  lv_obj_set_style_text_color(label_title, lv_color_hex(0x202020), LV_PART_MAIN);
-  lv_obj_align(label_title, LV_ALIGN_LEFT_MID, 4, -10);
+  lv_obj_set_style_text_font(label_title, uiFontBody(), LV_PART_MAIN);
+  lv_obj_set_style_text_color(label_title, lv_color_hex(0x1A1A1A), LV_PART_MAIN);
+  lv_label_set_long_mode(label_title, LV_LABEL_LONG_DOT);
+  lv_obj_set_width(label_title, LV_PCT(100));
+  lv_obj_align(label_title, LV_ALIGN_TOP_LEFT, 0, 0);
 
-  label_state = lv_label_create(label_win);
+  label_state = lv_label_create(sticker);
   lv_label_set_text(label_state, "STOP");
-  lv_obj_set_style_text_color(label_state, lv_color_hex(0x707070), LV_PART_MAIN);
-  lv_obj_align(label_state, LV_ALIGN_LEFT_MID, 4, 14);
+  lv_obj_set_style_text_font(label_state, uiFontCaption(), LV_PART_MAIN);
+  lv_obj_set_style_text_color(label_state, lv_color_hex(0x6B6B6B), LV_PART_MAIN);
+  lv_obj_align(label_state, LV_ALIGN_BOTTOM_LEFT, 0, 0);
 
-  label_time = lv_label_create(label_win);
-  lv_label_set_text(label_time, "00:00");
-  lv_obj_set_style_text_color(label_time, lv_color_hex(0x707070), LV_PART_MAIN);
-  lv_obj_align(label_time, LV_ALIGN_RIGHT_MID, -4, 14);
+  label_time = lv_label_create(sticker);
+  lv_label_set_text(label_time, "00:00 / 00:00");
+  lv_obj_set_style_text_font(label_time, uiFontCaption(), LV_PART_MAIN);
+  lv_obj_set_style_text_color(label_time, lv_color_hex(0x6B6B6B), LV_PART_MAIN);
+  lv_obj_align(label_time, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
 
-  /* --- 테이프 창 + 릴 --- */
-  createReel(shell, &reel_l, -95, 40);
-  createReel(shell, &reel_r,  95, 40);
+  /* --- 테이프 창 (릴 + 중앙 스펙트럼) --- */
+  window = lv_obj_create(shell);
+  lv_obj_remove_style_all(window);
+  lv_obj_set_size(window, LV_PCT(100), 148);
+  lv_obj_align(window, LV_ALIGN_TOP_MID, 0, 100);
+  lv_obj_set_style_radius(window, UI_RADIUS_SM, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(window, lv_color_hex(0x0A0D10), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(window, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_remove_flag(window, LV_OBJ_FLAG_SCROLLABLE);
 
-  /* --- 조작부 --- */
-  btn_area = lv_obj_create(parent);
-  lv_obj_set_size(btn_area, 440, 100);
-  lv_obj_align(btn_area, LV_ALIGN_BOTTOM_MID, 0, -60);
-  lv_obj_set_style_bg_opa(btn_area, LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_border_width(btn_area, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(btn_area, 0, LV_PART_MAIN);
-  lv_obj_set_flex_flow(btn_area, LV_FLEX_FLOW_ROW);
-  lv_obj_set_flex_align(btn_area, LV_FLEX_ALIGN_SPACE_EVENLY,
+  createReel(window, &reel_l, -REEL_GAP, 0);
+  createReel(window, &reel_r,  REEL_GAP, 0);
+  createSpectrum(window);
+
+  /* --- 진행바 --- */
+  track = lv_obj_create(shell);
+  lv_obj_remove_style_all(track);
+  lv_obj_set_size(track, LV_PCT(100), 6);
+  lv_obj_align(track, LV_ALIGN_BOTTOM_MID, 0, 0);
+  lv_obj_set_style_radius(track, 3, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(track, lv_color_hex(UI_COLOR_LINE), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(track, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_remove_flag(track, LV_OBJ_FLAG_SCROLLABLE);
+
+  bar_progress = lv_obj_create(track);
+  lv_obj_remove_style_all(bar_progress);
+  lv_obj_set_size(bar_progress, 0, 6);
+  lv_obj_align(bar_progress, LV_ALIGN_LEFT_MID, 0, 0);
+  lv_obj_set_style_radius(bar_progress, 3, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(bar_progress, lv_color_hex(UI_COLOR_ACCENT), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(bar_progress, LV_OPA_COVER, LV_PART_MAIN);
+}
+
+void createSpectrum(lv_obj_t *parent)
+{
+  int total_w = CASS_SPECTRUM_BARS * SPEC_BAR_W + (CASS_SPECTRUM_BARS - 1) * SPEC_BAR_GAP;
+  int x0 = -total_w / 2 + SPEC_BAR_W / 2;
+
+  for (int i = 0; i < CASS_SPECTRUM_BARS; i++)
+  {
+    spec_bar[i] = lv_obj_create(parent);
+    lv_obj_remove_style_all(spec_bar[i]);
+    lv_obj_set_size(spec_bar[i], SPEC_BAR_W, 2);
+    lv_obj_align(spec_bar[i], LV_ALIGN_CENTER, x0 + i * (SPEC_BAR_W + SPEC_BAR_GAP), 0);
+    lv_obj_set_style_radius(spec_bar[i], 2, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(spec_bar[i], lv_color_hex(UI_COLOR_OK), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(spec_bar[i], LV_OPA_COVER, LV_PART_MAIN);
+  }
+}
+
+void createTransport(lv_obj_t *parent)
+{
+  const char   *txt[] = {LV_SYMBOL_PREV, LV_SYMBOL_PLAY, LV_SYMBOL_STOP, LV_SYMBOL_NEXT};
+  lv_event_cb_t cb[]  = {btnPrevCb, btnPlayCb, btnStopCb, btnNextCb};
+  lv_obj_t     *row;
+
+
+  row = lv_obj_create(parent);
+  lv_obj_remove_style_all(row);
+  lv_obj_set_size(row, LCD_WIDTH - UI_MARGIN*2, UI_TOUCH_MIN);
+  lv_obj_align(row, LV_ALIGN_TOP_MID, 0, 316);
+  lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN,
                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_remove_flag(btn_area, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_remove_flag(row, LV_OBJ_FLAG_SCROLLABLE);
 
   for (int i = 0; i < 4; i++)
   {
-    lv_obj_t *btn = lv_button_create(btn_area);
-    lv_obj_set_size(btn, 84, 68);
-    lv_obj_set_style_radius(btn, 8, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(btn, lv_color_hex(0x3A4048), LV_PART_MAIN);
-    lv_obj_add_event_cb(btn, btnEventCb, LV_EVENT_CLICKED, (void *)(intptr_t)btn_id[i]);
-
-    lv_obj_t *label = lv_label_create(btn);
-    lv_label_set_text(label, btn_txt[i]);
-    lv_obj_center(label);
+    lv_obj_t *btn = uiCreateButton(row, txt[i], false);
+    lv_obj_set_size(btn, 92, UI_TOUCH_MIN);
+    lv_obj_add_event_cb(btn, cb[i], LV_EVENT_CLICKED, NULL);
   }
 
-  /* --- 녹음 버튼 --- */
-  lv_obj_t *btn_rec = lv_button_create(parent);
-  lv_obj_set_size(btn_rec, 84, 44);
-  lv_obj_align(btn_rec, LV_ALIGN_BOTTOM_MID, 0, -8);
-  lv_obj_set_style_radius(btn_rec, 8, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(btn_rec, lv_color_hex(0xC0392B), LV_PART_MAIN);
-  lv_obj_add_event_cb(btn_rec, btnEventCb, LV_EVENT_CLICKED, (void *)(intptr_t)CASSETTE_REC);
+  /* 녹음은 강조색. 마이크를 쓰는 유일한 동작이다. */
+  lv_obj_t *btn_rec = uiCreateButton(parent, "REC", true);
+  lv_obj_set_size(btn_rec, 120, UI_TOUCH_MIN);
+  lv_obj_align(btn_rec, LV_ALIGN_BOTTOM_MID, 0, -UI_MARGIN);
+  lv_obj_add_event_cb(btn_rec, btnRecCb, LV_EVENT_CLICKED, NULL);
 
-  lv_obj_t *label_rec = lv_label_create(btn_rec);
-  lv_label_set_text(label_rec, "REC");
-  lv_obj_center(label_rec);
-
-  /* --- 뒤로 --- */
-  lv_obj_t *btn_back = lv_button_create(parent);
-  lv_obj_set_size(btn_back, 60, 44);
-  lv_obj_align(btn_back, LV_ALIGN_BOTTOM_LEFT, 10, -8);
-  lv_obj_set_style_radius(btn_back, 8, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(btn_back, lv_color_hex(0x3A4048), LV_PART_MAIN);
-  lv_obj_add_event_cb(btn_back, btnEventCb, LV_EVENT_CLICKED, (void *)(intptr_t)-1);
-
-  lv_obj_t *label_back = lv_label_create(btn_back);
-  lv_label_set_text(label_back, LV_SYMBOL_LEFT);
-  lv_obj_center(label_back);
+  uiCreateBackButton(parent, backEventCb);
 }
 
 void createReel(lv_obj_t *parent, reel_t *p_reel, int32_t cx, int32_t cy)
@@ -236,33 +270,30 @@ void createReel(lv_obj_t *parent, reel_t *p_reel, int32_t cx, int32_t cy)
   p_reel->cx = cx;
   p_reel->cy = cy;
 
-  /* 감긴 테이프 */
   p_reel->pack = lv_obj_create(parent);
+  lv_obj_remove_style_all(p_reel->pack);
   lv_obj_set_size(p_reel->pack, REEL_PACK_R_MIN*2, REEL_PACK_R_MIN*2);
   lv_obj_align(p_reel->pack, LV_ALIGN_CENTER, cx, cy);
   lv_obj_set_style_radius(p_reel->pack, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(p_reel->pack, lv_color_hex(0x14171A), LV_PART_MAIN);
-  lv_obj_set_style_border_width(p_reel->pack, 0, LV_PART_MAIN);
-  lv_obj_remove_flag(p_reel->pack, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_bg_color(p_reel->pack, lv_color_hex(0x1C2126), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(p_reel->pack, LV_OPA_COVER, LV_PART_MAIN);
 
-  /* 허브 */
   p_reel->hub = lv_obj_create(parent);
+  lv_obj_remove_style_all(p_reel->hub);
   lv_obj_set_size(p_reel->hub, REEL_HUB_R*2, REEL_HUB_R*2);
   lv_obj_align(p_reel->hub, LV_ALIGN_CENTER, cx, cy);
   lv_obj_set_style_radius(p_reel->hub, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(p_reel->hub, lv_color_hex(0xC8CCD0), LV_PART_MAIN);
-  lv_obj_set_style_border_width(p_reel->hub, 0, LV_PART_MAIN);
-  lv_obj_remove_flag(p_reel->hub, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_bg_color(p_reel->hub, lv_color_hex(0xC9CED4), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(p_reel->hub, LV_OPA_COVER, LV_PART_MAIN);
 
-  /* 회전이 보이도록 허브에 스포크를 얹는다. */
   for (int i = 0; i < REEL_SPOKE_CNT; i++)
   {
     p_reel->spoke[i] = lv_obj_create(parent);
+    lv_obj_remove_style_all(p_reel->spoke[i]);
     lv_obj_set_size(p_reel->spoke[i], 8, 8);
     lv_obj_set_style_radius(p_reel->spoke[i], LV_RADIUS_CIRCLE, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(p_reel->spoke[i], lv_color_hex(0x40464C), LV_PART_MAIN);
-    lv_obj_set_style_border_width(p_reel->spoke[i], 0, LV_PART_MAIN);
-    lv_obj_remove_flag(p_reel->spoke[i], LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(p_reel->spoke[i], lv_color_hex(0x424A52), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(p_reel->spoke[i], LV_OPA_COVER, LV_PART_MAIN);
   }
 }
 
@@ -274,38 +305,69 @@ void updateReel(reel_t *p_reel, int32_t angle, int32_t pack_r)
   for (int i = 0; i < REEL_SPOKE_CNT; i++)
   {
     int32_t a = angle + (360 / REEL_SPOKE_CNT) * i;
-    int32_t x = (lv_trigo_cos(a) * (REEL_HUB_R - 6)) / LV_TRIGO_SIN_MAX;
-    int32_t y = (lv_trigo_sin(a) * (REEL_HUB_R - 6)) / LV_TRIGO_SIN_MAX;
+    int32_t x = (lv_trigo_cos(a) * (REEL_HUB_R - 5)) / LV_TRIGO_SIN_MAX;
+    int32_t y = (lv_trigo_sin(a) * (REEL_HUB_R - 5)) / LV_TRIGO_SIN_MAX;
 
     lv_obj_align(p_reel->spoke[i], LV_ALIGN_CENTER, p_reel->cx + x, p_reel->cy + y);
   }
 }
 
-void setState(CassetteState_t state)
+/* 선택된 테이프 이름을 스티커에 반영한다. */
+void refreshTape(void)
 {
-  const char *str[] = {"STOP", "PLAY", "REC", "FF", "REW"};
+  const char *name = cassetteAudioName(sel_idx);
 
-  cassette_state = state;
-  lv_label_set_text(label_state, str[state]);
-
-  /* TODO 오디오 연결 후 :
-   *   PLAY -> i2s 로 SD 의 wav 재생
-   *   REC  -> pdmRecordStart() 후 SD 에 wav 로 저장
-   */
+  if (name != NULL)
+    lv_label_set_text(label_title, name);
+  else
+    lv_label_set_text(label_title, "No Tape");
 }
 
-void btnEventCb(lv_event_t *e)
+void btnPlayCb(lv_event_t *e)
 {
-  int id = (int)(intptr_t)lv_event_get_user_data(e);
+  LV_UNUSED(e);
+  if (cassetteAudioCount() > 0)
+    cassetteAudioPlay(sel_idx);
+}
 
-  if (id < 0)
+void btnStopCb(lv_event_t *e)
+{
+  LV_UNUSED(e);
+  cassetteAudioStop();
+}
+
+void btnPrevCb(lv_event_t *e)
+{
+  LV_UNUSED(e);
+  if (cassetteAudioCount() > 0)
   {
-    launcherExitApp();
-    return;
+    sel_idx = (sel_idx + cassetteAudioCount() - 1) % cassetteAudioCount();
+    refreshTape();
   }
-
-  setState((CassetteState_t)id);
 }
+
+void btnNextCb(lv_event_t *e)
+{
+  LV_UNUSED(e);
+  if (cassetteAudioCount() > 0)
+  {
+    sel_idx = (sel_idx + 1) % cassetteAudioCount();
+    refreshTape();
+  }
+}
+
+void btnRecCb(lv_event_t *e)
+{
+  LV_UNUSED(e);
+  cassetteAudioRecord();
+}
+
+void backEventCb(lv_event_t *e)
+{
+  LV_UNUSED(e);
+  launcherExitApp();
+}
+
 
 
 APP_DEF(cassette){

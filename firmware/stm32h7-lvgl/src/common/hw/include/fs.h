@@ -49,6 +49,8 @@ int32_t fsFileWrite(fs_t *p_fs, uint8_t *p_data, uint32_t length);
 int32_t fsFileSize(fs_t *p_fs);
 int32_t fsFileSeek(fs_t *p_fs, uint32_t seek_pos);
 int32_t fsFileSync(fs_t *p_fs);
+
+void   *fsGetHandle(void);   /* lfs_t * (LVGL 파일시스템 연동용) */
 #endif
 
 #ifdef __cplusplus

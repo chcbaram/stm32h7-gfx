@@ -3,6 +3,7 @@
 #ifdef _USE_HW_LVGL
 #include "lvgl/lv_port_disp.h"
 #include "lvgl/lv_port_indev.h"
+#include "lvgl/lv_fs_port.h"
 #include "cli.h"
 
 
@@ -26,6 +27,7 @@ bool lvglInit(void)
 
   lv_port_disp_init();
   lv_port_indev_init();
+  lv_fs_port_init();
 
   is_init = true;
 
@@ -116,10 +118,46 @@ void cliCmd(cli_args_t *args)
     ret = true;
   }
 
+  /* LVGL 파일시스템 드라이버 확인용.  예) lvgl fs S:/ui/logo.bin  */
+  if (args->argc == 2 && args->isStr(0, "fs"))
+  {
+    const char *path = args->getStr(1);
+    lv_fs_file_t file;
+    lv_fs_res_t  res;
+
+    res = lv_fs_open(&file, path, LV_FS_MODE_RD);
+    if (res != LV_FS_RES_OK)
+    {
+      cliPrintf("lv_fs_open(%s) fail : %d\n", path, res);
+    }
+    else
+    {
+      uint32_t size = 0;
+      uint8_t  buf[16];
+      uint32_t rd = 0;
+
+      lv_fs_seek(&file, 0, LV_FS_SEEK_END);
+      lv_fs_tell(&file, &size);
+      lv_fs_seek(&file, 0, LV_FS_SEEK_SET);
+      lv_fs_read(&file, buf, sizeof(buf), &rd);
+      lv_fs_close(&file);
+
+      cliPrintf("%s : %d bytes\n", path, (int)size);
+      cliPrintf("head :");
+      for (uint32_t i = 0; i < rd; i++)
+      {
+        cliPrintf(" %02X", buf[i]);
+      }
+      cliPrintf("\n");
+    }
+    ret = true;
+  }
+
   if (ret == false)
   {
     cliPrintf("lvgl info\n");
     cliPrintf("lvgl enable on:off\n");
+    cliPrintf("lvgl fs [path]  ex) lvgl fs S:/ui/logo.bin\n");
   }
 }
 #endif

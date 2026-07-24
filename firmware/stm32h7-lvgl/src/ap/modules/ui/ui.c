@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "launcher.h"
+#include "ui_shade.h"
 
 
 #ifdef _USE_HW_LVGL
@@ -22,7 +23,9 @@ bool uiInit(void)
 #endif
 
   lvglInit();
+  uiThemeInit();
   launcherInit();
+  ui_shade_init();
 
   ret = threadCreate("ui", uiThread, NULL, osPriorityNormal, UI_THREAD_STACK);
 
