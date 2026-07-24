@@ -326,6 +326,49 @@ void ltdcSwapFrameBuffer(void)
   }
 }
 
+/* --------------------------------------------------------------------------
+ * LVGL 전용 프레임버퍼 제어
+ *
+ * LVGL 이 두 버퍼를 스스로 번갈아 그리므로, LVGL 이 방금 그린 버퍼를 그대로
+ * LTDC 표시 주소로 지정하고 vblank 에 reload 한다. frame_index 자체 스왑과
+ * 섞이지 않도록 독립적으로 동작한다. (두 스왑이 어긋나면 화면이 깨진다.)
+ * ----------------------------------------------------------------------- */
+static volatile bool lvgl_reload_pending = false;
+
+uint16_t *ltdcGetPhysBuffer(uint8_t index)
+{
+  return frame_buffer[index & 1];
+}
+
+uint16_t *ltdcGetDisplayedBuffer(void)
+{
+  return (uint16_t *)LTDC_Layer1->CFBAR;
+}
+
+void ltdcLvglFlush(void *addr)
+{
+  /* capture 등 frame_index 기반 조회가 계속 맞도록 인덱스를 동기화한다. */
+  frame_index = (addr == (void *)frame_buffer[0]) ? 0 : 1;
+
+  LTDC_Layer1->CFBAR = (uint32_t)addr;
+
+  lvgl_reload_pending = true;
+  __HAL_LTDC_ENABLE_IT(&hltdc, LTDC_IT_RR);
+  LTDC->SRCR = LTDC_SRCR_VBR;          /* 다음 수직 귀선에 reload */
+}
+
+bool ltdcLvglIsReloadDone(void)
+{
+  return !lvgl_reload_pending;
+}
+
+void HAL_LTDC_ReloadEventCallback(LTDC_HandleTypeDef *h)
+{
+  lvgl_reload_pending = false;
+  __HAL_LTDC_DISABLE_IT(h, LTDC_IT_RR);
+}
+
+
 void LTDC_IRQHandler(void)
 {
   HAL_LTDC_IRQHandler(&hltdc);

@@ -26,6 +26,11 @@ bool ltdcLayerInit(uint16_t LayerIndex, uint32_t Address);
 void ltdcSetDoubleBuffer(bool enable);
 bool ltdcGetDoubleBuffer(void);
 
+uint16_t *ltdcGetPhysBuffer(uint8_t index);
+uint16_t *ltdcGetDisplayedBuffer(void);
+void      ltdcLvglFlush(void *addr);
+bool      ltdcLvglIsReloadDone(void);
+
 
 #endif
 
