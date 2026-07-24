@@ -6,7 +6,6 @@
 
 static bool sysinfoEnter(lv_obj_t *scr);
 static void sysinfoUpdate(void);
-static void backEventCb(lv_event_t *e);
 
 
 static lv_obj_t *label_fps = NULL;
@@ -64,8 +63,6 @@ bool sysinfoEnter(lv_obj_t *scr)
   lv_obj_align(label_mem, LV_ALIGN_BOTTOM_RIGHT, 0, -2);
 
 
-  uiCreateBackButton(scr, backEventCb);
-
   frame_cnt = 0;
   pre_time  = millis();
   return true;
@@ -89,11 +86,6 @@ void sysinfoUpdate(void)
   }
 }
 
-void backEventCb(lv_event_t *e)
-{
-  LV_UNUSED(e);
-  launcherExitApp();
-}
 
 
 APP_DEF(sysinfo){

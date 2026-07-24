@@ -13,7 +13,12 @@
 
 #define SPEC_BAR_W          7
 #define SPEC_BAR_GAP        3
-#define SPEC_MAX_H          92
+#define SPEC_MAX_H          88
+
+/* 막대 높이(레벨)에 따라 색이 바뀐다 (낮음 초록 → 중간 노랑 → 높음 빨강) */
+#define SPEC_COL_LO         0x3DDC5A
+#define SPEC_COL_MID        0xE8C13A
+#define SPEC_COL_HI         0xE8503A
 
 
 typedef struct
@@ -34,6 +39,8 @@ static void createShell(lv_obj_t *parent);
 static void createTransport(lv_obj_t *parent);
 static void createReel(lv_obj_t *parent, reel_t *p_reel, int32_t cx, int32_t cy);
 static void createSpectrum(lv_obj_t *parent);
+static int      specColorLevel(int v);
+static uint32_t specColor(int level);
 static void updateReel(reel_t *p_reel, int32_t angle, int32_t pack_r);
 static void refreshTape(void);
 static void btnPlayCb(lv_event_t *e);
@@ -41,7 +48,6 @@ static void btnStopCb(lv_event_t *e);
 static void btnPrevCb(lv_event_t *e);
 static void btnNextCb(lv_event_t *e);
 static void btnRecCb(lv_event_t *e);
-static void backEventCb(lv_event_t *e);
 
 
 static reel_t    reel_l;
@@ -51,6 +57,7 @@ static lv_obj_t *label_state;
 static lv_obj_t *label_time;
 static lv_obj_t *bar_progress;
 static lv_obj_t *spec_bar[CASS_SPECTRUM_BARS];
+static int8_t    spec_col_pre[CASS_SPECTRUM_BARS];
 
 static int32_t   reel_angle = 0;
 static int       sel_idx = 0;
@@ -118,12 +125,20 @@ void cassetteUpdate(void)
                         (int)(pos/1000)/60, (int)(pos/1000)%60,
                         (int)(dur/1000)/60, (int)(dur/1000)%60);
 
-  /* 스펙트럼 */
+  /* 스펙트럼 : 중앙에서 상하로 커지는 막대, 높이에 따라 색이 바뀐다 */
   cassetteAudioGetSpectrum(bars, CASS_SPECTRUM_BARS);
   for (int i = 0; i < CASS_SPECTRUM_BARS; i++)
   {
-    int h = 2 + (SPEC_MAX_H - 2) * bars[i] / 100;
+    int h   = 2 + (SPEC_MAX_H - 2) * bars[i] / 100;
+    int col = specColorLevel(bars[i]);
+
     lv_obj_set_height(spec_bar[i], h);
+
+    if (col != spec_col_pre[i])
+    {
+      lv_obj_set_style_bg_color(spec_bar[i], lv_color_hex((uint32_t)specColor(col)), LV_PART_MAIN);
+      spec_col_pre[i] = col;
+    }
   }
 
   /* 상태 라벨은 오디오 스레드가 스스로 IDLE 로 돌아갈 수 있으므로 매번 반영 */
@@ -147,8 +162,9 @@ void createShell(lv_obj_t *parent)
 
 
   /* --- 카세트 셸 --- */
+  /* 버튼 행(하단) 위 공간의 한가운데에 놓아 위아래 여백을 맞춘다. */
   shell = uiCreateCard(parent, LCD_WIDTH - UI_MARGIN*2, 288);
-  lv_obj_align(shell, LV_ALIGN_TOP_MID, 0, 12);
+  lv_obj_align(shell, LV_ALIGN_TOP_MID, 0, 44);
   lv_obj_set_style_radius(shell, UI_RADIUS_LG, LV_PART_MAIN);
   lv_obj_set_style_pad_all(shell, UI_SPACE_MD, LV_PART_MAIN);
 
@@ -216,6 +232,21 @@ void createShell(lv_obj_t *parent)
   lv_obj_set_style_bg_opa(bar_progress, LV_OPA_COVER, LV_PART_MAIN);
 }
 
+/* 막대 레벨(0..100) -> 색 구간 (0 초록 / 1 노랑 / 2 빨강) */
+static int specColorLevel(int v)
+{
+  if (v >= 80) return 2;
+  if (v >= 55) return 1;
+  return 0;
+}
+
+static uint32_t specColor(int level)
+{
+  if (level >= 2) return SPEC_COL_HI;
+  if (level >= 1) return SPEC_COL_MID;
+  return SPEC_COL_LO;
+}
+
 void createSpectrum(lv_obj_t *parent)
 {
   int total_w = CASS_SPECTRUM_BARS * SPEC_BAR_W + (CASS_SPECTRUM_BARS - 1) * SPEC_BAR_GAP;
@@ -223,46 +254,41 @@ void createSpectrum(lv_obj_t *parent)
 
   for (int i = 0; i < CASS_SPECTRUM_BARS; i++)
   {
+    spec_col_pre[i] = -1;
+
     spec_bar[i] = lv_obj_create(parent);
     lv_obj_remove_style_all(spec_bar[i]);
     lv_obj_set_size(spec_bar[i], SPEC_BAR_W, 2);
     lv_obj_align(spec_bar[i], LV_ALIGN_CENTER, x0 + i * (SPEC_BAR_W + SPEC_BAR_GAP), 0);
     lv_obj_set_style_radius(spec_bar[i], 2, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(spec_bar[i], lv_color_hex(UI_COLOR_OK), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(spec_bar[i], lv_color_hex(SPEC_COL_LO), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(spec_bar[i], LV_OPA_COVER, LV_PART_MAIN);
   }
 }
 
 void createTransport(lv_obj_t *parent)
 {
-  const char   *txt[] = {LV_SYMBOL_PREV, LV_SYMBOL_PLAY, LV_SYMBOL_STOP, LV_SYMBOL_NEXT};
-  lv_event_cb_t cb[]  = {btnPrevCb, btnPlayCb, btnStopCb, btnNextCb};
+  const char   *txt[] = {LV_SYMBOL_PREV, LV_SYMBOL_PLAY, LV_SYMBOL_STOP, LV_SYMBOL_NEXT, "REC"};
+  lv_event_cb_t cb[]  = {btnPrevCb, btnPlayCb, btnStopCb, btnNextCb, btnRecCb};
   lv_obj_t     *row;
 
 
+  /* 재생 조작 4개 + 녹음(REC) 을 한 줄로. REC 만 강조색. */
   row = lv_obj_create(parent);
   lv_obj_remove_style_all(row);
   lv_obj_set_size(row, LCD_WIDTH - UI_MARGIN*2, UI_TOUCH_MIN);
-  lv_obj_align(row, LV_ALIGN_TOP_MID, 0, 316);
+  lv_obj_align(row, LV_ALIGN_BOTTOM_MID, 0, -UI_SPACE_XL);
   lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
   lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN,
                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
   lv_obj_remove_flag(row, LV_OBJ_FLAG_SCROLLABLE);
 
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 5; i++)
   {
-    lv_obj_t *btn = uiCreateButton(row, txt[i], false);
-    lv_obj_set_size(btn, 92, UI_TOUCH_MIN);
+    lv_obj_t *btn = uiCreateButton(row, txt[i], i == 4);
+    lv_obj_set_size(btn, 76, UI_TOUCH_MIN);
     lv_obj_add_event_cb(btn, cb[i], LV_EVENT_CLICKED, NULL);
   }
-
-  /* 녹음은 강조색. 마이크를 쓰는 유일한 동작이다. */
-  lv_obj_t *btn_rec = uiCreateButton(parent, "REC", true);
-  lv_obj_set_size(btn_rec, 120, UI_TOUCH_MIN);
-  lv_obj_align(btn_rec, LV_ALIGN_BOTTOM_MID, 0, -UI_MARGIN);
-  lv_obj_add_event_cb(btn_rec, btnRecCb, LV_EVENT_CLICKED, NULL);
-
-  uiCreateBackButton(parent, backEventCb);
 }
 
 void createReel(lv_obj_t *parent, reel_t *p_reel, int32_t cx, int32_t cy)
@@ -362,11 +388,6 @@ void btnRecCb(lv_event_t *e)
   cassetteAudioRecord();
 }
 
-void backEventCb(lv_event_t *e)
-{
-  LV_UNUSED(e);
-  launcherExitApp();
-}
 
 
 

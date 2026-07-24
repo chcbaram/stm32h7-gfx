@@ -6,6 +6,14 @@
 
 #define APP_BTN_HEIGHT    88
 
+/* 왼쪽 가장자리에서 오른쪽으로 쓸면 뒤로가기.
+ * 센서는 위젯이 없는 왼쪽 여백(UI_MARGIN) 안에만 두어 탭과 충돌하지 않게 한다.
+ */
+#define BACK_EDGE_W       24
+
+
+#define SLIDE_MS          200
+
 
 typedef struct
 {
@@ -15,8 +23,9 @@ typedef struct
   app_info_t *p_cur;          /* 실행중인 app. NULL 이면 홈 화면 */
   bool        is_exit_req;
 
-  lv_obj_t   *scr_home;
-  lv_obj_t   *scr_app;
+  lv_obj_t   *scr_root;       /* 항상 로드되어 있는 루트 스크린 */
+  lv_obj_t   *home_cont;      /* 홈 화면 컨테이너 (루트의 자식) */
+  lv_obj_t   *app_cont;       /* 실행중 app 컨테이너 (홈 위에 올라감) */
 } launcher_info_t;
 
 
@@ -25,11 +34,20 @@ static void launcherAppBtnCb(lv_event_t *e);
 static void launcherEnterApp(app_info_t *p_app);
 static void launcherLeaveApp(void);
 static int  launcherSortApps(app_info_t **p_list);
+static void launcherBackSwipeCb(lv_event_t *e);
+static void launcherSlideAppTo(int32_t x_from, int32_t x_to, bool close_after);
+static void animXCb(void *obj, int32_t v);
+static void animCloseDoneCb(lv_anim_t *a);
 #ifdef _USE_HW_CLI
 static void cliCmd(cli_args_t *args);
 #endif
 
 static launcher_info_t info;
+
+static int32_t back_x0;
+static int32_t back_y0;
+static bool    back_armed;
+static bool    back_fired;
 
 extern uint32_t _sapp;
 extern uint32_t _eapp;
@@ -63,6 +81,20 @@ bool launcherInit(void)
   }
 
   launcherCreateHome();
+
+  /* 왼쪽 가장자리 백스와이프 센서 (모든 app 공통) */
+  {
+    lv_obj_t *sensor = lv_obj_create(lv_layer_top());
+
+    lv_obj_remove_style_all(sensor);
+    lv_obj_set_size(sensor, BACK_EDGE_W, LCD_HEIGHT);
+    lv_obj_align(sensor, LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_add_flag(sensor, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(sensor, launcherBackSwipeCb, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(sensor, launcherBackSwipeCb, LV_EVENT_PRESSING, NULL);
+    lv_obj_add_event_cb(sensor, launcherBackSwipeCb, LV_EVENT_RELEASED, NULL);
+    lv_obj_add_event_cb(sensor, launcherBackSwipeCb, LV_EVENT_PRESS_LOST, NULL);
+  }
 
 #ifdef _USE_HW_CLI
   cliAdd("launcher", cliCmd);
@@ -119,36 +151,37 @@ const char *launcherGetAppName(void)
 }
 
 /* app 진입.
- * 화면은 런처가 만들어 넘기고, 나갈 때도 런처가 지운다.
+ * 홈 컨테이너 위에 app 컨테이너를 만들어 오른쪽에서 밀어 넣는다.
  */
 void launcherEnterApp(app_info_t *p_app)
 {
-  lv_obj_t *scr;
+  lv_obj_t *cont;
 
 
-  if (p_app->enter == NULL)
+  if (p_app->enter == NULL || info.p_cur != NULL)
     return;
 
-  scr = uiCreateScreen(lv_obj_create(NULL));
+  cont = uiCreateScreen(lv_obj_create(info.scr_root));
+  lv_obj_set_size(cont, LCD_WIDTH, LCD_HEIGHT);
+  lv_obj_set_pos(cont, LCD_WIDTH, 0);          /* 화면 오른쪽 밖 */
 
-  if (p_app->enter(scr) == false)
+  if (p_app->enter(cont) == false)
   {
-    lv_obj_delete(scr);
+    lv_obj_delete(cont);
     logPrintf("[NG] %s enter()\n", p_app->name);
     return;
   }
 
-  info.scr_app = scr;
-  info.p_cur   = p_app;
+  info.app_cont = cont;
+  info.p_cur    = p_app;
 
-  lv_screen_load_anim(scr, LV_SCREEN_LOAD_ANIM_MOVE_LEFT, 200, 0, false);
+  /* 홈은 그대로 두고 app 만 오른쪽 밖에서 왼쪽으로 밀어 들어온다. */
+  launcherSlideAppTo(LCD_WIDTH, 0, false);
 }
 
+/* app 종료. 현재 위치에서 오른쪽 밖으로 밀어내고 지운다. */
 void launcherLeaveApp(void)
 {
-  lv_obj_t *scr_old = info.scr_app;
-
-
   if (info.p_cur == NULL)
     return;
 
@@ -157,16 +190,43 @@ void launcherLeaveApp(void)
     info.p_cur->exit();
   }
 
-  info.p_cur   = NULL;
-  info.scr_app = NULL;
+  info.p_cur = NULL;
+  launcherSlideAppTo(lv_obj_get_x(info.app_cont), LCD_WIDTH, true);
+}
 
-  lv_screen_load_anim(info.scr_home, LV_SCREEN_LOAD_ANIM_MOVE_RIGHT, 200, 0, false);
+void animXCb(void *obj, int32_t v)
+{
+  lv_obj_set_x((lv_obj_t *)obj, v);
+}
 
-  /* 전환 애니메이션이 끝난 뒤에 지운다. */
-  if (scr_old != NULL)
-  {
-    lv_obj_delete_delayed(scr_old, 300);
-  }
+void animCloseDoneCb(lv_anim_t *a)
+{
+  lv_obj_delete((lv_obj_t *)a->var);
+  if ((lv_obj_t *)a->var == info.app_cont)
+    info.app_cont = NULL;
+}
+
+/* app 컨테이너를 x_from 에서 x_to 로 애니메이션. close_after 면 끝나고 삭제.
+ * (막 만든 컨테이너는 lv_obj_get_x 가 아직 갱신 전이라 시작값을 명시한다.)
+ */
+void launcherSlideAppTo(int32_t x_from, int32_t x_to, bool close_after)
+{
+  lv_anim_t a;
+
+  if (info.app_cont == NULL)
+    return;
+
+  lv_obj_set_x(info.app_cont, x_from);
+
+  lv_anim_init(&a);
+  lv_anim_set_var(&a, info.app_cont);
+  lv_anim_set_exec_cb(&a, animXCb);
+  lv_anim_set_values(&a, x_from, x_to);
+  lv_anim_set_duration(&a, SLIDE_MS);
+  lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+  if (close_after == true)
+    lv_anim_set_completed_cb(&a, animCloseDoneCb);
+  lv_anim_start(&a);
 }
 
 /* .app 섹션은 링크 순서라 order 값으로 정렬한다. */
@@ -206,7 +266,15 @@ void launcherCreateHome(void)
   int         cnt;
 
 
-  scr = uiCreateScreen(lv_obj_create(NULL));
+  /* 루트 스크린은 항상 로드되어 있고, 그 위에 홈/ app 컨테이너가 올라간다.
+   * app 을 오른쪽으로 밀면 뒤에 홈이 드러나는 인터랙티브 전환을 위해서다.
+   */
+  info.scr_root = uiCreateScreen(lv_obj_create(NULL));
+  lv_screen_load(info.scr_root);
+
+  scr = uiCreateScreen(lv_obj_create(info.scr_root));
+  lv_obj_set_size(scr, LCD_WIDTH, LCD_HEIGHT);
+  lv_obj_set_pos(scr, 0, 0);
 
   /* --- 상단 바 ---
    * 제목을 화면 한가운데 띄워놓는 대신 바닥을 깔아 층을 만든다.
@@ -271,8 +339,7 @@ void launcherCreateHome(void)
     lv_obj_align(label, LV_ALIGN_RIGHT_MID, -UI_SPACE_LG, 0);
   }
 
-  info.scr_home = scr;
-  lv_screen_load(scr);
+  info.home_cont = scr;
 }
 
 void launcherAppBtnCb(lv_event_t *e)
@@ -282,6 +349,57 @@ void launcherAppBtnCb(lv_event_t *e)
   if (p_app != NULL && info.p_cur == NULL)
   {
     launcherEnterApp(p_app);
+  }
+}
+
+/* 왼쪽에서 오른쪽으로 끌면 현재 app 화면이 손가락을 따라 밀리고,
+ * 절반 넘게 밀고 놓으면 뒤로가기(홈), 아니면 제자리로 되돌아간다.
+ */
+void launcherBackSwipeCb(lv_event_t *e)
+{
+  lv_event_code_t code = lv_event_get_code(e);
+  lv_point_t p;
+
+
+  lv_indev_get_point(lv_indev_active(), &p);
+
+  if (code == LV_EVENT_PRESSED)
+  {
+    back_x0    = p.x;
+    back_y0    = p.y;
+    back_fired = false;                        /* 아직 드래그로 확정 안 됨 */
+    /* app 이 열려 있고, 전환 애니메이션 중이 아니고, 셰이드가 닫혀 있을 때만 */
+    back_armed = (info.p_cur != NULL) &&
+                 (info.app_cont != NULL) &&
+                 (lv_obj_get_x(info.app_cont) == 0) &&
+                 (ui_shade_is_open() == false);
+  }
+  else if (code == LV_EVENT_PRESSING && back_armed == true)
+  {
+    int32_t dx = p.x - back_x0;
+    int32_t dy = p.y - back_y0;
+    int32_t ady = dy < 0 ? -dy : dy;
+
+    /* 가로 이동이 세로보다 크면 드래그로 확정하고 화면을 따라 민다. */
+    if (back_fired == false && dx > 10 && dx > ady)
+      back_fired = true;
+
+    if (back_fired == true)
+    {
+      if (dx < 0) dx = 0;
+      lv_obj_set_x(info.app_cont, dx);
+    }
+  }
+  else if ((code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) &&
+           back_armed == true && back_fired == true && info.app_cont != NULL)
+  {
+    back_armed = false;
+
+    /* 절반 넘게 밀렸으면 뒤로가기, 아니면 제자리로 */
+    if (lv_obj_get_x(info.app_cont) > LCD_WIDTH / 2)
+      launcherExitApp();                       /* leaveApp 가 마저 밀어냄 */
+    else
+      launcherSlideAppTo(lv_obj_get_x(info.app_cont), 0, false);
   }
 }
 
