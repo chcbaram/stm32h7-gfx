@@ -313,7 +313,36 @@ bool sdIsReady(uint32_t timeout)
   return false;
 }
 
+/* SDMMC IDMA 는 정렬된 버퍼를 요구한다.
+ * FatFs/USB 가 넘기는 버퍼는 정렬이 보장되지 않으므로, 정렬되지 않은
+ * 경우 32바이트 정렬된 바운스 버퍼를 거쳐 섹터 단위로 처리한다.
+ * (정렬 안 된 버퍼를 그대로 DMA 하면 주소가 밀려 데이터가 깨진다.)
+ */
+static uint8_t sd_scratch_rd[BLOCKSIZE] __attribute__((aligned(32)));
+static uint8_t sd_scratch_wr[BLOCKSIZE] __attribute__((aligned(32)));
+
+static bool sdReadBlocksDMA(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks, uint32_t timeout_ms);
+static bool sdWriteBlocksDMA(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks, uint32_t timeout_ms);
+
+
 bool sdReadBlocks(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks, uint32_t timeout_ms)
+{
+  if (((uint32_t)p_data & 0x1F) == 0)
+  {
+    return sdReadBlocksDMA(block_addr, p_data, num_of_blocks, timeout_ms);
+  }
+
+  /* 정렬 안 됨 : 섹터 단위로 바운스 */
+  for (uint32_t i = 0; i < num_of_blocks; i++)
+  {
+    if (sdReadBlocksDMA(block_addr + i, sd_scratch_rd, 1, timeout_ms) != true)
+      return false;
+    memcpy(p_data + i * BLOCKSIZE, sd_scratch_rd, BLOCKSIZE);
+  }
+  return true;
+}
+
+bool sdReadBlocksDMA(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks, uint32_t timeout_ms)
 {
   bool ret = false;
   uint32_t pre_time;
@@ -359,6 +388,23 @@ bool sdReadBlocks(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks, 
 
 bool sdWriteBlocks(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks, uint32_t timeout_ms)
 {
+  if (((uint32_t)p_data & 0x1F) == 0)
+  {
+    return sdWriteBlocksDMA(block_addr, p_data, num_of_blocks, timeout_ms);
+  }
+
+  /* 정렬 안 됨 : 섹터 단위로 바운스 */
+  for (uint32_t i = 0; i < num_of_blocks; i++)
+  {
+    memcpy(sd_scratch_wr, p_data + i * BLOCKSIZE, BLOCKSIZE);
+    if (sdWriteBlocksDMA(block_addr + i, sd_scratch_wr, 1, timeout_ms) != true)
+      return false;
+  }
+  return true;
+}
+
+bool sdWriteBlocksDMA(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks, uint32_t timeout_ms)
+{
   bool ret = false;
   uint32_t pre_time;
 
@@ -366,7 +412,11 @@ bool sdWriteBlocks(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks,
 
 
   #ifdef _USE_HW_CACHE
-  SCB_InvalidateDCache_by_Addr((uint32_t *)p_data, num_of_blocks * BLOCKSIZE);  
+  /* DMA 쓰기 : CPU 가 캐시에 쓴 데이터를 RAM 으로 내보내야(Clean) DMA 가
+   * 올바른 값을 읽는다. Invalidate 는 캐시를 버려 낡은 RAM 을 쓰게 되어
+   * 큰 파일 전송이 깨진다.
+   */
+  SCB_CleanDCache_by_Addr((uint32_t *)p_data, num_of_blocks * BLOCKSIZE);
   #endif
 
   is_tx_done = false;
