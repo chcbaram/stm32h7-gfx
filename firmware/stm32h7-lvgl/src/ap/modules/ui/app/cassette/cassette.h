@@ -1,15 +1,17 @@
-#ifndef UI_H_
-#define UI_H_
+#ifndef CASSETTE_H_
+#define CASSETTE_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "ap_def.h"
-#include "app.h"
 
+#ifdef _USE_HW_LVGL
 
-bool uiInit(void);
+bool cassetteInit(void);
+
+#endif
 
 #ifdef __cplusplus
 }

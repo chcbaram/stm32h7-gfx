@@ -158,6 +158,11 @@ SECTIONS
     KEEP (*(.module*))
     _emodule = .;
 
+    _sapp = .;
+    KEEP (*(.app))
+    KEEP (*(.app*))
+    _eapp = .;
+
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
 
