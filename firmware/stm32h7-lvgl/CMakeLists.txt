@@ -100,6 +100,8 @@ target_include_directories(${EXECUTABLE} PRIVATE
   src/hw/driver/usb/usb_msc
   src/lib
 
+  src/lib/minimp3
+
   src/lib/CMSIS/Include
   src/lib/CMSIS/Device/ST/STM32H7xx/Include
   src/lib/CMSIS/DSP/Include

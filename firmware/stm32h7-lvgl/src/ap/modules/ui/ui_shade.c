@@ -99,8 +99,11 @@ bool ui_shade_init(void)
   lv_obj_align(icon, LV_ALIGN_LEFT_MID, 0, 20);
 
   slider = lv_slider_create(panel);
-  lv_obj_set_width(slider, LCD_WIDTH - UI_MARGIN*2 - 110);
-  lv_obj_align(slider, LV_ALIGN_CENTER, 0, 20);
+  /* 아이콘(좌) 과 값 라벨(우, "100" 3자리) 사이.
+   * 노브가 0% 에서 아이콘, 100% 에서 라벨과 겹치지 않도록 양쪽 여백을 준다.
+   * (노브는 슬라이더 끝에서 ~11px 더 튀어나온다) */
+  lv_obj_set_width(slider, LCD_WIDTH - UI_MARGIN*2 - 132);
+  lv_obj_align(slider, LV_ALIGN_LEFT_MID, 52, 20);
   lv_slider_set_range(slider, 0, 100);
   lv_slider_set_value(slider, vol, LV_ANIM_OFF);
   lv_obj_set_style_bg_color(slider, lv_color_hex(UI_COLOR_LINE), LV_PART_MAIN);

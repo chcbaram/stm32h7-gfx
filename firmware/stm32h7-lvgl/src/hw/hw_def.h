@@ -7,7 +7,7 @@
 #include "err_code.h"
 
 
-#define _DEF_FIRMWATRE_VERSION    "V240322R1"
+#define _DEF_FIRMWATRE_VERSION    "V260725R1"
 #define _DEF_BOARD_NAME           "STM32H7-GFX-FW"
 
 

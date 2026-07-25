@@ -27,6 +27,7 @@ bool cassetteAudioInit(void);
 int         cassetteAudioScan(void);
 int         cassetteAudioCount(void);
 const char *cassetteAudioName(int idx);
+uint32_t    cassetteAudioSize(int idx);   /* 파일 크기 bytes */
 
 bool cassetteAudioPlay(int idx);
 bool cassetteAudioRecord(void);   /* 새 테이프에 녹음 */

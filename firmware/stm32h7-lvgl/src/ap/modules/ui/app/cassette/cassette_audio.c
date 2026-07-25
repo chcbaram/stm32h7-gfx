@@ -8,6 +8,7 @@
 #include "pdm.h"
 #include "mem.h"
 #include "arm_math.h"
+#include "minimp3.h"
 
 
 #define WAV_DIR             "/wav"
@@ -23,6 +24,7 @@ typedef struct
 {
   char     name[TAPE_NAME_MAX];      /* 표시용 (확장자 뺀 파일명) */
   char     path[TAPE_NAME_MAX + 12];  /* S:/wav/xxx.wav 아님, FatFs 경로 */
+  uint32_t size;                      /* 파일 크기 (bytes) */
 } tape_t;
 
 typedef enum
@@ -37,6 +39,8 @@ typedef enum
 static void cassetteAudioThread(void const *arg);
 static bool wavOpen(const char *path, uint32_t *p_rate, uint16_t *p_ch, uint32_t *p_data_len);
 static void doPlay(int idx);
+static void doPlayMp3(int idx);
+static uint32_t mp3XingDurMs(const uint8_t *buf, int len);
 static void doRecord(void);
 static void doStop(void);
 static void feedSpectrum(const int16_t *p_mono, int cnt);
@@ -67,6 +71,13 @@ static arm_rfft_fast_instance_f32 fft_inst;
 static pcm_data_t *rec_buf = NULL;
 static uint32_t    rec_cap = 0;
 
+/* MP3 디코더 (한 번에 하나만 재생하므로 정적으로 둔다. mp3dec_t 는 ~6.7KB) */
+static mp3dec_t  mp3d;
+static uint8_t   mp3_in[8*1024];                            /* 입력 스트림 버퍼 */
+static int16_t   mp3_pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];    /* 디코드 출력 */
+static int16_t   mp3_out[MINIMP3_MAX_SAMPLES_PER_FRAME];    /* i2s 용 스테레오 */
+static int16_t   mp3_mono[MINIMP3_MAX_SAMPLES_PER_FRAME/2]; /* 스펙트럼용 모노 */
+
 
 
 
@@ -80,6 +91,8 @@ bool cassetteAudioInit(void)
 #ifdef _USE_HW_CLI
   cliAdd("cass", cliCmd);
 #endif
+  /* minimp3 스크래치(~17KB)는 정적 버퍼로 옮겼으므로(minimp3.h 로컬 패치)
+   * 스택은 기존대로 8KB 면 충분하다. */
   return threadCreate("cass_audio", cassetteAudioThread, NULL, osPriorityNormal, 8*1024);
 }
 
@@ -103,7 +116,8 @@ int cassetteAudioScan(void)
       continue;
 
     const char *ext = strrchr(fno.fname, '.');
-    if (ext == NULL || (strcasecmp(ext, ".wav") != 0))
+    if (ext == NULL ||
+        (strcasecmp(ext, ".wav") != 0 && strcasecmp(ext, ".mp3") != 0))
       continue;
 
     tape_t *t = &tapes[tape_cnt];
@@ -121,6 +135,7 @@ int cassetteAudioScan(void)
       len = sizeof(t->name) - 1;
     memcpy(t->name, fno.fname, len);
     t->name[len] = 0;
+    t->size = fno.fsize;
 
     tape_cnt++;
   }
@@ -139,6 +154,13 @@ const char *cassetteAudioName(int idx)
   if (idx < 0 || idx >= tape_cnt)
     return NULL;
   return tapes[idx].name;
+}
+
+uint32_t cassetteAudioSize(int idx)
+{
+  if (idx < 0 || idx >= tape_cnt)
+    return 0;
+  return tapes[idx].size;
 }
 
 bool cassetteAudioPlay(int idx)
@@ -299,7 +321,15 @@ void doPlay(int idx)
   FILE    *fp;
   int8_t   i2s_ch;
   uint32_t byte_per_sample;
+  const char *ext = strrchr(tapes[idx].path, '.');
 
+
+  /* 확장자로 디코더를 고른다. */
+  if (ext != NULL && strcasecmp(ext, ".mp3") == 0)
+  {
+    doPlayMp3(idx);
+    return;
+  }
 
   if (wavOpen(tapes[idx].path, &rate, &ch, &data_len) != true)
     return;
@@ -394,6 +424,225 @@ void doPlay(int idx)
   {
     /* 곡이 끝까지 재생됨 */
     state = CASS_AUDIO_IDLE;
+    pos_ms = dur_ms;
+    memset((void *)spectrum, 0, sizeof(spectrum));
+  }
+}
+
+/* 첫 프레임의 Xing/Info(VBR) 헤더를 찾아 정확한 재생 길이(ms)를 계산한다.
+ * 헤더가 없으면 0 을 반환한다 (그 경우 비트레이트로 추정한다).
+ *
+ * MP3 프레임 헤더에서 버전/레이어/샘플레이트/채널을 읽어 side-info 크기를
+ * 구하고, 그 뒤의 "Xing"/"Info" 태그에서 총 프레임 수를 얻는다.
+ *   길이 = 프레임수 * (프레임당 샘플수) / 샘플레이트
+ */
+uint32_t mp3XingDurMs(const uint8_t *buf, int len)
+{
+  static const int sr_tab[4][3] = {
+    {11025, 12000,  8000},   /* MPEG2.5 */
+    {0, 0, 0},               /* reserved */
+    {22050, 24000, 16000},   /* MPEG2   */
+    {44100, 48000, 32000},   /* MPEG1   */
+  };
+  int start = 0;
+
+  /* ID3v2 태그가 있으면 건너뛴다. 태그가 크면(앨범아트 등) 첫 프레임이
+   * 버퍼 밖이라 못 찾고 0 을 반환한다 (그 경우 비트레이트 추정으로 폴백). */
+  if (len > 10 && buf[0] == 'I' && buf[1] == 'D' && buf[2] == '3')
+  {
+    int sz = ((buf[6] & 0x7f) << 21) | ((buf[7] & 0x7f) << 14) |
+             ((buf[8] & 0x7f) << 7)  |  (buf[9] & 0x7f);
+    start = 10 + sz;
+    if (buf[5] & 0x10)      /* footer present */
+      start += 10;
+  }
+
+  for (int i = start; i + 12 < len && i < start + 1024; i++)
+  {
+    int ver, layer, mono, sri, hz, si, xo, spf;
+    uint32_t flags, frames;
+
+    /* 프레임 싱크 (11 비트) */
+    if (buf[i] != 0xFF || (buf[i+1] & 0xE0) != 0xE0)
+      continue;
+
+    ver   = (buf[i+1] >> 3) & 0x03;   /* 0=2.5 1=예약 2=v2 3=v1 */
+    layer = (buf[i+1] >> 1) & 0x03;   /* 1=Layer3 */
+    if (ver == 1 || layer != 1)
+      continue;
+
+    sri = (buf[i+2] >> 2) & 0x03;
+    if (sri == 3)
+      continue;
+    hz = sr_tab[ver][sri];
+    if (hz == 0)
+      continue;
+
+    mono = (((buf[i+3] >> 6) & 0x03) == 3);
+
+    /* side-info 크기 : MPEG1 → 스테레오32/모노17, MPEG2·2.5 → 17/9 */
+    if (ver == 3)
+      si = mono ? 17 : 32;
+    else
+      si = mono ? 9  : 17;
+
+    xo = i + 4 + si;
+    if (xo + 12 > len)
+      return 0;
+
+    if (memcmp(&buf[xo], "Xing", 4) != 0 && memcmp(&buf[xo], "Info", 4) != 0)
+      continue;   /* 이 프레임엔 없음 — 계속 스캔 */
+
+    flags = ((uint32_t)buf[xo+4] << 24) | ((uint32_t)buf[xo+5] << 16) |
+            ((uint32_t)buf[xo+6] << 8)  |  (uint32_t)buf[xo+7];
+    if ((flags & 0x0001) == 0)
+      return 0;   /* 프레임 수 필드 없음 */
+
+    frames = ((uint32_t)buf[xo+8]  << 24) | ((uint32_t)buf[xo+9]  << 16) |
+             ((uint32_t)buf[xo+10] << 8)  |  (uint32_t)buf[xo+11];
+
+    spf = (ver == 3) ? 1152 : 576;    /* Layer3 프레임당 샘플수 */
+    return (uint32_t)((uint64_t)frames * spf * 1000 / hz);
+  }
+  return 0;
+}
+
+/* minimp3 스트리밍 재생.
+ * 8KB 입력 버퍼를 채워 프레임 단위로 디코드하고, 소비한 만큼 당겨가며 진행한다.
+ * mp3dec_t/버퍼는 정적(위 참고) 이라 스레드 스택을 넘지 않는다.
+ */
+void doPlayMp3(int idx)
+{
+  FILE     *fp;
+  size_t    in_len      = 0;
+  uint32_t  file_remain = tapes[idx].size;
+  int8_t    i2s_ch      = -1;
+  bool      started     = false;
+  bool      dur_known   = false;  /* Xing/Info 로 정확한 길이를 얻었는가 */
+  bool      first_fill  = true;
+  uint32_t  rate        = 0;
+  uint64_t  played      = 0;    /* 디코드한 총 (채널당) 샘플 수 */
+
+
+  fp = fopen(tapes[idx].path, "r");
+  if (fp == NULL)
+    return;
+
+  mp3dec_init(&mp3d);
+
+  cur_idx = idx;
+  pos_ms  = 0;
+  dur_ms  = 0;
+  fft_cnt = 0;
+  state   = CASS_AUDIO_PLAY;
+
+  while (state == CASS_AUDIO_PLAY && req == REQ_NONE)
+  {
+    mp3dec_frame_info_t info;
+    int samples;
+
+    /* 입력 버퍼 보충 (남은 파일 바이트로 제한 — ob_fread 는 EOF 짧은카운트가 없다) */
+    if (in_len < sizeof(mp3_in) && file_remain > 0)
+    {
+      uint32_t want = sizeof(mp3_in) - in_len;
+      int      n;
+
+      if (want > file_remain)
+        want = file_remain;
+
+      n = fread(mp3_in + in_len, 1, want, fp);
+      if (n > 0)
+      {
+        in_len      += n;
+        file_remain -= n;
+      }
+    }
+    if (in_len == 0)
+      break;   /* 파일 끝 */
+
+    /* 첫 채움에서 VBR 헤더로 정확한 길이를 시도한다. */
+    if (first_fill)
+    {
+      uint32_t d = mp3XingDurMs(mp3_in, (int)in_len);
+
+      first_fill = false;
+      if (d > 0)
+      {
+        dur_ms    = d;
+        dur_known = true;
+      }
+    }
+
+    samples = mp3dec_decode_frame(&mp3d, mp3_in, (int)in_len, mp3_pcm, &info);
+
+    if (info.frame_bytes == 0)
+      break;   /* 더 이상 프레임을 못 찾음 (끝) */
+
+    /* 소비한 바이트만큼 앞으로 당긴다. */
+    memmove(mp3_in, mp3_in + info.frame_bytes, in_len - info.frame_bytes);
+    in_len -= info.frame_bytes;
+
+    if (samples <= 0)
+      continue;   /* ID3 / 무효 프레임 건너뜀 */
+
+    if (started == false)
+    {
+      rate    = info.hz;
+      i2sSetSampleRate(rate);
+      i2s_ch  = i2sGetEmptyChannel();
+      started = true;
+
+      /* Xing/Info 로 못 얻었으면 비트레이트로 추정한다. */
+      if (dur_known == false && info.bitrate_kbps > 0)
+        dur_ms = (uint32_t)((uint64_t)tapes[idx].size * 8 / info.bitrate_kbps);
+    }
+
+    /* 스테레오 인터리브 + 스펙트럼용 모노 구성 */
+    for (int i = 0; i < samples; i++)
+    {
+      int16_t l = (info.channels == 2) ? mp3_pcm[i*2 + 0] : mp3_pcm[i];
+      int16_t r = (info.channels == 2) ? mp3_pcm[i*2 + 1] : mp3_pcm[i];
+      mp3_out[i*2 + 0] = l;
+      mp3_out[i*2 + 1] = r;
+      mp3_mono[i] = (int16_t)(((int32_t)l + r) / 2);
+    }
+    feedSpectrum(mp3_mono, samples);
+
+    /* i2s 여유만큼 나눠 보낸다. (length 단위 = int16 슬롯, 스테레오면 쌍*2) */
+    {
+      int off = 0;                   /* 스테레오 쌍 단위 오프셋 */
+
+      while (off < samples && state == CASS_AUDIO_PLAY && req == REQ_NONE)
+      {
+        uint32_t avail_pairs = i2sAvailableForWrite(i2s_ch) / 2;
+        int      n;
+
+        if (avail_pairs == 0)
+        {
+          delay(1);
+          continue;
+        }
+
+        n = samples - off;
+        if ((uint32_t)n > avail_pairs)
+          n = (int)avail_pairs;
+
+        i2sWrite(i2s_ch, &mp3_out[off*2], (uint32_t)n * 2);
+        off += n;
+      }
+    }
+
+    played += samples;
+    if (rate > 0)
+      pos_ms = (uint32_t)(played * 1000 / rate);
+  }
+
+  fclose(fp);
+
+  if (state == CASS_AUDIO_PLAY)
+  {
+    /* 끝까지 재생됨 */
+    state  = CASS_AUDIO_IDLE;
     pos_ms = dur_ms;
     memset((void *)spectrum, 0, sizeof(spectrum));
   }
