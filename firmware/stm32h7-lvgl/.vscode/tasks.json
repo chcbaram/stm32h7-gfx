@@ -1,0 +1,128 @@
+{
+	"version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build- configure",
+      "type": "shell",
+      "command": "cmake -S . -B build",
+      "problemMatcher": []
+    },
+    {
+      "label": "build- configure for win",
+      "type": "shell",
+      "command": "cmake -S . -B build -G 'MinGW Makefiles'",
+      "problemMatcher": []
+    },
+    {
+      "label": "build- build",
+      "type": "shell",
+      "command": "cmake --build build -j10",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "build- clean",
+      "type": "shell",
+      "command": "cmake --build build --target clean",
+      "problemMatcher": [],
+    },
+    {
+      "label": "tools- capture screen",
+      "type": "shell",
+      "command": "mkdir -p capture && python3 tools/python/capture.py -p ${input:serialPort} capture/screen_$(date +%Y%m%d_%H%M%S).png",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "tools- upload folder -> SD",
+      "type": "shell",
+      "command": "python3 tools/python/upload.py -p ${input:serialPort} -d sd --dir ${input:uploadDir} ${input:uploadDest}",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "tools- upload folder -> SPI Flash",
+      "type": "shell",
+      "command": "python3 tools/python/upload.py -p ${input:serialPort} -d spi --dir ${input:uploadDir} ${input:uploadDest}",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "tools- sync assets (sd/spi)",
+      "type": "shell",
+      "command": "python3 tools/python/upload.py -p ${input:serialPort} --sync ${input:syncDir}",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "tools- init 기본 폰트 전송 (SPI)",
+      "type": "shell",
+      "command": "python3 tools/python/upload.py -p ${input:serialPort} -d spi tools/fonts/kr.bin /font/kr.bin",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "tools- 음악 전송 (폴더 -> SD /wav)",
+      "type": "shell",
+      "command": "python3 tools/python/upload.py -p ${input:serialPort} -d sd --dir ${input:uploadDir} /wav",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "serialPort",
+      "type": "command",
+      "command": "firmware-task.pickSerialPort",
+      "args": {
+        "placeholder": "보드 시리얼 포트 선택",
+        "filter": "usbmodem|usbserial|wchusbserial|SLAB"
+      }
+    },
+    {
+      "id": "uploadDir",
+      "type": "command",
+      "command": "firmware-task.pickFolder",
+      "args": {
+        "title": "전송할 로컬 폴더 선택 (하위 폴더까지 재귀 전송)",
+        "relative": true
+      }
+    },
+    {
+      "id": "uploadDest",
+      "type": "promptString",
+      "description": "보드상의 대상 경로",
+      "default": "/wav"
+    },
+    {
+      "id": "syncDir",
+      "type": "command",
+      "command": "firmware-task.pickFolder",
+      "args": {
+        "title": "스테이징 폴더 선택 (안의 sd/ 와 spi/ 가 대상 드라이브를 결정)",
+        "relative": true
+      }
+    }
+  ]
+}

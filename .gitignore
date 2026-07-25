@@ -1,3 +1,13 @@
+# 빌드 산출물
+firmware/*/build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# 에디터 / 인덱서 캐시
+.cache/
+
 firmware/stm32h7-gfx-fw/build/
 firmware/stm32h7-gfx-fw/prj/stm32cubeide/Debug/
 firmware/stm32h7-gfx-fw/prj/stm32cubeide/.settings/language.settings.xml
