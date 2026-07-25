@@ -5,18 +5,17 @@
       "label": "build- configure",
       "type": "shell",
       "command": "cmake -S . -B build",
-      "problemMatcher": []
-    },
-    {
-      "label": "build- configure for win",
-      "type": "shell",
-      "command": "cmake -S . -B build -G 'MinGW Makefiles'",
+      "windows": {
+        "command": "cmake -S . -B build -G \"MinGW Makefiles\""
+      },
       "problemMatcher": []
     },
     {
       "label": "build- build",
       "type": "shell",
       "command": "cmake --build build -j10",
+      "dependsOn": "build- configure",
+      "dependsOrder": "sequence",
       "problemMatcher": [],
       "group": {
         "kind": "build",
