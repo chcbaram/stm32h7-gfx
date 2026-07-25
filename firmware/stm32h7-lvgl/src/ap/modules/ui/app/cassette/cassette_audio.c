@@ -23,6 +23,11 @@
 #define SPEC_BAND_TOP       440     /* 밴드 매핑 상한 bin (~19kHz@44.1k, 1024점 기준).
                                      * 값이 클수록 넓은 대역을 담고, 작을수록 좁은 대역에
                                      * 재분배되어 구분감↑. 하한은 bin1(~43Hz). FFT_SIZE/2 클램프. */
+/* 오토 센시티비티(AGC): 곡마다 녹음 레벨이 달라도 화면을 적절히 채우도록
+ * 최고 막대가 천장에 닿으면 감도를 낮추고, 여유가 있으면 천천히 올린다. */
+#define SPEC_AGC_TARGET     88      /* 최고 막대가 대략 이 값에 오도록 감도 조절 */
+#define SPEC_AGC_MIN        0.25f
+#define SPEC_AGC_MAX        16.0f
 #define REC_MAX_MS          (15*1000)
 #define REC_SAMPLE_RATE     16000
 
@@ -75,6 +80,7 @@ static float             fft_win[FFT_SIZE];               /* Hann 창함수 */
 static uint16_t          band_lo[CASS_SPECTRUM_BARS];     /* 막대별 시작 bin */
 static uint16_t          band_hi[CASS_SPECTRUM_BARS];     /* 막대별 끝 bin (exclusive) */
 static int               fft_cnt = 0;
+static float             agc_gain = 1.0f;                 /* 오토 센시티비티 감도 배율 */
 static arm_rfft_fast_instance_f32 fft_inst;
 
 /* 녹음 버퍼 */
@@ -779,33 +785,50 @@ void feedSpectrum(const int16_t *p_mono, int cnt)
       arm_cmplx_mag_f32(out, mag, FFT_SIZE/2);
       fft_cnt = 0;
 
-      /* 로그 밴드별로 평균 세기를 구한다. (막대 폭이 달라 합이 아니라 평균) */
+      /* 로그 밴드별로 평균 세기를 구한다. (막대 폭이 달라 합이 아니라 평균)
+       * 이번 프레임 감도(agc_gain)를 적용하고, 최고 막대값을 모아 뒤에서 조절한다. */
+      float g    = SPEC_GAIN * agc_gain;
+      int   peak = 0;
+
       for (int b = 0; b < CASS_SPECTRUM_BARS; b++)
       {
-        float sum = 0;
-        int   n   = band_hi[b] - band_lo[b];
+        float sum  = 0;
+        int   n    = band_hi[b] - band_lo[b];
+        float tilt = powf(10.0f, (SPEC_TILT * b) / 20.0f);
+        float db;
+        int   vf;
+        int   v;
+        int   prev;
 
         for (int k = band_lo[b]; k < band_hi[b]; k++)
           sum += mag[k];
         if (n < 1) n = 1;
 
-        /* 고역 틸트는 곱셈으로 준다(dB→선형 배수). 신호가 없으면 0 이 유지되어
-         * 예전처럼 고역에 상시 바닥이 생기지 않는다. 음악은 고역으로 갈수록
-         * 에너지가 롤오프하므로 이를 보정해 고역 막대도 살아나게 한다.
+        /* 고역 틸트는 곱셈(dB→선형 배수), 바닥 빼고 확장해 변화량을 키운다.
          * (볼륨 적용 전 PCM 기준 = 소스 기반, 볼륨과 무관하게 일정) */
-        float tilt = powf(10.0f, (SPEC_TILT * b) / 20.0f);
-        float db   = 20.0f * log10f((sum / n) * SPEC_GAIN * tilt + 1.0f);
+        db = 20.0f * log10f((sum / n) * g * tilt + 1.0f);
+        vf = (int)((db - SPEC_FLOOR) * SPEC_EXPAND);   /* 천장 클램프 전 값 */
+        if (vf > peak)
+          peak = vf;
 
-        /* 바닥(SPEC_FLOOR)을 빼고 확장해 조용/큰 구간의 변화량을 키운다. */
-        int v = (int)((db - SPEC_FLOOR) * SPEC_EXPAND);
+        v = vf;
         if (v < 0)   v = 0;
         if (v > 100) v = 100;
 
         /* 부드럽게 떨어지도록 감쇠 */
-        int prev = spectrum[b];
+        prev = spectrum[b];
         if (v >= prev) spectrum[b] = v;
         else           spectrum[b] = prev - ((prev - v) / 3) - 1;
       }
+
+      /* 오토 센시티비티 : 천장에 닿으면 빠르게 낮추고, 여유 있으면 천천히 올린다. */
+      if (peak > 100)
+        agc_gain *= 0.985f;
+      else if (peak > 3 && peak < SPEC_AGC_TARGET)
+        agc_gain *= 1.003f;
+
+      if (agc_gain < SPEC_AGC_MIN) agc_gain = SPEC_AGC_MIN;
+      if (agc_gain > SPEC_AGC_MAX) agc_gain = SPEC_AGC_MAX;
     }
   }
 }
