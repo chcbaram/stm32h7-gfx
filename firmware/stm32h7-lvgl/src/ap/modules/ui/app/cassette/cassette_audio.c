@@ -15,7 +15,14 @@
 #define TAPE_MAX_CNT        32
 #define TAPE_NAME_MAX       48
 
-#define FFT_SIZE            256
+#define FFT_SIZE            1024    /* 43Hz/bin@44.1k — 저역 분해능 확보 */
+#define SPEC_GAIN           60.0f   /* 스펙트럼 진폭 → dB 스케일 이득 */
+#define SPEC_TILT           2.2f    /* 고역 틸트: 막대(≈옥타브)당 dB 부스트 (곱셈) */
+#define SPEC_FLOOR          16.0f   /* 이 dB 이하는 바닥으로 깎는다 (변화량 강조) */
+#define SPEC_EXPAND         1.8f    /* 바닥 위 구간을 확장하는 배율 */
+#define SPEC_BAND_TOP       440     /* 밴드 매핑 상한 bin (~19kHz@44.1k, 1024점 기준).
+                                     * 값이 클수록 넓은 대역을 담고, 작을수록 좁은 대역에
+                                     * 재분배되어 구분감↑. 하한은 bin1(~43Hz). FFT_SIZE/2 클램프. */
 #define REC_MAX_MS          (15*1000)
 #define REC_SAMPLE_RATE     16000
 
@@ -64,6 +71,9 @@ static volatile int         req_idx = 0;
 /* 스펙트럼 (스레드가 쓰고 UI 가 읽는다) */
 static volatile uint8_t  spectrum[CASS_SPECTRUM_BARS];
 static float             fft_acc[FFT_SIZE];
+static float             fft_win[FFT_SIZE];               /* Hann 창함수 */
+static uint16_t          band_lo[CASS_SPECTRUM_BARS];     /* 막대별 시작 bin */
+static uint16_t          band_hi[CASS_SPECTRUM_BARS];     /* 막대별 끝 bin (exclusive) */
 static int               fft_cnt = 0;
 static arm_rfft_fast_instance_f32 fft_inst;
 
@@ -85,6 +95,34 @@ bool cassetteAudioInit(void)
 {
   arm_rfft_fast_init_f32(&fft_inst, FFT_SIZE);
   memset((void *)spectrum, 0, sizeof(spectrum));
+
+  /* Hann 창함수 (스펙트럼 누설을 줄여 밴드 구분을 선명하게 한다) */
+  for (int i = 0; i < FFT_SIZE; i++)
+    fft_win[i] = 0.5f - 0.5f * cosf(2.0f * PI * i / (FFT_SIZE - 1));
+
+  /* 로그(옥타브) 간격 밴드 경계. 저역에 막대를 더 촘촘히 배분해
+   * 베이스/중역/고역이 각자 막대를 갖게 한다. bin 1(=DC 제외) ~ N/2.
+   */
+  {
+    float lo = 1.0f;
+    float hi = (float)SPEC_BAND_TOP;
+
+    if (hi > FFT_SIZE / 2)
+      hi = FFT_SIZE / 2;
+
+    for (int b = 0; b < CASS_SPECTRUM_BARS; b++)
+    {
+      int i0 = (int)(lo * powf(hi / lo, (float)b       / CASS_SPECTRUM_BARS) + 0.5f);
+      int i1 = (int)(lo * powf(hi / lo, (float)(b + 1) / CASS_SPECTRUM_BARS) + 0.5f);
+
+      if (i0 < 1)            i0 = 1;
+      if (i1 <= i0)          i1 = i0 + 1;
+      if (i1 > FFT_SIZE / 2) i1 = FFT_SIZE / 2;
+
+      band_lo[b] = i0;
+      band_hi[b] = i1;
+    }
+  }
 
   cassetteAudioScan();
 
@@ -729,29 +767,37 @@ void feedSpectrum(const int16_t *p_mono, int cnt)
 
     if (fft_cnt >= FFT_SIZE)
     {
-      float out[FFT_SIZE];
-      float mag[FFT_SIZE/2];
+      /* 1024점이라 스택 대신 정적 버퍼를 쓴다 (단일 스레드 호출) */
+      static float out[FFT_SIZE];
+      static float mag[FFT_SIZE/2];
+
+      /* 창함수 적용 (누설 감소) 후 FFT */
+      for (int k = 0; k < FFT_SIZE; k++)
+        fft_acc[k] *= fft_win[k];
 
       arm_rfft_fast_f32(&fft_inst, fft_acc, out, 0);
       arm_cmplx_mag_f32(out, mag, FFT_SIZE/2);
       fft_cnt = 0;
 
-      /* 절반 스펙트럼을 막대 개수로 뭉친다. DC 는 버린다. */
-      int per = (FFT_SIZE/2 - 1) / CASS_SPECTRUM_BARS;
-      if (per < 1) per = 1;
-
+      /* 로그 밴드별로 평균 세기를 구한다. (막대 폭이 달라 합이 아니라 평균) */
       for (int b = 0; b < CASS_SPECTRUM_BARS; b++)
       {
-        float peak = 0;
-        for (int j = 0; j < per; j++)
-        {
-          int k = 1 + b * per + j;
-          if (k < FFT_SIZE/2 && mag[k] > peak)
-            peak = mag[k];
-        }
+        float sum = 0;
+        int   n   = band_hi[b] - band_lo[b];
 
-        /* 로그 스케일로 0..100 에 맞춘다. */
-        int v = (int)(20.0f * log10f(peak * 40.0f + 1.0f));
+        for (int k = band_lo[b]; k < band_hi[b]; k++)
+          sum += mag[k];
+        if (n < 1) n = 1;
+
+        /* 고역 틸트는 곱셈으로 준다(dB→선형 배수). 신호가 없으면 0 이 유지되어
+         * 예전처럼 고역에 상시 바닥이 생기지 않는다. 음악은 고역으로 갈수록
+         * 에너지가 롤오프하므로 이를 보정해 고역 막대도 살아나게 한다.
+         * (볼륨 적용 전 PCM 기준 = 소스 기반, 볼륨과 무관하게 일정) */
+        float tilt = powf(10.0f, (SPEC_TILT * b) / 20.0f);
+        float db   = 20.0f * log10f((sum / n) * SPEC_GAIN * tilt + 1.0f);
+
+        /* 바닥(SPEC_FLOOR)을 빼고 확장해 조용/큰 구간의 변화량을 키운다. */
+        int v = (int)((db - SPEC_FLOOR) * SPEC_EXPAND);
         if (v < 0)   v = 0;
         if (v > 100) v = 100;
 

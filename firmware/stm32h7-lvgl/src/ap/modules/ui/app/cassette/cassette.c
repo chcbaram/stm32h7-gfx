@@ -11,11 +11,19 @@
 #define REEL_PACK_R_MAX     46
 #define REEL_GAP            118         /* 좌우 릴 중심 간격의 절반 */
 
-#define SPEC_BAR_W          7
-#define SPEC_BAR_GAP        3
-#define SPEC_MAX_H          88
+#define SPEC_BAR_W          7        /* 막대 폭 */
+#define SPEC_BAR_GAP        3        /* 막대 간격 */
+#define SPEC_MAX_H          64       /* 막대 최대 높이 (바닥→위, 한 방향) */
 
-/* 막대 높이(레벨)에 따라 색이 바뀐다 (낮음 초록 → 중간 노랑 → 높음 빨강) */
+#define SPEC_SEG_H          6       /* 세그먼트(블럭) 높이 */
+#define SPEC_SEG_GAP        3       /* 세그먼트 간격 */
+#define SPEC_BG             0x0A0D10 /* 스펙트럼 배경(=테이프 창) 색 */
+
+#define SPEC_CAP_H          3        /* 피크 홀드 캡 두께 */
+#define SPEC_PEAK_FALL      2        /* 피크가 프레임당 내려오는 양 */
+#define SPEC_BASE_COL       0x39434E /* 바닥 기준선 색 */
+
+/* 막대는 아래(초록) → 위(빨강) 세로 그라디언트. 위로 갈수록(피크) 빨강. */
 #define SPEC_COL_LO         0x3DDC5A
 #define SPEC_COL_MID        0xE8C13A
 #define SPEC_COL_HI         0xE8503A
@@ -39,8 +47,7 @@ static void createShell(lv_obj_t *parent);
 static void createTransport(lv_obj_t *parent);
 static void createReel(lv_obj_t *parent, reel_t *p_reel, int32_t cx, int32_t cy);
 static void createSpectrum(lv_obj_t *parent);
-static int      specColorLevel(int v);
-static uint32_t specColor(int level);
+static uint32_t specLerp(uint32_t a, uint32_t b, int num, int den);  /* 색 선형보간 */
 static void updateReel(reel_t *p_reel, int32_t angle, int32_t pack_r);
 static void refreshTape(void);
 static void btnPlayCb(lv_event_t *e);
@@ -64,8 +71,10 @@ static lv_obj_t *label_title;
 static lv_obj_t *label_state;
 static lv_obj_t *label_time;
 static lv_obj_t *bar_progress;
-static lv_obj_t *spec_bar[CASS_SPECTRUM_BARS];
-static int8_t    spec_col_pre[CASS_SPECTRUM_BARS];
+static lv_obj_t *spec_cover[CASS_SPECTRUM_BARS];  /* 상단 마스크(안 켜진 윗부분 가림) */
+static lv_obj_t *spec_cap[CASS_SPECTRUM_BARS];    /* 피크 홀드 캡 */
+static uint8_t   spec_peak[CASS_SPECTRUM_BARS];   /* 피크 값 (천천히 하강) */
+static lv_obj_t *spec_base;                       /* 바닥 기준선 (재생 중에만 표시) */
 
 static int32_t   reel_angle = 0;
 static int32_t   reel_frac  = 0;   /* 회전 잔여각 누적 (deg*1000) */
@@ -175,19 +184,45 @@ void cassetteUpdate(void)
                         (int)(pos/1000)/60, (int)(pos/1000)%60,
                         (int)(dur/1000)/60, (int)(dur/1000)%60);
 
-  /* 스펙트럼 : 중앙에서 상하로 커지는 막대, 높이에 따라 색이 바뀐다 */
+  /* 바닥 기준선은 스펙트럼이 도는 재생/녹음 중에만 표시한다. */
+  if (st != CASS_AUDIO_IDLE)
+    lv_obj_remove_flag(spec_base, LV_OBJ_FLAG_HIDDEN);
+  else
+    lv_obj_add_flag(spec_base, LV_OBJ_FLAG_HIDDEN);
+
+  /* 스펙트럼 : 바닥에서 위로 채워지는 블럭 막대(위로 갈수록 빨강) + 피크 홀드 캡.
+   * 고정 그라디언트 위에 상단 마스크를 씌워 마스크를 줄이면 아래부터 드러난다. */
   cassetteAudioGetSpectrum(bars, CASS_SPECTRUM_BARS);
   for (int i = 0; i < CASS_SPECTRUM_BARS; i++)
   {
-    int h   = 2 + (SPEC_MAX_H - 2) * bars[i] / 100;
-    int col = specColorLevel(bars[i]);
+    int fill    = SPEC_MAX_H * bars[i] / 100;   /* 켜질 높이 */
+    int cover_h = SPEC_MAX_H - fill;            /* 위에서 가릴 높이 */
 
-    lv_obj_set_height(spec_bar[i], h);
+    if (cover_h < 0)          cover_h = 0;
+    if (cover_h > SPEC_MAX_H) cover_h = SPEC_MAX_H;
+    lv_obj_set_height(spec_cover[i], cover_h);
 
-    if (col != spec_col_pre[i])
+    /* 피크 홀드 : 값이 오르면 즉시 따라가고, 아니면 천천히 내려온다. */
+    if (bars[i] > spec_peak[i])
+      spec_peak[i] = bars[i];
+    else if (spec_peak[i] > SPEC_PEAK_FALL)
+      spec_peak[i] -= SPEC_PEAK_FALL;
+    else
+      spec_peak[i] = 0;
+
+    if (spec_peak[i] > 0)
     {
-      lv_obj_set_style_bg_color(spec_bar[i], lv_color_hex((uint32_t)specColor(col)), LV_PART_MAIN);
-      spec_col_pre[i] = col;
+      int py = SPEC_MAX_H - (SPEC_MAX_H * spec_peak[i] / 100) - SPEC_CAP_H;
+      if (py < 0) py = 0;
+      lv_obj_set_y(spec_cap[i], py);
+      /* 캡 색 = 그 높이의 그라디언트 색 (아래 초록 → 위 빨강 보간) */
+      lv_obj_set_style_bg_color(spec_cap[i],
+          lv_color_hex(specLerp(SPEC_COL_LO, SPEC_COL_HI, spec_peak[i], 100)), LV_PART_MAIN);
+      lv_obj_remove_flag(spec_cap[i], LV_OBJ_FLAG_HIDDEN);
+    }
+    else
+    {
+      lv_obj_add_flag(spec_cap[i], LV_OBJ_FLAG_HIDDEN);
     }
   }
 
@@ -286,37 +321,110 @@ void createShell(lv_obj_t *parent)
   lv_obj_set_style_bg_opa(bar_progress, LV_OPA_COVER, LV_PART_MAIN);
 }
 
-/* 막대 레벨(0..100) -> 색 구간 (0 초록 / 1 노랑 / 2 빨강) */
-static int specColorLevel(int v)
+/* 두 24bit 색을 num/den 비율로 선형보간한다. (den 에서 b, 0 에서 a) */
+uint32_t specLerp(uint32_t a, uint32_t b, int num, int den)
 {
-  if (v >= 80) return 2;
-  if (v >= 55) return 1;
-  return 0;
+  int ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF;
+  int br = (b >> 16) & 0xFF, bg = (b >> 8) & 0xFF, bb = b & 0xFF;
+  int r, g, bl;
+
+  if (den <= 0)  den = 1;
+  if (num < 0)   num = 0;
+  if (num > den) num = den;
+
+  r  = ar + (br - ar) * num / den;
+  g  = ag + (bg - ag) * num / den;
+  bl = ab + (bb - ab) * num / den;
+  return ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)bl;
 }
 
-static uint32_t specColor(int level)
-{
-  if (level >= 2) return SPEC_COL_HI;
-  if (level >= 1) return SPEC_COL_MID;
-  return SPEC_COL_LO;
-}
-
+/* 스펙트럼을 세그먼트(블럭) 막대로 만든다. 바닥에서 위로 커진다.
+ *  - 막대마다 고정 세로 그라디언트(아래 초록 → 위 빨강)를 깔고,
+ *  - 그 위에 배경색 상단 마스크를 씌워 안 켜진 윗부분을 가린다(동적).
+ *  - 전체 폭에 가로 간격 띠를 규칙적으로 얹어 블럭으로 잘라낸다(정적).
+ *  - 맨 위에 피크 홀드 캡(밝은 막대)을 얹는다(동적).
+ */
 void createSpectrum(lv_obj_t *parent)
 {
   int total_w = CASS_SPECTRUM_BARS * SPEC_BAR_W + (CASS_SPECTRUM_BARS - 1) * SPEC_BAR_GAP;
-  int x0 = -total_w / 2 + SPEC_BAR_W / 2;
+  int pitch   = SPEC_SEG_H + SPEC_SEG_GAP;
+  lv_obj_t *cont;
+
+
+  cont = lv_obj_create(parent);
+  lv_obj_remove_style_all(cont);
+  lv_obj_set_size(cont, total_w, SPEC_MAX_H);
+  lv_obj_align(cont, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_remove_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
 
   for (int i = 0; i < CASS_SPECTRUM_BARS; i++)
   {
-    spec_col_pre[i] = -1;
+    int       x = i * (SPEC_BAR_W + SPEC_BAR_GAP);
+    lv_obj_t *grad;
+    lv_obj_t *cover;
 
-    spec_bar[i] = lv_obj_create(parent);
-    lv_obj_remove_style_all(spec_bar[i]);
-    lv_obj_set_size(spec_bar[i], SPEC_BAR_W, 2);
-    lv_obj_align(spec_bar[i], LV_ALIGN_CENTER, x0 + i * (SPEC_BAR_W + SPEC_BAR_GAP), 0);
-    lv_obj_set_style_radius(spec_bar[i], 2, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(spec_bar[i], lv_color_hex(SPEC_COL_LO), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(spec_bar[i], LV_OPA_COVER, LV_PART_MAIN);
+    /* 고정 그라디언트 막대 (아래 초록 → 위 빨강) */
+    grad = lv_obj_create(cont);
+    lv_obj_remove_style_all(grad);
+    lv_obj_set_size(grad, SPEC_BAR_W, SPEC_MAX_H);
+    lv_obj_align(grad, LV_ALIGN_BOTTOM_LEFT, x, 0);
+    lv_obj_set_style_bg_color(grad, lv_color_hex(SPEC_COL_HI), LV_PART_MAIN);       /* 위 */
+    lv_obj_set_style_bg_grad_color(grad, lv_color_hex(SPEC_COL_LO), LV_PART_MAIN);  /* 아래 */
+    lv_obj_set_style_bg_grad_dir(grad, LV_GRAD_DIR_VER, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(grad, LV_OPA_COVER, LV_PART_MAIN);
+
+    /* 상단 마스크 (동적) : 처음엔 전체를 가려 꺼진 상태 */
+    cover = lv_obj_create(cont);
+    lv_obj_remove_style_all(cover);
+    lv_obj_set_size(cover, SPEC_BAR_W, SPEC_MAX_H);
+    lv_obj_align(cover, LV_ALIGN_TOP_LEFT, x, 0);
+    lv_obj_set_style_bg_color(cover, lv_color_hex(SPEC_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(cover, LV_OPA_COVER, LV_PART_MAIN);
+
+    spec_cover[i] = cover;
+  }
+
+  /* 세그먼트 간격 띠 (정적) : 전체 폭에 가로로 깔아 막대를 블럭으로 자른다 */
+  for (int y = SPEC_SEG_H; y < SPEC_MAX_H; y += pitch)
+  {
+    lv_obj_t *gap = lv_obj_create(cont);
+
+    lv_obj_remove_style_all(gap);
+    lv_obj_set_size(gap, total_w, SPEC_SEG_GAP);
+    lv_obj_align(gap, LV_ALIGN_BOTTOM_LEFT, 0, -y);
+    lv_obj_set_style_bg_color(gap, lv_color_hex(SPEC_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(gap, LV_OPA_COVER, LV_PART_MAIN);
+  }
+
+  /* 피크 홀드 캡 (동적, 최상위) */
+  for (int i = 0; i < CASS_SPECTRUM_BARS; i++)
+  {
+    int       x = i * (SPEC_BAR_W + SPEC_BAR_GAP);
+    lv_obj_t *cap = lv_obj_create(cont);
+
+    lv_obj_remove_style_all(cap);
+    lv_obj_set_size(cap, SPEC_BAR_W, SPEC_CAP_H);
+    lv_obj_set_pos(cap, x, 0);
+    lv_obj_set_style_bg_color(cap, lv_color_hex(SPEC_COL_LO), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(cap, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_add_flag(cap, LV_OBJ_FLAG_HIDDEN);
+
+    spec_cap[i]  = cap;
+    spec_peak[i] = 0;
+  }
+
+  /* 바닥 기준선 : 재생 중 막대가 시작되는 바닥을 알 수 있게 얇게 깐다.
+   * cont(막대 영역) 바로 아래에 두어 막대에 가리지 않는다. */
+  {
+    spec_base = lv_obj_create(parent);
+
+    lv_obj_remove_style_all(spec_base);
+    lv_obj_set_size(spec_base, total_w, 2);          /* 스펙트럼 막대 영역과 동일 폭 */
+    lv_obj_align(spec_base, LV_ALIGN_CENTER, 0, SPEC_MAX_H / 2 + 3);
+    lv_obj_set_style_radius(spec_base, 1, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(spec_base, lv_color_hex(SPEC_BASE_COL), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(spec_base, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_add_flag(spec_base, LV_OBJ_FLAG_HIDDEN);   /* 재생 중에만 표시 */
   }
 }
 
@@ -347,8 +455,22 @@ void createTransport(lv_obj_t *parent)
 
 void createReel(lv_obj_t *parent, reel_t *p_reel, int32_t cx, int32_t cy)
 {
+  lv_obj_t *ring;
+
   p_reel->cx = cx;
   p_reel->cy = cy;
+
+  /* 최대 테이프 감김 기준 원 (약하게). 테이프가 줄어도 최대 위치를 알 수 있다.
+   * 맨 뒤에 두어 실제 테이프(pack)가 그 위에 그려진다. */
+  ring = lv_obj_create(parent);
+  lv_obj_remove_style_all(ring);
+  lv_obj_set_size(ring, REEL_PACK_R_MAX*2, REEL_PACK_R_MAX*2);
+  lv_obj_align(ring, LV_ALIGN_CENTER, cx, cy);
+  lv_obj_set_style_radius(ring, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ring, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ring, 1, LV_PART_MAIN);
+  lv_obj_set_style_border_color(ring, lv_color_hex(0x2E3742), LV_PART_MAIN);
+  lv_obj_set_style_border_opa(ring, LV_OPA_60, LV_PART_MAIN);
 
   p_reel->pack = lv_obj_create(parent);
   lv_obj_remove_style_all(p_reel->pack);

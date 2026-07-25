@@ -47,6 +47,8 @@ static void cliCmd(cli_args_t *args);
 static launcher_info_t info;
 
 static volatile bool theme_toggle_req = false;   /* CLI 등 다른 스레드에서 요청 */
+static volatile bool run_req = false;             /* CLI 로 app 실행 요청 */
+static char          run_name[32];
 
 static int32_t back_x0;
 static int32_t back_y0;
@@ -123,6 +125,13 @@ void launcherUpdate(void)
     uiThemeToggle();
     launcherRebuildHome();
     ui_shade_apply_theme();
+  }
+
+  /* CLI 로 요청한 app 실행도 UI 스레드에서 처리한다. */
+  if (run_req == true)
+  {
+    run_req = false;
+    launcherRunApp(run_name);
   }
 
   if (info.p_cur != NULL && info.p_cur->update != NULL)
@@ -459,7 +468,6 @@ void cliCmd(cli_args_t *args)
   if (args->argc >= 2 && args->isStr(0, "run"))
   {
     char name[32] = {0, };
-    bool run_ret;
 
     for (int i = 1; i < args->argc; i++)
     {
@@ -473,8 +481,11 @@ void cliCmd(cli_args_t *args)
       strncat(name, args->getStr(i), sizeof(name) - strlen(name) - 1);
     }
 
-    run_ret = launcherRunApp(name);
-    cliPrintf("%s : %s\n", name, run_ret ? "OK":"not found or busy");
+    /* 실제 실행은 UI 스레드(launcherUpdate)에서. LVGL 은 스레드 안전이 아니다. */
+    strncpy(run_name, name, sizeof(run_name) - 1);
+    run_name[sizeof(run_name) - 1] = 0;
+    run_req = true;
+    cliPrintf("%s : requested\n", name);
     ret = true;
   }
 
