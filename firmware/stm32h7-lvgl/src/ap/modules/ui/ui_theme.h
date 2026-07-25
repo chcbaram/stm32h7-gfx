@@ -19,18 +19,47 @@ extern "C" {
  * 화면에 쓰는 색은 전부 여기서만 정의한다.
  * 위젯마다 lv_color_hex() 를 흩뿌리면 통일감이 무너진다.
  * ------------------------------------------------------------------------- */
-#define UI_COLOR_BG           0x0E1216   /* 화면 바탕            */
-#define UI_COLOR_SURFACE      0x181D23   /* 카드/패널            */
-#define UI_COLOR_SURFACE_ALT  0x232A32   /* 눌린 상태, 보조 면   */
-#define UI_COLOR_LINE         0x2E3742   /* 경계선               */
+/* 색은 런타임 팔레트에서 읽는다. 다크/라이트 테마를 토글로 바꾸기 위해서다.
+ * 이름은 그대로라 기존 lv_color_hex(UI_COLOR_*) 사용부는 수정할 필요가 없다.
+ */
+typedef enum
+{
+  UI_THEME_DARK = 0,
+  UI_THEME_LIGHT,
+  UI_THEME_CNT,
+} ui_theme_mode_t;
 
-#define UI_COLOR_TEXT         0xF2F5F7   /* 본문                 */
-#define UI_COLOR_TEXT_DIM     0x8A97A6   /* 보조 설명            */
-#define UI_COLOR_TEXT_ON_ACC  0x0E1216   /* 강조색 위의 글자     */
+typedef struct
+{
+  uint32_t bg;            /* 화면 바탕            */
+  uint32_t surface;       /* 카드/패널            */
+  uint32_t surface_alt;   /* 눌린 상태, 보조 면   */
+  uint32_t line;          /* 경계선               */
+  uint32_t text;          /* 본문                 */
+  uint32_t text_dim;      /* 보조 설명            */
+  uint32_t text_on_acc;   /* 강조색 위의 글자     */
+  uint32_t accent;        /* 강조 (재생/녹음)     */
+  uint32_t accent_dim;
+  uint32_t ok;
+} ui_palette_t;
 
-#define UI_COLOR_ACCENT       0xE8503A   /* 강조 (재생/녹음)     */
-#define UI_COLOR_ACCENT_DIM   0x8E3225
-#define UI_COLOR_OK           0x4CC38A
+const ui_palette_t *uiPalette(void);          /* 현재 활성 팔레트 */
+ui_theme_mode_t     uiThemeGetMode(void);
+void                uiThemeSetMode(ui_theme_mode_t mode);  /* 스타일 재적용 + 저장 */
+void                uiThemeToggle(void);       /* 다크 <-> 라이트 */
+
+#define UI_COLOR_BG           (uiPalette()->bg)
+#define UI_COLOR_SURFACE      (uiPalette()->surface)
+#define UI_COLOR_SURFACE_ALT  (uiPalette()->surface_alt)
+#define UI_COLOR_LINE         (uiPalette()->line)
+
+#define UI_COLOR_TEXT         (uiPalette()->text)
+#define UI_COLOR_TEXT_DIM     (uiPalette()->text_dim)
+#define UI_COLOR_TEXT_ON_ACC  (uiPalette()->text_on_acc)
+
+#define UI_COLOR_ACCENT       (uiPalette()->accent)
+#define UI_COLOR_ACCENT_DIM   (uiPalette()->accent_dim)
+#define UI_COLOR_OK           (uiPalette()->ok)
 
 /* ---------------------------------------------------------------------------
  * 간격  (4 배수 스케일)

@@ -15,6 +15,7 @@ extern "C" {
  */
 bool ui_shade_init(void);
 bool ui_shade_is_open(void);
+void ui_shade_apply_theme(void);   /* 테마 변경 후 셰이드 인라인 색 갱신 (UI 스레드) */
 
 #endif
 

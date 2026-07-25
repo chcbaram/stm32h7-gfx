@@ -31,6 +31,7 @@ typedef struct
 
 
 static void launcherCreateHome(void);
+static void launcherBuildHome(void);
 static void launcherAppBtnCb(lv_event_t *e);
 static void launcherEnterApp(app_info_t *p_app);
 static void launcherLeaveApp(void);
@@ -44,6 +45,8 @@ static void cliCmd(cli_args_t *args);
 #endif
 
 static launcher_info_t info;
+
+static volatile bool theme_toggle_req = false;   /* CLI 등 다른 스레드에서 요청 */
 
 static int32_t back_x0;
 static int32_t back_y0;
@@ -111,6 +114,15 @@ void launcherUpdate(void)
     info.is_exit_req = false;
     launcherLeaveApp();
     return;
+  }
+
+  /* 다른 스레드(CLI 등)에서 요청한 테마 토글을 UI 스레드에서 처리한다. */
+  if (theme_toggle_req == true)
+  {
+    theme_toggle_req = false;
+    uiThemeToggle();
+    launcherRebuildHome();
+    ui_shade_apply_theme();
   }
 
   if (info.p_cur != NULL && info.p_cur->update != NULL)
@@ -259,6 +271,34 @@ int launcherSortApps(app_info_t **p_list)
 
 void launcherCreateHome(void)
 {
+  /* 루트 스크린은 항상 로드되어 있고, 그 위에 홈/ app 컨테이너가 올라간다.
+   * app 을 오른쪽으로 밀면 뒤에 홈이 드러나는 인터랙티브 전환을 위해서다.
+   */
+  info.scr_root = uiCreateScreen(lv_obj_create(NULL));
+  lv_screen_load(info.scr_root);
+
+  launcherBuildHome();
+}
+
+/* 테마 변경 등으로 홈 화면만 다시 그린다. scr_root 는 유지한다. */
+void launcherRebuildHome(void)
+{
+  if (info.scr_root == NULL)
+    return;
+
+  if (info.home_cont != NULL)
+    lv_obj_delete(info.home_cont);
+
+  launcherBuildHome();
+
+  /* 새로 만든 홈은 최상위 자식이 되므로, app 이 열려 있으면 다시 앞으로. */
+  if (info.app_cont != NULL)
+    lv_obj_move_foreground(info.app_cont);
+}
+
+/* 홈 화면(상단바 + app 목록)을 scr_root 의 자식으로 만든다. */
+void launcherBuildHome(void)
+{
   lv_obj_t   *scr;
   lv_obj_t   *label;
   lv_obj_t   *bar;
@@ -266,12 +306,6 @@ void launcherCreateHome(void)
   app_info_t *sorted[32];
   int         cnt;
 
-
-  /* 루트 스크린은 항상 로드되어 있고, 그 위에 홈/ app 컨테이너가 올라간다.
-   * app 을 오른쪽으로 밀면 뒤에 홈이 드러나는 인터랙티브 전환을 위해서다.
-   */
-  info.scr_root = uiCreateScreen(lv_obj_create(NULL));
-  lv_screen_load(info.scr_root);
 
   scr = uiCreateScreen(lv_obj_create(info.scr_root));
   lv_obj_set_size(scr, LCD_WIDTH, LCD_HEIGHT);
@@ -450,11 +484,20 @@ void cliCmd(cli_args_t *args)
     ret = true;
   }
 
+  if (args->argc == 1 && args->isStr(0, "theme"))
+  {
+    /* 실제 전환은 UI 스레드(launcherUpdate)에서 한다. LVGL 은 스레드 안전이 아니다. */
+    theme_toggle_req = true;
+    cliPrintf("theme toggle requested\n");
+    ret = true;
+  }
+
   if (ret == false)
   {
     cliPrintf("launcher info\n");
     cliPrintf("launcher run [name]\n");
     cliPrintf("launcher exit\n");
+    cliPrintf("launcher theme\n");
   }
 }
 #endif
