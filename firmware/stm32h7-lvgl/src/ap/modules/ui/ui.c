@@ -23,6 +23,17 @@ bool uiInit(void)
 #endif
 
   lvglInit();
+
+  /* SPI Flash 의 한글 폰트를 fallback 으로 로드한다. (없으면 영문만 표시) */
+  {
+    lv_font_t *kr = lv_binfont_create("F:/font/kr.bin");
+    if (kr != NULL)
+      logPrintf("[OK] kr font loaded\n");
+    else
+      logPrintf("[  ] kr font not found (S:/font/kr.bin)\n");
+    uiThemeSetKrFont(kr);
+  }
+
   uiThemeInit();
   launcherInit();
   ui_shade_init();

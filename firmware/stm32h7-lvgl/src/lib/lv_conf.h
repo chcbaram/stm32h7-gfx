@@ -69,7 +69,7 @@
 
 #if LV_USE_STDLIB_MALLOC == LV_STDLIB_BUILTIN
     /** Size of memory available for `lv_malloc()` in bytes (>= 2kB) */
-    #define LV_MEM_SIZE (1024 * 1024U)        /**< [bytes] */
+    #define LV_MEM_SIZE (2 * 1024 * 1024U)    /**< [bytes] 한글 폰트(.bin, 압축)를 힙에 로드하므로 크게 잡는다 */
 
     /** Size of the memory expand for `lv_malloc()` in bytes */
     #define LV_MEM_POOL_EXPAND_SIZE 0
@@ -670,7 +670,7 @@
 #define LV_FONT_MONTSERRAT_42 0
 #define LV_FONT_MONTSERRAT_44 0
 #define LV_FONT_MONTSERRAT_46 0
-#define LV_FONT_MONTSERRAT_48 1
+#define LV_FONT_MONTSERRAT_48 0
 
 /* Demonstrate special features */
 #define LV_FONT_MONTSERRAT_28_COMPRESSED    0  /**< bpp = 3 */
@@ -702,7 +702,7 @@
 #define LV_FONT_FMT_TXT_LARGE 0
 
 /** Enables/disables support for compressed fonts. */
-#define LV_USE_FONT_COMPRESSED 0
+#define LV_USE_FONT_COMPRESSED 1
 
 /** Enable drawing placeholders when glyph dsc is not found. */
 #define LV_USE_FONT_PLACEHOLDER 1

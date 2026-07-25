@@ -58,7 +58,6 @@ extern "C" {
  * 크기를 코드에 직접 쓰지 않고 역할로 부른다.
  * 나중에 한글 폰트로 교체할 때 여기만 바꾸면 된다.
  * ------------------------------------------------------------------------- */
-const lv_font_t *uiFontDisplay(void);   /* 40 - 큰 숫자, 타이틀 */
 const lv_font_t *uiFontTitle(void);     /* 28 - 화면 제목       */
 const lv_font_t *uiFontBody(void);      /* 20 - 본문, 버튼      */
 const lv_font_t *uiFontCaption(void);   /* 14 - 라벨, 부가정보  */
@@ -71,6 +70,7 @@ const lv_font_t *uiFontCaption(void);   /* 14 - 라벨, 부가정보  */
  * 위젯마다 인라인으로 스타일을 박으면 RAM 도 낭비된다.
  * ------------------------------------------------------------------------- */
 bool uiThemeInit(void);
+void uiThemeSetKrFont(const lv_font_t *kr);   /* 한글 fallback 폰트 (uiThemeInit 전에) */
 
 lv_style_t *uiStyleScreen(void);        /* 화면 바탕            */
 lv_style_t *uiStyleCard(void);          /* 패널/카드            */

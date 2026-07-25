@@ -100,6 +100,19 @@ void cassetteUpdate(void)
   int32_t  pack_r;
   int32_t  ratio;               /* 0..1000 */
   uint8_t  bars[CASS_SPECTRUM_BARS];
+  static int title_idx = -2;
+
+
+  /* 재생/녹음 중이면 그 테이프 이름을, 아니면 선택한 이름을 보여준다. */
+  {
+    int show = (st != CASS_AUDIO_IDLE) ? cassetteAudioGetIndex() : sel_idx;
+    if (show != title_idx)
+    {
+      const char *nm = cassetteAudioName(show);
+      lv_label_set_text(label_title, nm != NULL ? nm : "No Tape");
+      title_idx = show;
+    }
+  }
 
 
   /* 재생/녹음 중이면 릴을 돌린다. */

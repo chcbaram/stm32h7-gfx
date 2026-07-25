@@ -17,19 +17,38 @@ static lv_style_t style_text_dim;
 
 
 
-/* 4.0인치 480x480 (약 170 PPI) 을 팔 뻗은 거리에서 보는 기준으로 잡았다.
- * 한 단계씩 더 키우려면 여기만 고치면 화면 전체에 반영된다.
+/* 영문은 montserrat, 한글 등 글리프가 없는 문자는 fallback(외부 한글 폰트)으로.
+ * montserrat 원본은 const 라 fallback 을 못 넣으므로 복사본에 지정한다.
  */
-const lv_font_t *uiFontDisplay(void) { return &lv_font_montserrat_48; }
-const lv_font_t *uiFontTitle(void)   { return &lv_font_montserrat_40; }
-const lv_font_t *uiFontBody(void)    { return &lv_font_montserrat_28; }
-const lv_font_t *uiFontCaption(void) { return &lv_font_montserrat_20; }
+static lv_font_t font_title;
+static lv_font_t font_body;
+static lv_font_t font_caption;
+
+static const lv_font_t *kr_font = NULL;
+
+const lv_font_t *uiFontTitle(void)   { return &font_title; }
+const lv_font_t *uiFontBody(void)    { return &font_body; }
+const lv_font_t *uiFontCaption(void) { return &font_caption; }
+
+/* 한글 fallback 폰트 지정. uiThemeInit 전에 호출한다. NULL 이면 영문만. */
+void uiThemeSetKrFont(const lv_font_t *kr)
+{
+  kr_font = kr;
+}
 
 
 bool uiThemeInit(void)
 {
   if (is_init == true)
     return true;
+
+  /* 역할 폰트 = montserrat 복사본 + 한글 fallback */
+  font_title   = lv_font_montserrat_40;
+  font_body    = lv_font_montserrat_28;
+  font_caption = lv_font_montserrat_20;
+  font_title.fallback   = kr_font;
+  font_body.fallback    = kr_font;
+  font_caption.fallback = kr_font;
 
   /* --- 화면 --- */
   lv_style_init(&style_screen);
