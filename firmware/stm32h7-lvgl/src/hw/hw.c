@@ -26,6 +26,7 @@ bool hwInit(void)
   eventInit();
   swtimerInit();
   gpioInit();
+  swdInit();
   ledInit();
   buttonInit();
   i2cInit();

@@ -3,8 +3,12 @@
 
 
 static void bspMpuInit(void);
+static void bspDwtInit(void);
 static void SystemClock_Config(void);
 static void PeriphCommonClock_Config(void);
+
+
+static uint32_t cyc_per_us = 1;
 
 
 
@@ -22,6 +26,8 @@ bool bspInit(void)
 
   SystemClock_Config();
   PeriphCommonClock_Config();
+
+  bspDwtInit();
 
   __HAL_RCC_SYSCFG_CLK_ENABLE();
   __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -57,6 +63,55 @@ void delay(uint32_t ms)
 uint32_t millis(void)
 {
   return HAL_GetTick();
+}
+
+/*
+ * DWT 사이클 카운터. us 단위 시간 측정과 사이클 단위 지연에 사용한다.
+ * SysTick 은 FreeRTOS 가, HAL tick 은 TIM6 가 쓰고 있으므로 둘 다 건드리지 않는다.
+ *
+ * 550MHz 에서 CYCCNT 는 약 7.8 초마다 랩하지만, unsigned 뺄셈이라 랩을 넘어가도
+ * 경과 사이클은 정상적으로 나온다 (한 바퀴를 넘지 않는 구간에 한해).
+ */
+void bspDwtInit(void)
+{
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+
+  /* Cortex-M7 은 DWT 에 lock access register 가 있다. CMSIS 의 DWT_Type 에는
+     없으므로 직접 쓴다. 해당 없는 코어에서는 RAZ/WI 라 무해하다. */
+  *(volatile uint32_t *)0xE0001FB0 = 0xC5ACCE55;
+
+  DWT->CYCCNT = 0;
+  DWT->CTRL  |= DWT_CTRL_CYCCNTENA_Msk;
+
+  cyc_per_us = SystemCoreClock / 1000000U;
+  if (cyc_per_us == 0)
+  {
+    cyc_per_us = 1;
+  }
+}
+
+uint32_t cycles(void)
+{
+  return DWT->CYCCNT;
+}
+
+uint32_t micros(void)
+{
+  return DWT->CYCCNT / cyc_per_us;
+}
+
+void delayCycles(uint32_t cyc)
+{
+  uint32_t t_start = DWT->CYCCNT;
+
+  while ((DWT->CYCCNT - t_start) < cyc)
+  {
+  }
+}
+
+void delayUs(uint32_t us)
+{
+  delayCycles(us * cyc_per_us);
 }
 
 
@@ -263,6 +318,26 @@ void bspMpuInit(void)
   MPU_InitStruct.TypeExtField     = MPU_TEX_LEVEL0;
   MPU_InitStruct.SubRegionDisable = 0x0;
   MPU_InitStruct.DisableExec      = MPU_INSTRUCTION_ACCESS_ENABLE;
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+
+  /* RAM_D2 (0x30000000, 32KB) - Non-cacheable
+   *
+   * 리전을 안 잡으면 region0 의 서브리전1(0x20000000~0x3FFFFFFF)이 비활성이라
+   * 기본 메모리맵이 적용되고, 거기서 이 영역은 write-back 캐시어블이 된다.
+   * DMA 가 채우는 버퍼(로직 애널라이저)를 두는 곳이라 캐시가 붙으면 안 된다.
+   */
+  MPU_InitStruct.Number           = MPU_REGION_NUMBER5;
+  MPU_InitStruct.Enable           = MPU_REGION_ENABLE;
+  MPU_InitStruct.BaseAddress      = 0x30000000;
+  MPU_InitStruct.Size             = MPU_REGION_SIZE_32KB;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+  MPU_InitStruct.IsBufferable     = MPU_ACCESS_NOT_BUFFERABLE;
+  MPU_InitStruct.IsCacheable      = MPU_ACCESS_NOT_CACHEABLE;
+  MPU_InitStruct.IsShareable      = MPU_ACCESS_SHAREABLE;
+  MPU_InitStruct.TypeExtField     = MPU_TEX_LEVEL0;
+  MPU_InitStruct.SubRegionDisable = 0x00;
+  MPU_InitStruct.DisableExec      = MPU_INSTRUCTION_ACCESS_DISABLE;
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
 

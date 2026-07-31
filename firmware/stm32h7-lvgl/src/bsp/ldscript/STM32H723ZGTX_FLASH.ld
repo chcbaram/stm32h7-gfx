@@ -210,6 +210,22 @@ SECTIONS
     . = ALIGN(4);
   } >RAM_D3
 
+  /* RAM_D2 는 원래 비어 있던 영역이다. DMA 로 GPIO IDR 을 샘플링하는
+     로직 애널라이저 버퍼가 여기 들어간다. bspMpuInit() 에서 non-cacheable
+     리전으로 잡아 두므로 캐시 관리가 필요 없다. */
+  .ram_d2(NOLOAD) :
+  {
+    . = ALIGN(32);
+    _sram_d2 = .;
+    *(.ram_d2)
+    *(.ram_d2*)
+    _eram_d2 = .;
+    . = ALIGN(32);
+  } >RAM_D2
+
+  _ram_d2_size = LENGTH(RAM_D2);
+  _ram_d2_used = _eram_d2 - _sram_d2;
+
   .sdram_buf(NOLOAD) :
   {
     . = ALIGN(4);      

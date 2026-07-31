@@ -732,6 +732,7 @@ bool cliAdd(const char *cmd_str, void (*p_func)(cli_args_t *))
 
   if (p_cli->cmd_count >= CLI_CMD_LIST_MAX)
   {
+    logPrintf("[NG] cliAdd(%s) full %d/%d\n", cmd_str, p_cli->cmd_count, CLI_CMD_LIST_MAX);
     return false;
   }
 

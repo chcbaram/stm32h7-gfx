@@ -15,6 +15,7 @@ extern "C" {
 #include "qbuffer.h"
 #include "swtimer.h"
 #include "gpio.h"
+#include "swd.h"
 #include "flash.h"
 #include "fault.h"
 #include "qspi.h"

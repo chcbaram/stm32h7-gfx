@@ -17,7 +17,7 @@
 
 
 static uint32_t i2cGetTimming(uint32_t freq_khz);
-static void delayUs(uint32_t us);
+static void i2cDelayUs(uint32_t us);
 #ifdef _USE_HW_CLI
 static void cliI2C(cli_args_t *args);
 #endif
@@ -177,24 +177,24 @@ void i2cReset(uint8_t ch)
 
   HAL_GPIO_WritePin(p_pin->scl_port, p_pin->scl_pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(p_pin->sda_port, p_pin->sda_pin, GPIO_PIN_SET);
-  delayUs(5);
+  i2cDelayUs(5);
 
   for (int i = 0; i < 9; i++)
   {
 
     HAL_GPIO_WritePin(p_pin->scl_port, p_pin->scl_pin, GPIO_PIN_RESET);
-    delayUs(5);
+    i2cDelayUs(5);
     HAL_GPIO_WritePin(p_pin->scl_port, p_pin->scl_pin, GPIO_PIN_SET);
-    delayUs(5);
+    i2cDelayUs(5);
   }
 
   HAL_GPIO_WritePin(p_pin->scl_port, p_pin->scl_pin, GPIO_PIN_RESET);
-  delayUs(5);
+  i2cDelayUs(5);
   HAL_GPIO_WritePin(p_pin->sda_port, p_pin->sda_pin, GPIO_PIN_RESET);
-  delayUs(5);
+  i2cDelayUs(5);
 
   HAL_GPIO_WritePin(p_pin->scl_port, p_pin->scl_pin, GPIO_PIN_SET);
-  delayUs(5);
+  i2cDelayUs(5);
   HAL_GPIO_WritePin(p_pin->sda_port, p_pin->sda_pin, GPIO_PIN_SET);
 }
 
@@ -404,7 +404,7 @@ uint32_t i2cGetErrCount(uint8_t ch)
   return i2c_errcount[ch];
 }
 
-void delayUs(uint32_t us)
+void i2cDelayUs(uint32_t us)
 {
   volatile uint32_t i;
 
