@@ -23,6 +23,7 @@
 
 #include "swd.h"
 #include "swd/swd_dap.h"
+#include "swd/swd_cm.h"
 #include "swd/swd_la.h"
 #include "cli.h"
 
@@ -1219,6 +1220,145 @@ void cliSwd(cli_args_t *args)
     ret = true;
   }
 
+  // ---- Cortex-M 디버그 코어 -------------------------------------------
+
+  if (args->argc == 1 && (args->isStr(0, "halt") || args->isStr(0, "run") ||
+                          args->isStr(0, "step") || args->isStr(0, "detach")))
+  {
+    swd_err_t err;
+    const char *what;
+
+    if (args->isStr(0, "halt"))        { err = swdCmHalt();   what = "halt"; }
+    else if (args->isStr(0, "run"))    { err = swdCmRun();    what = "run"; }
+    else if (args->isStr(0, "step"))   { err = swdCmStep();   what = "step"; }
+    else                               { err = swdCmDetach(); what = "detach"; }
+
+    cliPrintf("%-8s : %s\n", what, swdErrStr(err));
+
+    if (err == SWD_OK && !args->isStr(0, "detach"))
+    {
+      uint32_t dhcsr = 0, dfsr = 0, pc = 0;
+
+      swdCmGetDhcsr(&dhcsr);
+      swdMemRead32(CM_DFSR, &dfsr);
+      cliPrintf("DHCSR    : 0x%08X  %s%s%s\n", dhcsr,
+                (dhcsr & CM_S_HALT)   ? "S_HALT " : "",
+                (dhcsr & CM_S_SLEEP)  ? "S_SLEEP " : "",
+                (dhcsr & CM_S_LOCKUP) ? "S_LOCKUP " : "");
+      cliPrintf("DFSR     : 0x%08X  %s\n", dfsr, swdCmDfsrStr(dfsr));
+      if (dhcsr & CM_S_HALT)
+      {
+        swdCmRegRead(CM_REG_PC, &pc);
+        cliPrintf("PC       : 0x%08X\n", pc);
+      }
+    }
+    ret = true;
+  }
+
+  if (args->argc == 1 && (args->isStr(0, "rsthalt") || args->isStr(0, "sysreset")))
+  {
+    bool      is_halt = args->isStr(0, "rsthalt");
+    swd_err_t err     = is_halt ? swdCmResetHalt() : swdCmSysReset();
+
+    cliPrintf("%-8s : %s\n", is_halt ? "rsthalt" : "sysreset", swdErrStr(err));
+
+    if (err == SWD_OK && is_halt)
+    {
+      uint32_t dfsr = swdCmGetLastDfsr();
+      uint32_t pc = 0, sp = 0;
+
+      swdCmRegRead(CM_REG_PC, &pc);
+      swdCmRegRead(CM_REG_SP, &sp);
+      cliPrintf("halt at  : PC 0x%08X  SP 0x%08X\n", pc, sp);
+      cliPrintf("reason   : %s\n", swdCmDfsrStr(dfsr));
+    }
+    ret = true;
+  }
+
+  if (args->argc == 1 && args->isStr(0, "regs") == true)
+  {
+    static const char *nm[] = {"R0 ","R1 ","R2 ","R3 ","R4 ","R5 ","R6 ","R7 ",
+                               "R8 ","R9 ","R10","R11","R12","SP ","LR ","PC "};
+    uint32_t v[16];
+    uint32_t xpsr = 0, msp = 0, psp = 0, ctrl = 0;
+    bool halted = false;
+
+    swdCmIsHalted(&halted);
+    if (halted == false)
+    {
+      cliPrintf("코어가 halt 상태가 아니다. swd halt 먼저.\n");
+      ret = true;
+    }
+    else
+    {
+      for (int i = 0; i < 16; i++)
+      {
+        if (swdCmRegRead((uint8_t)i, &v[i]) != SWD_OK) v[i] = 0xDEADBEEF;
+      }
+      swdCmRegRead(CM_REG_XPSR, &xpsr);
+      swdCmRegRead(CM_REG_MSP,  &msp);
+      swdCmRegRead(CM_REG_PSP,  &psp);
+      swdCmRegRead(CM_REG_CTRL, &ctrl);
+
+      for (int i = 0; i < 16; i += 4)
+      {
+        cliPrintf("%s=%08X %s=%08X %s=%08X %s=%08X\n",
+                  nm[i],v[i], nm[i+1],v[i+1], nm[i+2],v[i+2], nm[i+3],v[i+3]);
+      }
+      cliPrintf("xPSR=%08X (T=%d)  MSP=%08X  PSP=%08X  CTRL=%08X\n",
+                xpsr, (int)((xpsr >> 24) & 1), msp, psp, ctrl);
+      ret = true;
+    }
+  }
+
+  if (args->argc >= 2 && args->isStr(0, "reg") == true)
+  {
+    uint8_t   n = (uint8_t)args->getData(1);
+    swd_err_t err;
+
+    if (args->argc == 2)
+    {
+      uint32_t v = 0;
+
+      err = swdCmRegRead(n, &v);
+      cliPrintf("reg[%d]   : 0x%08X  %s\n", n, v, swdErrStr(err));
+    }
+    else
+    {
+      uint32_t v = (uint32_t)args->getData(2);
+
+      err = swdCmRegWrite(n, v);
+      cliPrintf("reg[%d]   <= 0x%08X  %s\n", n, v, swdErrStr(err));
+    }
+    ret = true;
+  }
+
+  if (args->argc == 1 && args->isStr(0, "core") == true)
+  {
+    swd_cm_info_t info;
+    swd_err_t     err = swdCmGetInfo(&info);
+
+    if (err != SWD_OK)
+    {
+      cliPrintf("core     : %s\n", swdErrStr(err));
+    }
+    else
+    {
+      cliPrintf("CPUID    : 0x%08X  ARM %s r%dp%d\n",
+                info.cpuid, info.core_name, info.rev_r, info.rev_p);
+      if (info.id_addr)
+      {
+        cliPrintf("DEV ID   : 0x%08X @ 0x%08X\n", info.id_value, info.id_addr);
+        cliPrintf("           dev_id 0x%03X  %s\n", info.dev_id, info.vendor);
+      }
+      else
+      {
+        cliPrintf("DEV ID   : 못 찾음 (알려진 위치에 없음)\n");
+      }
+    }
+    ret = true;
+  }
+
   // ---- 내장 로직 애널라이저 -------------------------------------------
   //
   // 캡처는 원샷이고 8000샘플이면 20MSPS 에서 400us 만에 찬다. arm 만 해 두고
@@ -1382,6 +1522,13 @@ void cliSwd(cli_args_t *args)
     cliPrintf("swd wb|wh <addr> <v>   8/16bit 쓰기\n");
     cliPrintf("swd bench <addr> <kb>  블록 읽기 처리량\n");
     cliPrintf("swd tartest <ram_addr> 1KB TAR 랩 검증 (RAM 주소!)\n");
+    cliPrintf("\n");
+    cliPrintf("swd halt|run|step|detach\n");
+    cliPrintf("swd rsthalt            SYSRESETREQ + vector catch\n");
+    cliPrintf("swd sysreset           리셋 후 자유 실행\n");
+    cliPrintf("swd regs               R0~R15, xPSR, MSP, PSP, CONTROL\n");
+    cliPrintf("swd reg <n> [v]        13=SP 14=LR 15=PC 16=xPSR\n");
+    cliPrintf("swd core               CPUID 디코드 + 디바이스 ID\n");
     cliPrintf("\n");
     cliPrintf("swd la connect         캡처하며 connect\n");
     cliPrintf("swd la id              캡처하며 DPIDR 읽기\n");
