@@ -22,6 +22,7 @@
  */
 
 #include "swd.h"
+#include "swd/swd_dap.h"
 #include "swd/swd_la.h"
 #include "cli.h"
 
@@ -68,6 +69,8 @@ static uint32_t moder_out;
 
 static uint32_t swd_half_cyc;             // 반주기 지연 사이클. 0 이면 최대 속도
 static uint32_t swd_loop_ovh = 1;         // 지연 없이 도는 반주기 비용(사이클)
+static uint32_t swd_ospeed = 0;           // OSPEEDR. 0=LOW 1=MED 2=HIGH 3=VERY_HIGH
+                                          // 점퍼선 실측에서 LOW 만 무오류였다. 아래 주석 참조.
 static uint32_t swd_khz_req;
 static uint32_t swd_khz_act;
 static uint32_t swd_idcode;
@@ -202,21 +205,31 @@ bool swdIsBusy(void)
 }
 
 /* SWCLK 는 푸시풀 출력, SWDIO 는 푸시풀 + 약한 풀업(타깃 유휴 레벨과 맞춘다).
-   OSPEEDR 을 VERY_HIGH 로 올리는 게 중요하다. 리셋 기본값 00 이면 100kHz 는
-   깨끗하고 1MHz 는 뭉개진 파형이 나와서 "타깃이 불안정"으로 오진하게 된다. */
+ *
+ * OSPEEDR(드라이브 강도)이 중요하다. 높일수록 좋을 것 같지만 반대다.
+ * 종단 없는 점퍼선에서는 VERY_HIGH 의 서브나노초 에지가 링잉과 반사를 만들어
+ * 비트 오류를 낸다. 이 오류는 클럭 주기가 아니라 에지 기울기에 의존하므로
+ * 속도를 낮춰도 사라지지 않는 게 특징이고, 그래서 원인을 오해하기 쉽다.
+ *
+ * STM32F411 타깃 + 점퍼선 실측 (32워드 블록 읽기 20회):
+ *   LOW 0 실패 / MEDIUM 3 / HIGH 11 / VERY_HIGH 9
+ * LOW 로는 최대 속도(실효 ~10MHz)까지 64워드 블록이 무오류였다.
+ *
+ * 제대로 하려면 SWCLK/SWDIO 에 직렬 22~33옴, SWDIO 에 풀업 10k, 짧은 GND
+ * 리턴을 두는 게 맞다. 배선이 개선되면 swd drv 로 올려서 다시 재면 된다. */
 void swdPinInit(void)
 {
   uint32_t pos;
 
   pos = SWD_CLK_PIN * 2;
-  SWD_CLK_PORT->OSPEEDR = (SWD_CLK_PORT->OSPEEDR & ~(3UL << pos)) | (3UL << pos);
+  SWD_CLK_PORT->OSPEEDR = (SWD_CLK_PORT->OSPEEDR & ~(3UL << pos)) | (swd_ospeed << pos);
   SWD_CLK_PORT->PUPDR   = (SWD_CLK_PORT->PUPDR   & ~(3UL << pos));
   SWD_CLK_PORT->OTYPER &= ~(1UL << SWD_CLK_PIN);
   SWD_CLK_PORT->BSRR    = (1UL << SWD_CLK_PIN);                     // 유휴 시 high
   SWD_CLK_PORT->MODER   = (SWD_CLK_PORT->MODER   & ~(3UL << pos)) | (1UL << pos);
 
   pos = SWD_IO_PIN * 2;
-  SWD_IO_PORT->OSPEEDR  = (SWD_IO_PORT->OSPEEDR  & ~(3UL << pos)) | (3UL << pos);
+  SWD_IO_PORT->OSPEEDR  = (SWD_IO_PORT->OSPEEDR  & ~(3UL << pos)) | (swd_ospeed << pos);
   SWD_IO_PORT->PUPDR    = (SWD_IO_PORT->PUPDR    & ~(3UL << pos)) | (1UL << pos);
   SWD_IO_PORT->OTYPER  &= ~(1UL << SWD_IO_PIN);
   SWD_IO_PORT->BSRR     = (1UL << SWD_IO_PIN);
@@ -579,6 +592,7 @@ swd_err_t swdConnect(uint32_t *p_idcode)
   uint32_t id  = 0;
 
   is_connected = false;
+  swdDapInvalidate();       // 링크가 바뀌면 SELECT/CSW 캐시와 파워업 상태를 버린다
 
   if (swdPinTest() == false)
   {
@@ -654,6 +668,7 @@ void swdDisconnect(void)
 {
   swdIdle(8);
   is_connected = false;
+  swdDapInvalidate();
 }
 
 bool swdIsConnected(void)
@@ -737,6 +752,10 @@ void cliSwd(cli_args_t *args)
     cliPrintf("clk pin  : P%c%d\n", 'A' + ((uint32_t)SWD_CLK_PORT - GPIOA_BASE)/0x400, SWD_CLK_PIN);
     cliPrintf("dio pin  : P%c%d\n", 'A' + ((uint32_t)SWD_IO_PORT  - GPIOA_BASE)/0x400, SWD_IO_PIN);
     cliPrintf("nrst     : %s\n", swdHasRst() ? "wired" : "none (sw reset only)");
+    {
+      const char *nm[4] = {"LOW", "MEDIUM", "HIGH", "VERY_HIGH"};
+      cliPrintf("drive    : %d (%s)\n", (int)swd_ospeed, nm[swd_ospeed & 3]);
+    }
     cliPrintf("speed    : req %d KHz, act %d KHz\n", (int)swd_khz_req, (int)swd_khz_act);
     cliPrintf("half cyc : %d (ovh %d)\n", (int)swd_half_cyc, (int)swd_loop_ovh);
     cliPrintf("cpu clk  : %d MHz\n", (int)(SystemCoreClock/1000000));
@@ -745,6 +764,24 @@ void cliSwd(cli_args_t *args)
     {
       cliPrintf("idcode   : 0x%08X\n", swd_idcode);
     }
+    ret = true;
+  }
+
+  if (args->argc == 1 && args->isStr(0, "drv") == true)
+  {
+    const char *nm[4] = {"LOW", "MEDIUM", "HIGH", "VERY_HIGH"};
+
+    cliPrintf("drive    : %d (%s)\n", (int)swd_ospeed, nm[swd_ospeed & 3]);
+    ret = true;
+  }
+
+  if (args->argc == 2 && args->isStr(0, "drv") == true)
+  {
+    const char *nm[4] = {"LOW", "MEDIUM", "HIGH", "VERY_HIGH"};
+
+    swd_ospeed = (uint32_t)args->getData(1) & 3;
+    swdBegin();
+    cliPrintf("drive    : %d (%s)\n", (int)swd_ospeed, nm[swd_ospeed]);
     ret = true;
   }
 
@@ -928,6 +965,260 @@ void cliSwd(cli_args_t *args)
     ret = true;
   }
 
+  // ---- DP/AP, 타깃 메모리 ---------------------------------------------
+
+  if (args->argc == 1 && args->isStr(0, "power") == true)
+  {
+    swd_err_t err = swdDapEnsure();
+    uint32_t  ctrl = 0;
+
+    swdDpRead(SWD_DP_CTRL_STAT, &ctrl);
+    cliPrintf("power    : %s\n", swdErrStr(err));
+    cliPrintf("CTRL/STAT: 0x%08X\n", ctrl);
+    cliPrintf("  CSYSPWRUPACK %d  CDBGPWRUPACK %d\n",
+              (int)((ctrl >> 31) & 1), (int)((ctrl >> 29) & 1));
+    cliPrintf("  STICKYERR %d  STICKYORUN %d  WDATAERR %d\n",
+              (int)((ctrl >> 5) & 1), (int)((ctrl >> 1) & 1), (int)((ctrl >> 7) & 1));
+    ret = true;
+  }
+
+  if (args->argc == 1 && args->isStr(0, "apid") == true)
+  {
+    uint32_t idr = 0, cfg = 0, base = 0;
+
+    if (swdDapEnsure() == SWD_OK)
+    {
+      swdApRead(SWD_AP_IDR,  &idr);
+      swdApRead(SWD_AP_CFG,  &cfg);
+      swdApRead(SWD_AP_BASE, &base);
+
+      cliPrintf("AP%d IDR  : 0x%08X %s\n", swdDapGetAp(), idr,
+                (idr == 0x24770011) ? "(ARM AHB-AP, Cortex-M3/M4)" : "");
+      cliPrintf("AP%d CFG  : 0x%08X\n", swdDapGetAp(), cfg);
+      cliPrintf("AP%d BASE : 0x%08X %s\n", swdDapGetAp(), base,
+                (base & 1) ? "(ROM table present)" : "(no ROM table)");
+    }
+    else
+    {
+      cliPrintf("connect fail\n");
+    }
+    ret = true;
+  }
+
+  // AP 열거. 멀티코어(H7 듀얼코어 등) 대비로 지금 넣어 둔다.
+  if (args->argc == 1 && args->isStr(0, "apscan") == true)
+  {
+    uint8_t ap_bak = swdDapGetAp();
+
+    if (swdDapEnsure() == SWD_OK)
+    {
+      for (int i = 0; i < 8; i++)
+      {
+        uint32_t idr = 0;
+
+        swdDapSetAp((uint8_t)i);
+        if (swdApRead(SWD_AP_IDR, &idr) == SWD_OK && idr != 0)
+        {
+          cliPrintf("AP%d : 0x%08X\n", i, idr);
+        }
+      }
+    }
+    swdDapSetAp(ap_bak);
+    ret = true;
+  }
+
+  if (args->argc == 2 && args->isStr(0, "ap") == true)
+  {
+    swdDapSetAp((uint8_t)args->getData(1));
+    cliPrintf("ap sel : %d\n", swdDapGetAp());
+    ret = true;
+  }
+
+  if (args->argc == 2 && args->isStr(0, "dpread") == true)
+  {
+    uint32_t  addr = (uint32_t)args->getData(1);
+    uint32_t  data = 0;
+    swd_err_t err;
+
+    swdDapEnsure();
+    err = swdDpRead((uint8_t)addr, &data);
+    cliPrintf("DP[0x%X] : 0x%08X  %s\n", addr, data, swdErrStr(err));
+    ret = true;
+  }
+
+  if (args->argc == 3 && args->isStr(0, "dpwrite") == true)
+  {
+    uint32_t  addr = (uint32_t)args->getData(1);
+    uint32_t  data = (uint32_t)args->getData(2);
+    swd_err_t err;
+
+    swdDapEnsure();
+    err = swdDpWrite((uint8_t)addr, data);
+    cliPrintf("DP[0x%X] <= 0x%08X  %s\n", addr, data, swdErrStr(err));
+    ret = true;
+  }
+
+  // 타깃 메모리 덤프. 호스트 메모리 덤프인 "md" 와 이름이 겹치지 않게 swd md.
+  if (args->argc >= 2 && args->isStr(0, "md") == true)
+  {
+    uint32_t addr  = (uint32_t)args->getData(1);
+    uint32_t count = (args->argc == 3) ? (uint32_t)args->getData(2) : 4;
+    static uint32_t buf[64];
+
+    while (count > 0)
+    {
+      uint32_t n = (count > 64) ? 64 : count;
+      swd_err_t err = swdMemReadBlock(addr, buf, n);
+
+      if (err != SWD_OK)
+      {
+        cliPrintf("%08X : %s\n", addr, swdErrStr(err));
+        break;
+      }
+
+      for (uint32_t i = 0; i < n; i += 4)
+      {
+        cliPrintf("%08X :", addr + i*4);
+        for (uint32_t k = 0; k < 4 && (i+k) < n; k++)
+        {
+          cliPrintf(" %08X", buf[i+k]);
+        }
+        cliPrintf("\n");
+      }
+      addr  += n * 4;
+      count -= n;
+    }
+    ret = true;
+  }
+
+  if (args->argc >= 3 && args->isStr(0, "mw") == true)
+  {
+    uint32_t  addr  = (uint32_t)args->getData(1);
+    uint32_t  data  = (uint32_t)args->getData(2);
+    uint32_t  count = (args->argc == 4) ? (uint32_t)args->getData(3) : 1;
+    swd_err_t err;
+
+    err = swdMemFill(addr, data, count);
+    cliPrintf("%08X <= 0x%08X x%d  %s\n", addr, data, (int)count, swdErrStr(err));
+    ret = true;
+  }
+
+  if (args->argc == 2 && args->isStr(0, "mb") == true)
+  {
+    uint32_t  addr = (uint32_t)args->getData(1);
+    uint8_t   data = 0;
+    swd_err_t err  = swdMemRead8(addr, &data);
+
+    cliPrintf("%08X : 0x%02X  %s\n", addr, data, swdErrStr(err));
+    ret = true;
+  }
+
+  if (args->argc == 2 && args->isStr(0, "mh") == true)
+  {
+    uint32_t  addr = (uint32_t)args->getData(1);
+    uint16_t  data = 0;
+    swd_err_t err  = swdMemRead16(addr, &data);
+
+    cliPrintf("%08X : 0x%04X  %s\n", addr, data, swdErrStr(err));
+    ret = true;
+  }
+
+  if (args->argc == 3 && args->isStr(0, "wb") == true)
+  {
+    uint32_t  addr = (uint32_t)args->getData(1);
+    uint8_t   data = (uint8_t)args->getData(2);
+    swd_err_t err  = swdMemWrite8(addr, data);
+
+    cliPrintf("%08X <= 0x%02X  %s\n", addr, data, swdErrStr(err));
+    ret = true;
+  }
+
+  if (args->argc == 3 && args->isStr(0, "wh") == true)
+  {
+    uint32_t  addr = (uint32_t)args->getData(1);
+    uint16_t  data = (uint16_t)args->getData(2);
+    swd_err_t err  = swdMemWrite16(addr, data);
+
+    cliPrintf("%08X <= 0x%04X  %s\n", addr, data, swdErrStr(err));
+    ret = true;
+  }
+
+  if (args->argc == 3 && args->isStr(0, "bench") == true)
+  {
+    uint32_t addr = (uint32_t)args->getData(1);
+    uint32_t kb   = (uint32_t)args->getData(2);
+    static uint32_t buf[256];
+    uint32_t left = kb * 256;
+    uint32_t t_start;
+    uint32_t t_ms;
+    swd_err_t err = SWD_OK;
+
+    t_start = millis();
+    while (left > 0 && err == SWD_OK)
+    {
+      uint32_t n = (left > 256) ? 256 : left;
+
+      err = swdMemReadBlock(addr, buf, n);
+      addr += n * 4;
+      left -= n;
+    }
+    t_ms = millis() - t_start;
+
+    if (err != SWD_OK)
+    {
+      cliPrintf("bench fail : %s\n", swdErrStr(err));
+    }
+    else
+    {
+      cliPrintf("read %d KB in %d ms -> %d KB/s @ %d KHz\n",
+                (int)kb, (int)t_ms, (int)(t_ms ? (kb * 1000 / t_ms) : 0),
+                (int)swdGetSpeedActual());
+    }
+    ret = true;
+  }
+
+  // 1KB TAR 랩 검증. 경계를 걸치는 블록을 쓰고 다시 읽어 비교한다.
+  // 이 버그는 "1KB 마다 조용히 깨짐" 이라 일반 테스트로는 안 잡힌다.
+  if (args->argc == 2 && args->isStr(0, "tartest") == true)
+  {
+    uint32_t base = (uint32_t)args->getData(1);
+    static uint32_t wr[768];
+    static uint32_t rd[768];
+    swd_err_t err;
+    uint32_t  bad = 0;
+
+    // 1KB 경계를 확실히 걸치도록 512B 앞에서 시작해 3KB 를 쓴다
+    base = (base + 0x3FF) & ~0x3FFUL;
+    base -= 512;
+
+    for (uint32_t i = 0; i < 768; i++) wr[i] = 0xA5000000 | i;
+
+    err = swdMemWriteBlock(base, wr, 768);
+    if (err == SWD_OK) err = swdMemReadBlock(base, rd, 768);
+
+    if (err != SWD_OK)
+    {
+      cliPrintf("tartest : %s\n", swdErrStr(err));
+    }
+    else
+    {
+      for (uint32_t i = 0; i < 768; i++)
+      {
+        if (rd[i] != wr[i])
+        {
+          if (bad < 4)
+          {
+            cliPrintf("  %08X : exp %08X got %08X\n", base + i*4, wr[i], rd[i]);
+          }
+          bad++;
+        }
+      }
+      cliPrintf("tartest : %08X ~ %08X (%d word), mismatch %d -> %s\n",
+                base, base + 768*4 - 4, 768, (int)bad, bad ? "FAIL" : "PASS");
+    }
+    ret = true;
+  }
+
   // ---- 내장 로직 애널라이저 -------------------------------------------
   //
   // 캡처는 원샷이고 8000샘플이면 20MSPS 에서 400us 만에 찬다. arm 만 해 두고
@@ -946,6 +1237,31 @@ void cliSwd(cli_args_t *args)
       swdLaFreeze();
 
       cliPrintf("connect  : %s  DPIDR 0x%08X\n", (err == SWD_OK) ? "OK" : "FAIL", id);
+      cliPrintf("captured : %d sample @ %d KHz\n", (int)swdLaCount(), (int)swdLaRate());
+      ret = true;
+    }
+
+    // 지정한 블록 읽기를 캡처한다. 실패 지점 앞뒤를 보기 위한 것.
+    if (args->argc == 4 && args->isStr(1, "md") == true)
+    {
+      uint32_t addr = (uint32_t)args->getData(2);
+      uint32_t cnt  = (uint32_t)args->getData(3);
+      static uint32_t buf[64];
+      swd_err_t err;
+
+      if (cnt > 64) cnt = 64;
+
+      swdLaArm(0);
+      err = swdMemReadBlock(addr, buf, cnt);
+      swdLaFreeze();
+
+      cliPrintf("md %08X x%d : %s\n", addr, (int)cnt, swdErrStr(err));
+      for (uint32_t i = 0; i < cnt; i += 4)
+      {
+        cliPrintf("%08X :", addr + i*4);
+        for (uint32_t k = 0; k < 4 && (i+k) < cnt; k++) cliPrintf(" %08X", buf[i+k]);
+        cliPrintf("\n");
+      }
       cliPrintf("captured : %d sample @ %d KHz\n", (int)swdLaCount(), (int)swdLaRate());
       ret = true;
     }
@@ -1054,6 +1370,18 @@ void cliSwd(cli_args_t *args)
     cliPrintf("swd clk <count>\n");
     cliPrintf("swd pin <clk|dio> <0|1>\n");
     cliPrintf("swd pinread\n");
+    cliPrintf("swd drv [0~3]          출력 드라이브 0=LOW 3=VERY_HIGH\n");
+    cliPrintf("\n");
+    cliPrintf("swd power              디버그 파워업 + CTRL/STAT\n");
+    cliPrintf("swd apid / apscan      AP IDR/CFG/BASE, AP 열거\n");
+    cliPrintf("swd ap <n>             AP 선택\n");
+    cliPrintf("swd dpread <a> / dpwrite <a> <v>\n");
+    cliPrintf("swd md <addr> [cnt]    타깃 메모리 32bit 덤프\n");
+    cliPrintf("swd mw <addr> <v> [cnt]\n");
+    cliPrintf("swd mb|mh <addr>       8/16bit 읽기\n");
+    cliPrintf("swd wb|wh <addr> <v>   8/16bit 쓰기\n");
+    cliPrintf("swd bench <addr> <kb>  블록 읽기 처리량\n");
+    cliPrintf("swd tartest <ram_addr> 1KB TAR 랩 검증 (RAM 주소!)\n");
     cliPrintf("\n");
     cliPrintf("swd la connect         캡처하며 connect\n");
     cliPrintf("swd la id              캡처하며 DPIDR 읽기\n");

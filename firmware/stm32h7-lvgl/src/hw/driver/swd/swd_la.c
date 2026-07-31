@@ -50,12 +50,30 @@ static bool     is_armed = false;
 static bool     auto_trig = false;
 static uint32_t la_rate_khz = LA_RATE_KHZ_DEF;
 static uint32_t la_count;
+static uint32_t la_start;    // 링 버퍼에서 가장 오래된 샘플의 위치
 
 static uint8_t  pin_clk;
 static uint8_t  pin_dio;
 
 
 static uint32_t swdLaTimClk(void);
+
+/* 캡처는 순환 모드로 돈다. 실패 직전 구간을 남기려면 최신 샘플이 살아야 해서
+   원샷이 아니라 링이어야 한다. 그래서 접근은 항상 la_start 기준 오프셋이다. */
+static inline uint16_t laClk(uint32_t i)
+{
+  uint32_t k = la_start + i;
+  if (k >= LA_BUF_CNT) k -= LA_BUF_CNT;
+  return la_clk[k];
+}
+
+static inline uint16_t laDio(uint32_t i)
+{
+  uint32_t k = la_start + i;
+  if (k >= LA_BUF_CNT) k -= LA_BUF_CNT;
+  return la_dio[k];
+}
+
 static void     swdLaStop(void);
 static uint32_t swdLaBits(void);
 
@@ -79,7 +97,7 @@ bool swdLaInit(void)
   hdma_clk.Init.MemInc              = DMA_MINC_ENABLE;
   hdma_clk.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
   hdma_clk.Init.MemDataAlignment    = DMA_MDATAALIGN_HALFWORD;
-  hdma_clk.Init.Mode                = DMA_NORMAL;
+  hdma_clk.Init.Mode                = DMA_CIRCULAR;
   hdma_clk.Init.Priority            = DMA_PRIORITY_VERY_HIGH;
   hdma_clk.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
   if (HAL_DMA_Init(&hdma_clk) != HAL_OK)
@@ -206,6 +224,7 @@ bool swdLaArm(uint32_t rate_khz)
 
   is_armed   = true;
   la_count   = 0;
+  la_start   = 0;
   la_bit_cnt = 0;
 
   return true;
@@ -226,8 +245,23 @@ void swdLaFreeze(void)
   left_clk = __HAL_DMA_GET_COUNTER(&hdma_clk);
   left_dio = __HAL_DMA_GET_COUNTER(&hdma_dio);
 
-  // 두 스트림 중 덜 채워진 쪽까지만 유효하다
-  la_count = LA_BUF_CNT - ((left_clk > left_dio) ? left_clk : left_dio);
+  // 두 스트림 중 덜 채워진 쪽을 기준으로 삼는다
+  {
+    uint32_t left = (left_clk > left_dio) ? left_clk : left_dio;
+    uint32_t head = LA_BUF_CNT - left;          // 다음에 쓰일 위치
+
+    if (__HAL_DMA_GET_FLAG(&hdma_clk, __HAL_DMA_GET_TC_FLAG_INDEX(&hdma_clk)))
+    {
+      // 한 바퀴 이상 돌았다. 버퍼 전체가 유효하고 가장 오래된 건 head 위치.
+      la_count = LA_BUF_CNT;
+      la_start = head;
+    }
+    else
+    {
+      la_count = head;
+      la_start = 0;
+    }
+  }
 
   swdLaStop();
 
@@ -261,8 +295,8 @@ bool swdLaGet(uint32_t idx, uint8_t *p_clk, uint8_t *p_dio)
     return false;
   }
 
-  if (p_clk != NULL) *p_clk = (uint8_t)((la_clk[idx] >> pin_clk) & 1);
-  if (p_dio != NULL) *p_dio = (uint8_t)((la_dio[idx] >> pin_dio) & 1);
+  if (p_clk != NULL) *p_clk = (uint8_t)((laClk(idx) >> pin_clk) & 1);
+  if (p_dio != NULL) *p_dio = (uint8_t)((laDio(idx) >> pin_dio) & 1);
 
   return true;
 }
@@ -303,11 +337,11 @@ uint32_t swdLaBits(void)
     return 0;
   }
 
-  prev = (uint8_t)((la_clk[0] >> pin_clk) & 1);
+  prev = (uint8_t)((laClk(0) >> pin_clk) & 1);
 
   for (uint32_t i = 1; i < la_count; i++)
   {
-    uint8_t cur = (uint8_t)((la_clk[i] >> pin_clk) & 1);
+    uint8_t cur = (uint8_t)((laClk(i) >> pin_clk) & 1);
 
     if (prev == 0 && cur == 1)
     {
@@ -315,7 +349,7 @@ uint32_t swdLaBits(void)
       {
         break;
       }
-      la_bit[la_bit_cnt]     = (uint8_t)((la_dio[i-1] >> pin_dio) & 1);
+      la_bit[la_bit_cnt]     = (uint8_t)((laDio(i-1) >> pin_dio) & 1);
       la_bit_idx[la_bit_cnt] = (uint16_t)i;
       la_bit_cnt++;
     }
@@ -351,14 +385,14 @@ bool swdLaAnalyze(swd_la_stat_t *p_stat)
 
   ns_per_sample = 1000000UL / la_rate_khz;      // kHz -> ns
 
-  dio_first = (uint16_t)((la_dio[0] >> pin_dio) & 1);
-  prev      = (uint8_t)((la_clk[0] >> pin_clk) & 1);
+  dio_first = (uint16_t)((laDio(0) >> pin_dio) & 1);
+  prev      = (uint8_t)((laClk(0) >> pin_clk) & 1);
 
   for (uint32_t i = 1; i < la_count; i++)
   {
-    uint8_t cur = (uint8_t)((la_clk[i] >> pin_clk) & 1);
+    uint8_t cur = (uint8_t)((laClk(i) >> pin_clk) & 1);
 
-    if (((la_dio[i] >> pin_dio) & 1) != dio_first)
+    if (((laDio(i) >> pin_dio) & 1) != dio_first)
     {
       dio_moved = true;
     }
@@ -442,8 +476,8 @@ void swdLaDump(uint32_t count)
 
     while (n < 80 && idx < count)
     {
-      line_c[n] = ((la_clk[idx] >> pin_clk) & 1) ? '-' : '_';
-      line_d[n] = ((la_dio[idx] >> pin_dio) & 1) ? '-' : '_';
+      line_c[n] = ((laClk(idx) >> pin_clk) & 1) ? '-' : '_';
+      line_d[n] = ((laDio(idx) >> pin_dio) & 1) ? '-' : '_';
       n++;
       idx++;
     }
