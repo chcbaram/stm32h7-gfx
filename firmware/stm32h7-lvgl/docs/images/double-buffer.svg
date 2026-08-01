@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 400" width="860" height="400" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+  <style>
+    .ttl { font-size: 15px; fill: #111827; font-weight: 700; }
+    .hd  { font-size: 12px; fill: #374151; font-weight: 700; }
+    .lb  { font-size: 11px; fill: #374151; }
+    .sm  { font-size: 10px; fill: #6b7280; }
+    .box { stroke-width: 1.2; rx: 3; }
+  </style>
+
+  <text x="24" y="30" class="ttl">이중 버퍼링 — 타깃이 굽는 동안 다음 페이지를 미리 올린다</text>
+  <text x="24" y="50" class="sm">AHB-AP 는 코어와 독립적으로 메모리에 접근한다. 알고리즘이 실행 중이어도 타깃 RAM 에 쓸 수 있다.</text>
+
+  <!-- ===== 개선 전 ===== -->
+  <text x="24" y="88" class="hd">개선 전 — 순차 처리</text>
+
+  <text x="24" y="122" class="lb">호스트</text>
+  <text x="24" y="152" class="lb">타깃</text>
+
+  <rect x="80"  y="106" width="66"  height="22" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="113" y="121" class="sm" text-anchor="middle">SD 읽기</text>
+  <rect x="146" y="106" width="96"  height="22" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="194" y="121" class="sm" text-anchor="middle">전송 → 버퍼</text>
+
+  <rect x="242" y="136" width="118" height="22" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="301" y="151" class="sm" text-anchor="middle">ProgramPage (굽기)</text>
+
+  <rect x="360" y="106" width="66"  height="22" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="393" y="121" class="sm" text-anchor="middle">SD 읽기</text>
+  <rect x="426" y="106" width="96"  height="22" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="474" y="121" class="sm" text-anchor="middle">전송 → 버퍼</text>
+
+  <rect x="522" y="136" width="118" height="22" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="581" y="151" class="sm" text-anchor="middle">ProgramPage (굽기)</text>
+
+  <line x1="80" y1="172" x2="640" y2="172" stroke="#9ca3af" stroke-width="1" marker-end="url(#ar)"/>
+  <text x="360" y="188" class="sm" text-anchor="middle">한쪽이 일하는 동안 다른 쪽은 논다</text>
+  <text x="656" y="150" class="sm">페이지당</text>
+  <text x="656" y="164" class="sm">전부 더한 시간</text>
+
+  <!-- ===== 개선 후 ===== -->
+  <line x1="24" y1="212" x2="836" y2="212" stroke="#e5e7eb"/>
+
+  <text x="24" y="244" class="hd">개선 후 — 버퍼 두 개를 번갈아</text>
+
+  <text x="24" y="278" class="lb">호스트</text>
+  <text x="24" y="308" class="lb">타깃</text>
+
+  <rect x="80"  y="262" width="60"  height="22" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="110" y="277" class="sm" text-anchor="middle">SD</text>
+  <rect x="140" y="262" width="86"  height="22" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="183" y="277" class="sm" text-anchor="middle">→ 버퍼 A</text>
+
+  <rect x="226" y="262" width="60"  height="22" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="256" y="277" class="sm" text-anchor="middle">SD</text>
+  <rect x="286" y="262" width="86"  height="22" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="329" y="277" class="sm" text-anchor="middle">→ 버퍼 B</text>
+
+  <rect x="372" y="262" width="60"  height="22" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="402" y="277" class="sm" text-anchor="middle">SD</text>
+  <rect x="432" y="262" width="86"  height="22" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="475" y="277" class="sm" text-anchor="middle">→ 버퍼 A</text>
+
+  <rect x="226" y="292" width="146" height="22" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="299" y="307" class="sm" text-anchor="middle">굽기 (버퍼 A)</text>
+  <rect x="372" y="292" width="146" height="22" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="445" y="307" class="sm" text-anchor="middle">굽기 (버퍼 B)</text>
+  <rect x="518" y="292" width="122" height="22" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="579" y="307" class="sm" text-anchor="middle">굽기 (버퍼 A)</text>
+
+  <line x1="80" y1="328" x2="640" y2="328" stroke="#9ca3af" stroke-width="1" marker-end="url(#ar)"/>
+  <text x="360" y="344" class="sm" text-anchor="middle">굽는 시간 뒤로 전송이 숨는다</text>
+
+  <!-- 실측 -->
+  <rect x="24" y="358" width="812" height="30" class="box" fill="#f9fafb" stroke="#d1d5db"/>
+  <text x="40" y="377" class="lb">실측 (292 KB · 293 페이지)</text>
+  <text x="210" y="377" class="sm">algo 대기 1,682 → 466 ms · SD 읽기 945 → 391 ms · 전체 10,540 → 8,730 ms</text>
+</svg>
