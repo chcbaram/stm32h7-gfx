@@ -27,7 +27,14 @@
 #ifdef _USE_HW_SWD
 
 
-#define ALGO_POLL_MS        1
+/* 완료 대기는 쉬지 않고 바로 다시 본다. DHCSR 을 한 번 읽는 데만 SWD 로
+   수십 us 가 걸려서 폴링 간격이 자연히 벌어진다. delay(1) 을 쓰면 FreeRTOS
+   틱 단위라 페이지 하나 굽는 4ms 에 비해 대기가 너무 굵어진다.
+
+   양보는 RTOS 를 쓸 때만 의미가 있다. 스케줄러가 없으면 양보할 대상도 없다.
+   osThreadYield() 는 준비된 다른 스레드가 없으면 바로 돌아오므로, 소거처럼
+   초 단위로 걸리는 작업에서도 시간을 버리지 않는다. */
+#define ALGO_SPIN_MAX       32
 #define ALGO_STACK_DEF      0x800
 
 
@@ -75,9 +82,17 @@ swd_err_t swdAlgoCall(const swd_algo_ctx_t *p_ctx, uint32_t pc,
                       uint32_t timeout_ms, uint32_t *p_ret)
 {
   swd_err_t err;
-  uint32_t  dhcsr = 0;
-  uint32_t  dfsr  = 0;
-  uint32_t  t_start;
+
+  err = swdAlgoStart(p_ctx, pc, r0, r1, r2, r3);
+  if (err != SWD_OK) return err;
+
+  return swdAlgoWait(p_ctx, timeout_ms, p_ret);
+}
+
+swd_err_t swdAlgoStart(const swd_algo_ctx_t *p_ctx, uint32_t pc,
+                       uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3)
+{
+  swd_err_t err;
 
   if (p_ctx == NULL) return SWD_ERR_PROTOCOL;
 
@@ -107,10 +122,25 @@ swd_err_t swdAlgoCall(const swd_algo_ctx_t *p_ctx, uint32_t pc,
   err = swdMemWrite32(CM_DFSR, CM_DFSR_ALLCLR);           if (err != SWD_OK) return err;
 
   // C_HALT 만 내린다. C_MASKINTS 는 그대로 둔다.
-  err = swdMemWrite32(CM_DHCSR, CM_DHCSR_KEY | CM_C_DEBUGEN | CM_C_MASKINTS);
-  if (err != SWD_OK) return err;
+  return swdMemWrite32(CM_DHCSR, CM_DHCSR_KEY | CM_C_DEBUGEN | CM_C_MASKINTS);
+}
+
+swd_err_t swdAlgoWait(const swd_algo_ctx_t *p_ctx, uint32_t timeout_ms, uint32_t *p_ret)
+{
+  swd_err_t err;
+  uint32_t  dhcsr = 0;
+  uint32_t  dfsr  = 0;
+  uint32_t  t_start;
+#ifdef _USE_HW_RTOS
+  uint32_t  spin;
+#endif
+
+  (void)p_ctx;
 
   t_start = millis();
+#ifdef _USE_HW_RTOS
+  spin    = 0;
+#endif
   while (1)
   {
     err = swdMemRead32(CM_DHCSR, &dhcsr);
@@ -130,7 +160,14 @@ swd_err_t swdAlgoCall(const swd_algo_ctx_t *p_ctx, uint32_t pc,
       swdCmHalt();                          // 무한루프여도 세워 놓고 나간다
       return SWD_ERR_WAIT;
     }
-    delay(ALGO_POLL_MS);
+
+#ifdef _USE_HW_RTOS
+    if (++spin >= ALGO_SPIN_MAX)
+    {
+      spin = 0;
+      osThreadYield();
+    }
+#endif
   }
 
   swdMemRead32(CM_DFSR, &dfsr);

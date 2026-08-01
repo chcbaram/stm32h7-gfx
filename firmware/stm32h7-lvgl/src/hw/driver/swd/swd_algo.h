@@ -65,6 +65,13 @@ swd_err_t swdAlgoCall(const swd_algo_ctx_t *p_ctx, uint32_t pc,
                       uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3,
                       uint32_t timeout_ms, uint32_t *p_ret);
 
+/* 위를 시작/대기로 쪼갠 것. 타깃이 도는 동안 호스트가 다른 일을 할 수 있다.
+   AHB-AP 는 코어와 독립적으로 메모리에 접근하므로, 알고리즘이 실행 중일 때도
+   다음 페이지를 타깃 RAM 에 미리 올려둘 수 있다. 이게 이중 버퍼링의 근거다. */
+swd_err_t swdAlgoStart(const swd_algo_ctx_t *p_ctx, uint32_t pc,
+                       uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3);
+swd_err_t swdAlgoWait(const swd_algo_ctx_t *p_ctx, uint32_t timeout_ms, uint32_t *p_ret);
+
 /* ELF 를 건드리기 전에 러너 자체를 검증한다.
    손으로 짠 4바이트 기계어라 파일도 파서도 필요 없다.
    ALU 는 되는데 LR 이 안 되면 LR 의 Thumb 비트 문제,
