@@ -5,12 +5,12 @@
  */
 
 #include "prog/prog.h"
-#include "prog/prog_elf.h"
-#include "prog/prog_algo.h"
-#include "prog/prog_flm.h"
-#include "prog/prog_stldr.h"
-#include "prog/prog_dev.h"
-#include "prog/prog_job.h"
+#include "prog/image/prog_elf.h"
+#include "prog/algo/prog_algo.h"
+#include "prog/algo/prog_flm.h"
+#include "prog/algo/prog_stldr.h"
+#include "prog/job/prog_dev.h"
+#include "prog/job/prog_job.h"
 #include "swd.h"
 #include "swd/swd_dap.h"
 #include "swd/swd_cm.h"

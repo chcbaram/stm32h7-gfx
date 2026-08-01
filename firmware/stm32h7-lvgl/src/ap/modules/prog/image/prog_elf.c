@@ -11,7 +11,7 @@
  *  dirty 캐시라인까지 날아간다.
  */
 
-#include "prog/prog_elf.h"
+#include "prog/image/prog_elf.h"
 
 
 #ifdef _USE_HW_SWD

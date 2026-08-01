@@ -10,9 +10,9 @@
  *  하나를 채워라". 그래서 포맷이 늘어도 굽기 루프는 그대로다.
  */
 
-#include "prog/prog_algo.h"
-#include "prog/prog_flm.h"
-#include "prog/prog_stldr.h"
+#include "prog/algo/prog_algo.h"
+#include "prog/algo/prog_flm.h"
+#include "prog/algo/prog_stldr.h"
 #include "swd/swd_dap.h"
 
 

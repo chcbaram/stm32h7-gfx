@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 
-#include "prog/prog_algo.h"
+#include "prog/algo/prog_algo.h"
 
 
 #ifdef _USE_HW_SWD

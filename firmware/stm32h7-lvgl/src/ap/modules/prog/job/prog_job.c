@@ -15,9 +15,9 @@
  *  내부용과 외부용을 같이 올리면 서로 덮어쓴다.
  */
 
-#include "prog/prog_job.h"
-#include "prog/prog_cfg.h"
-#include "prog/prog_hex.h"
+#include "prog/job/prog_job.h"
+#include "prog/job/prog_cfg.h"
+#include "prog/image/prog_hex.h"
 #include "swd/swd_dap.h"
 #include "swd/swd_cm.h"
 

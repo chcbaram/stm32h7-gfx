@@ -21,7 +21,7 @@
  *  그리고 그 섹터 크기는 다음 항목이 나올 때까지 유지된다.
  */
 
-#include "prog/prog_flm.h"
+#include "prog/algo/prog_flm.h"
 #include "swd/swd_dap.h"
 #include "swd/swd_cm.h"
 

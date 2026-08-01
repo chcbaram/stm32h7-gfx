@@ -25,8 +25,8 @@ extern "C" {
 
 
 #include "ap_def.h"
-#include "prog/prog_elf.h"
-#include "prog/prog_hex.h"
+#include "prog/image/prog_elf.h"
+#include "prog/image/prog_hex.h"
 #include "swd.h"
 #include "swd/swd_algo.h"
 

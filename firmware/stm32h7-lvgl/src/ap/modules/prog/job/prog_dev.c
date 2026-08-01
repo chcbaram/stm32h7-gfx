@@ -13,8 +13,8 @@
  *  후보 주소가 몇 개뿐이라 읽기 서너 번이면 끝난다.
  */
 
-#include "prog/prog_dev.h"
-#include "prog/prog_cfg.h"
+#include "prog/job/prog_dev.h"
+#include "prog/job/prog_cfg.h"
 #include "swd/swd_dap.h"
 
 

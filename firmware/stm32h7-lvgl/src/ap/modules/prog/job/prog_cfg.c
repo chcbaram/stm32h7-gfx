@@ -7,7 +7,7 @@
  *  줄 수가 조금만 늘어도 비싸진다. prog_hex.c 와 같은 이유, 같은 방식이다.
  */
 
-#include "prog/prog_cfg.h"
+#include "prog/job/prog_cfg.h"
 
 
 #ifdef _USE_HW_SWD

@@ -11,7 +11,7 @@
  *  줄을 끊는다.
  */
 
-#include "prog/prog_hex.h"
+#include "prog/image/prog_hex.h"
 
 
 #ifdef _USE_HW_SWD

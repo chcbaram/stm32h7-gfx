@@ -26,7 +26,7 @@
  *  보는데, AAPCS 상 남는 레지스터는 무시되므로 양쪽에 그냥 넘겨도 된다.
  */
 
-#include "prog/prog_stldr.h"
+#include "prog/algo/prog_stldr.h"
 #include "swd/swd_dap.h"
 #include "swd/swd_cm.h"
 
