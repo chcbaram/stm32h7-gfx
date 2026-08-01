@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+"""STM32CubeProgrammer 의 Data_Base 를 다운로더용 디바이스 DB 로 바꾼다.
+
+  ./cubedb2txt.py /opt/ST/STM32CubeCLT_1.22.0/STM32CubeProgrammer
+  ./cubedb2txt.py <CubeProgrammer 경로> -o assets/sd/prog/mcu/st.txt
+
+왜 PC 에서 하나
+  Data_Base 는 XML 104개 5.1MB 다. MCU 에서 읽으려면 XML 파서가 필요하고,
+  정작 쓰는 값은 디바이스당 대여섯 개뿐이다. 파이썬은 xml.etree 가 표준이라
+  같은 일을 훨씬 싸게 끝낸다.
+
+왜 결과를 저장소에 두나
+  변환에 CubeProgrammer 설치가 필요한데, 이 저장소를 받는 사람이 전부 그걸
+  깔았을 리 없다. 생성물을 assets/sd/ 에 커밋해두면 --sync 한 번으로 끝난다.
+
+출력 형식은 벤더 중립이다. id_addr/id_mask/id_val 3연은 "어느 주소를 읽어 어느
+비트가 무엇이면 이 디바이스" 라고만 적으므로, ST 의 DBGMCU 든 Nordic 의 FICR 든
+Microchip 의 DSU 든 같은 형식으로 쓴다.
+"""
+
+import argparse
+import glob
+import os
+import sys
+import xml.etree.ElementTree as ET
+
+
+# DBGMCU_IDCODE 주소는 DB 에 없다. 시리즈마다 다르고 ST 문서에만 있어서 여기
+# 적어둔다. 확실하지 않은 시리즈는 넣지 않는다 — 틀린 주소를 적으면 엉뚱한
+# 레지스터를 읽고 운이 나쁘면 다른 칩으로 오인한다. 빠진 항목은 자동 판별만
+# 안 될 뿐 이름을 직접 지정하면 그대로 쓸 수 있다.
+#
+#   실기 확인 : STM32F4 (0x431 을 0xE0042000 에서 읽어 확인)
+#   문서 근거 : 나머지는 각 시리즈 레퍼런스 매뉴얼의 DBGMCU 챕터
+ID_ADDR = {
+    "STM32F0":  0x40015800,
+    "STM32F1":  0xE0042000,
+    "STM32F2":  0xE0042000,
+    "STM32F3":  0xE0042000,
+    "STM32F4":  0xE0042000,
+    "STM32F7":  0xE0042000,
+    "STM32L0":  0x40015800,
+    "STM32L1":  0xE0042000,
+    "STM32L4":  0xE0042000,
+    "STM32G0":  0x40015800,
+    "STM32G4":  0xE0042000,
+    "STM32C0":  0x40015800,
+    "STM32H7":  0x5C001000,
+    "STM32WB":  0xE0042000,
+    "STM32WL":  0xE0042000,
+}
+
+ID_MASK = 0x00000FFF
+
+
+def dev_id(text):
+    """'0x431' / '0x01E' / '0x485_swv' 를 정수로. 뒤에 붙은 꼬리표는 버린다."""
+    s = text.strip().split("_")[0].split("-")[0]
+    try:
+        return int(s, 16 if s.lower().startswith("0x") else 10)
+    except ValueError:
+        return None
+
+
+def find_sram(dev):
+    """Embedded SRAM 의 시작 주소와 크기. 알고리즘 아레나를 놓을 자리다.
+
+    .FLM 에도 .stldr 에도 없는 유일한 값이라 DB 를 쓰는 가장 큰 이유가 이것이다.
+    """
+    for per in dev.iter("Peripheral"):
+        if per.findtext("Name") != "Embedded SRAM":
+            continue
+        for cfg in per.iter("Configuration"):
+            p = cfg.find("Parameters")
+            if p is None:
+                continue
+            try:
+                return int(p.get("address"), 16), int(p.get("size"), 16)
+            except (TypeError, ValueError):
+                pass
+    return None, None
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("cubeprog", help="STM32CubeProgrammer 폴더 (Data_Base 와 bin 을 담고 있는)")
+    ap.add_argument("-o", "--out", default="assets/sd/prog/mcu/st.txt")
+    ap.add_argument("--loader-dir", default="/prog/loaders/st",
+                    help="SD 카드에서 FlashLoader 가 놓일 경로 (기본 /prog/loaders/st)")
+    args = ap.parse_args()
+
+    db_dir = os.path.join(args.cubeprog, "Data_Base")
+    fl_dir = os.path.join(args.cubeprog, "bin", "FlashLoader")
+
+    if not os.path.isdir(db_dir):
+        print(f"Data_Base 가 없습니다 : {db_dir}", file=sys.stderr)
+        return 1
+
+    # 로더가 실제로 있는 DEV_ID 집합
+    loaders = {}
+    for f in glob.glob(os.path.join(fl_dir, "*.stldr")):
+        base = os.path.basename(f)
+        i = dev_id(os.path.splitext(base)[0])
+        if i is not None:
+            loaders.setdefault(i, base)
+
+    entries = []
+    no_addr = []
+    no_sram = []
+
+    for path in sorted(glob.glob(os.path.join(db_dir, "STM32_Prog_DB_*.xml"))):
+        try:
+            dev = ET.parse(path).getroot().find("Device")
+        except ET.ParseError:
+            print(f"건너뜀 (XML 오류) : {os.path.basename(path)}", file=sys.stderr)
+            continue
+        if dev is None:
+            continue
+
+        did = dev_id(dev.findtext("DeviceID") or "")
+        name = (dev.findtext("Name") or "").strip()
+        series = (dev.findtext("Series") or "").strip()
+        cpu = (dev.findtext("CPU") or "").strip()
+        if did is None or not name:
+            continue
+
+        ram, ram_sz = find_sram(dev)
+        if ram is None:
+            no_sram.append(name)
+
+        addr = ID_ADDR.get(series)
+        if addr is None:
+            no_addr.append(series)
+
+        entries.append(dict(id=did, name=name, series=series, cpu=cpu,
+                            ram=ram, ram_sz=ram_sz, id_addr=addr,
+                            algo=loaders.get(did)))
+
+    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
+
+    with open(args.out, "w", encoding="utf-8") as f:
+        f.write("# STM32 디바이스 DB — 자동 생성물이므로 손으로 고치지 말 것\n")
+        f.write("#\n")
+        f.write("#   tools/python/cubedb2txt.py 가 STM32CubeProgrammer 의 Data_Base 에서 만든다.\n")
+        f.write(f"#   원본 : {os.path.abspath(args.cubeprog)}\n")
+        f.write(f"#   항목 : {len(entries)} 개\n")
+        f.write("#\n")
+        f.write("# id_addr/id_mask/id_val 은 벤더 중립 3연이다. \"어느 주소를 읽어 어느 비트가\n")
+        f.write("# 무엇이면 이 디바이스\" 라고만 적으므로 ST 이외의 벤더도 같은 형식을 쓴다.\n")
+        f.write("# id_addr 이 없는 항목은 자동 판별이 안 될 뿐, 이름을 직접 지정하면 쓸 수 있다.\n")
+        f.write("#\n")
+        f.write("# ram/ram_sz 는 알고리즘을 올릴 자리다. .FLM 에도 .stldr 에도 없는 값이라\n")
+        f.write("# 이 DB 를 쓰는 가장 큰 이유가 이것이다.\n")
+        f.write("\n")
+
+        for e in sorted(entries, key=lambda x: (x["series"], x["id"])):
+            f.write(f"[{e['name']}]\n")
+            if e["cpu"]:
+                f.write(f"cpu     = {e['cpu']}\n")
+            if e["id_addr"] is not None:
+                f.write(f"id_addr = 0x{e['id_addr']:08X}\n")
+                f.write(f"id_mask = 0x{ID_MASK:08X}\n")
+            f.write(f"id_val  = 0x{e['id']:08X}\n")
+            if e["ram"] is not None:
+                f.write(f"ram     = 0x{e['ram']:08X}\n")
+                f.write(f"ram_sz  = 0x{e['ram_sz']:X}\n")
+            if e["algo"]:
+                f.write(f"algo    = {args.loader_dir}/{e['algo']}\n")
+            f.write("\n")
+
+    auto = sum(1 for e in entries if e["id_addr"] is not None)
+    with_algo = sum(1 for e in entries if e["algo"])
+    print(f"{args.out}")
+    print(f"  항목        : {len(entries)} 개")
+    print(f"  자동 판별   : {auto} 개  (id_addr 있음)")
+    print(f"  로더 연결   : {with_algo} 개")
+    if no_addr:
+        print(f"  id_addr 없음: {', '.join(sorted(set(no_addr)))}")
+    if no_sram:
+        print(f"  SRAM 없음   : {len(no_sram)} 개")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
