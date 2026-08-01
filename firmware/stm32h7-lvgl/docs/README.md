@@ -4,7 +4,7 @@ PC도 ST-LINK도 없이, 보드 하나로 다른 MCU에 펌웨어를 굽는 장�
 SD카드에서 펌웨어를 골라 타깃에 쓰고 검증하는 것이 최종 목표다.
 
 - 보드: STM32H723 (550MHz, 480×480 터치 LCD, LVGL)
-- 타깃: STM32F411
+- 타깃: STM32F411 (내부 플래시), STM32H7S3 (내부 FSBL + 외부 QSPI)
 - 배선: **SWCLK = PE3, SWDIO = PC10. 이게 전부다.**
 
 ---
@@ -38,7 +38,8 @@ ARM이 정한 규격이라 ST든 Nordic이든 NXP든 같은 코드가 돈다.
 | [9. 펌웨어 파일 세 가지](09-image-format.md) | `.bin` / `.elf` / Intel HEX, 주소는 어디서 오나 | 완료 |
 | [10. ST 로더를 빌려 쓰다](10-stldr.md) | `.stldr` 지원, 알고리즘 계층 분리, ST 도구 추월 | 완료 |
 | [11. 인자 네 개를 하나로](11-device-db.md) | 디바이스 DB, 자동 판별, `fw.txt` 잡 | 완료 |
-| 12. GUI | LVGL 앱, 펌웨어 선택, 진행률 | 예정 |
+| [12. 외부 QSPI에 굽기](12-external-loader.md) | AP 선택, DPv2 TARGETID, 외부 로더, MPU 사건 | 완료 |
+| 13. GUI | LVGL 앱, 펌웨어 선택, 진행률 | 예정 |
 
 ---
 
@@ -55,13 +56,14 @@ halt at  : PC 0x08033E70  SP 0x20020000   reason : VCATCH
 cli# swd bench 0x20000000 32
 read 32 KB in 41 ms -> 780 KB/s
 
-cli# prog run f411_lcd
-잡     : STM32F411 LCD demo
+cli# prog run h7r_mini
+잡     : STM32H7R mini (FSBL + QSPI)
 device : (자동 판별)
-ram    : 0x20000000
-algo   : 0x08000000 ~ 0x0807FFFF
-erase / program / verify ...
-run : OK  (7685 ms)
+algo   : 0x08000000 ~ 0x0800FFFF      내부 - ST FlashLoader
+  erase / program / verify ...
+algo   : 0x90000000 ~ 0x90FFFFFF      외부 QSPI - W25Q128JV 로더
+  erase / program / verify ...
+run : OK  (9013 ms)
 ```
 
 - SWD 링크, 타깃 메모리 읽기·쓰기 (실용 상한 약 3.5 MHz, 780 KB/s)
@@ -73,6 +75,8 @@ run : OK  (7685 ms)
 - `.bin` / `.elf` / Intel HEX — 확장자가 아니라 내용으로 판별하고, `.bin` 만 주소를 묻는다
 - 알고리즘 `.FLM`(벤더 중립) / ST `.stldr`(내부·외부) — 이것도 내용으로 판별한다
 - 타깃을 읽어 칩을 알아내고 알고리즘·RAM 주소를 디바이스 DB 에서 찾는다 (103개)
+- 코어 디버그가 어느 AP 뒤에 있는지 스스로 찾는다 (최신 ST 파트는 AP0 이 아니다)
+- **내부 플래시와 외부 QSPI 를 한 잡으로** — 이미지가 어느 로더로 갈지는 주소로 갈린다
 - 순간적인 비트 오류를 스스로 복구 (3.5MHz 에서 52회 발생, 52회 복구)
 - 파형을 직접 보고 프로토콜을 디코드하는 내장 도구
 

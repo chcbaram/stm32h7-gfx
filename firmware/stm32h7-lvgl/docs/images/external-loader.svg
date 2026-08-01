@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 450" width="860" height="450" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="ar5" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+  <style>
+    .ttl { font-size: 15px; fill: #111827; font-weight: 700; }
+    .hd  { font-size: 12px; fill: #111827; font-weight: 700; }
+    .lb  { font-size: 11px; fill: #374151; }
+    .sm  { font-size: 10px; fill: #6b7280; }
+    .mn  { font-size: 10px; fill: #374151; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .box { stroke-width: 1.2; rx: 4; }
+  </style>
+
+  <text x="24" y="30" class="ttl">STM32H7S3 — 내부 FSBL 과 외부 QSPI 를 한 잡으로</text>
+  <text x="24" y="50" class="sm">fw.txt 에 적은 건 loader 한 줄. 두 이미지가 어느 쪽으로 갈지는 주소로만 갈린다.</text>
+
+  <!-- fw.txt -->
+  <rect x="24" y="70" width="330" height="86" class="box" fill="#f9fafb" stroke="#9ca3af"/>
+  <text x="38" y="90"  class="mn">loader = .../W25Q128JV_....stldr</text>
+  <text x="38" y="110" class="mn">image  = fsbl.elf</text>
+  <text x="38" y="130" class="mn">image  = app.elf</text>
+  <text x="38" y="148" class="sm">주소를 적는 문법이 없다</text>
+
+  <path d="M356,113 L392,113" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar5)"/>
+  <text x="400" y="104" class="sm">p_paddr 0x08000000</text>
+  <text x="400" y="122" class="sm">p_paddr 0x90000000</text>
+
+  <!-- 두 알고리즘 -->
+  <rect x="24" y="180" width="400" height="150" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="38" y="200" class="hd">내부 플래시  0x08000000 ~ 0x0800FFFF</text>
+  <text x="38" y="220" class="lb">ST FlashLoader 0x485.stldr — DB 가 알려준다</text>
+  <text x="38" y="242" class="sm">Init()  플래시 unlock</text>
+  <text x="38" y="259" class="sm">되읽기  주소를 직접 읽는다</text>
+  <text x="38" y="276" class="mn">링크 DTCM 0x20000004</text>
+  <text x="38" y="300" class="sm">64 KB 뿐이라 부트로더(FSBL)만 들어간다</text>
+  <text x="38" y="317" class="mn" fill="#16a34a">erase / program / verify  OK</text>
+
+  <rect x="436" y="180" width="400" height="150" class="box" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="450" y="200" class="hd">외부 QSPI  0x90000000 ~ 0x90FFFFFF</text>
+  <text x="450" y="220" class="lb">직접 만든 W25Q128JV 로더 — fw.txt 가 지정</text>
+  <text x="450" y="242" class="sm" fill="#dc2626">Init()  SystemInit — 타깃 클럭을 재설정</text>
+  <text x="450" y="259" class="sm" fill="#dc2626">되읽기  로더의 Read() 를 거쳐야 한다</text>
+  <text x="450" y="276" class="mn">링크 AXI SRAM 0x24004000</text>
+  <text x="450" y="300" class="sm">실제 펌웨어가 여기 있다 (16 MB)</text>
+  <text x="450" y="317" class="mn" fill="#16a34a">erase / program / verify  OK</text>
+
+  <!-- MPU 사건 -->
+  <rect x="436" y="344" width="400" height="58" class="box" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="450" y="363" class="hd" fill="#dc2626">로더가 자기 자신을 실행하지 못했다</text>
+  <text x="450" y="380" class="sm">bspInit 의 MPU 리전 2 가 0x24000000 부터 16KB 를 XN 으로</text>
+  <text x="450" y="395" class="sm">잡는데 로더 코드가 거기 있었다. 링크 주소 한 줄로 해결.</text>
+
+  <rect x="24" y="344" width="400" height="58" class="box" fill="#f3f4f6" stroke="#9ca3af"/>
+  <text x="38" y="363" class="hd">CFSR 한 줄이 답이었다</text>
+  <text x="38" y="380" class="mn">xPSR 0x21000003  예외 3 = HardFault</text>
+  <text x="38" y="395" class="mn">CFSR 0x00000001  MMFSR.IACCVIOL</text>
+
+  <text x="24" y="428" class="sm">굽고 리셋한 뒤 <tspan class="mn" font-weight="700">PC = 0x90003914</tspan> — FSBL 이 부팅해 외부 플래시의 앱으로 넘어갔다.  전체 9,013 ms</text>
+  <text x="24" y="443" class="sm" fill="#9ca3af">알고리즘 둘을 동시에 올리지는 않는다. .stldr 은 절대 주소라 서로 덮어쓰므로, 하나씩 올려 담당분을 처리하고 리셋한다.</text>
+</svg>
