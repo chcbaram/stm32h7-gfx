@@ -30,6 +30,7 @@ extern "C" {
 
 #define FLM_SECTOR_MAX      16
 #define FLM_NAME_MAX        48
+#define FLM_ELF_SEG_MAX     8
 
 // Init/UnInit 의 fnc 인자
 #define FLM_FNC_ERASE       1
@@ -127,6 +128,15 @@ swd_err_t flmWriteFile(flm_t *p_flm, const char *path, uint32_t addr,
                        flm_time_t *p_time);
 
 // 구운 결과를 파일과 되읽어 비교한다.
+/* .elf 는 굽는 주소가 파일 안에 있으므로(PT_LOAD 의 p_paddr) addr 인자가 없다.
+   실제로 쓴 시작 주소를 p_addr 로 돌려준다. */
+swd_err_t flmWriteElf(flm_t *p_flm, const char *path,
+                      flm_progress_t cb, void *ctx, uint32_t *p_written,
+                      flm_time_t *p_time, uint32_t *p_addr);
+
+swd_err_t flmVerifyElf(flm_t *p_flm, const char *path,
+                       flm_progress_t cb, void *ctx, uint32_t *p_bad);
+
 swd_err_t flmVerifyFile(flm_t *p_flm, const char *path, uint32_t addr,
                         flm_progress_t cb, void *ctx, uint32_t *p_bad);
 

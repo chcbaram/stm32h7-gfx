@@ -405,23 +405,30 @@ void cliProg(cli_args_t *args)
     }
   }
 
-  /* 파일 하나를 통째로 굽는다. 다운로더의 핵심 경로다. */
-  if (args->argc == 5 && args->isStr(0, "write") == true)
+  /* 파일 하나를 통째로 굽는다. 다운로더의 핵심 경로다.
+     .elf 는 굽는 주소가 파일 안에 있으므로 flash 인자가 없고, .bin 은 필요하다. */
+  if ((args->argc == 4 || args->argc == 5) && args->isStr(0, "write") == true)
   {
     static flm_t flm;
-    char     *algo  = args->getStr(1);
-    char     *img   = args->getStr(2);
-    uint32_t  ram   = (uint32_t)args->getData(3);
-    uint32_t  flash = (uint32_t)args->getData(4);
+    char     *algo   = args->getStr(1);
+    char     *img    = args->getStr(2);
+    uint32_t  ram    = (uint32_t)args->getData(3);
+    uint32_t  flash  = (args->argc == 5) ? (uint32_t)args->getData(4) : 0;
+    bool      is_elf = elfIsElfFile(img);
     swd_err_t err;
     uint32_t  written = 0, bad = 0, t0;
 
-    if (flmOpen(&flm, algo) == false)
+    if (is_elf == false && args->argc == 4)
+    {
+      cliPrintf(".bin 은 굽는 주소가 파일에 없다. flash 주소를 지정해라\n");
+      ret = true;
+    }
+    else if (flmOpen(&flm, algo) == false)
     {
       cliPrintf("FLM 열기 실패 : %s\n", algo);
       ret = true;
     }
-    else if (flmIsInRange(&flm, flash) == false)
+    else if (is_elf == false && flmIsInRange(&flm, flash) == false)
     {
       cliPrintf("주소가 플래시 범위 밖이다 : 0x%08X (0x%08X ~ 0x%08X)\n",
                 flash, flm.dev.dev_adr, flm.dev.dev_adr + flm.dev.sz_dev - 1);
@@ -431,7 +438,10 @@ void cliProg(cli_args_t *args)
     else
     {
       cliPrintf("algo   : %s\n", flm.dev.name);
-      cliPrintf("image  : %s -> 0x%08X\n", img, flash);
+      if (is_elf)
+        cliPrintf("image  : %s (elf, 주소는 파일 안에)\n", img);
+      else
+        cliPrintf("image  : %s -> 0x%08X\n", img, flash);
 
       if (swdCmHalt() != SWD_OK)
       {
@@ -443,12 +453,16 @@ void cliProg(cli_args_t *args)
       }
       else
       {
-        t0  = millis();
         flm_time_t tm;
 
-        err = flmWriteFile(&flm, img, flash, NULL, NULL, &written, &tm);
-        cliPrintf("write  : %s  %d bytes, %d ms\n",
-                  swdErrStr(err), (int)written, (int)(millis() - t0));
+        t0 = millis();
+        if (is_elf)
+          err = flmWriteElf(&flm, img, NULL, NULL, &written, &tm, &flash);
+        else
+          err = flmWriteFile(&flm, img, flash, NULL, NULL, &written, &tm);
+
+        cliPrintf("write  : %s  0x%08X, %d bytes, %d ms\n",
+                  swdErrStr(err), flash, (int)written, (int)(millis() - t0));
         cliPrintf("  erase   : %5d ms\n", (int)tm.erase_ms);
         cliPrintf("  sd read : %5d ms\n", (int)tm.read_ms);
         cliPrintf("  xfer    : %5d ms   (%d 페이지)\n", (int)tm.xfer_ms, (int)tm.page_cnt);
@@ -456,8 +470,12 @@ void cliProg(cli_args_t *args)
 
         if (err == SWD_OK)
         {
-          t0  = millis();
-          err = flmVerifyFile(&flm, img, flash, NULL, NULL, &bad);
+          t0 = millis();
+          if (is_elf)
+            err = flmVerifyElf(&flm, img, NULL, NULL, &bad);
+          else
+            err = flmVerifyFile(&flm, img, flash, NULL, NULL, &bad);
+
           cliPrintf("verify : %s  불일치 %d, %d ms  -> %s\n",
                     swdErrStr(err), (int)bad, (int)(millis() - t0),
                     (err == SWD_OK && bad == 0) ? "PASS" : "FAIL");
@@ -475,7 +493,8 @@ void cliProg(cli_args_t *args)
     cliPrintf("prog elf load <path> <ram>  타깃 RAM 으로 재배치 로드\n");
     cliPrintf("prog flm info <path>        FlashDevice + 심볼\n");
     cliPrintf("prog flm test <path> <ram> <flash>  한 페이지 지우기/굽기/검증\n");
-    cliPrintf("prog write <algo> <img> <ram> <flash>  파일 통째로 굽고 검증\n");
+    cliPrintf("prog write <algo> <img> <ram> [flash]  파일 통째로 굽고 검증\n");
+    cliPrintf("                                       .elf 는 flash 주소 생략\n");
   }
 }
 #endif

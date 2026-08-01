@@ -196,6 +196,7 @@ bool elfGetPhdr(elf_t *p_elf, uint32_t idx, elf_phdr_t *p_phdr)
   p_phdr->type   = elfU32(&ph[0]);
   p_phdr->offset = elfU32(&ph[4]);
   p_phdr->vaddr  = elfU32(&ph[8]);
+  p_phdr->paddr  = elfU32(&ph[12]);
   p_phdr->filesz = elfU32(&ph[16]);
   p_phdr->memsz  = elfU32(&ph[20]);
   p_phdr->flags  = elfU32(&ph[24]);
@@ -263,6 +264,44 @@ bool elfGetAllocBase(elf_t *p_elf, const char *skip_name, uint32_t *p_base)
   if (base == 0xFFFFFFFF) return false;
   if (p_base != NULL) *p_base = base;
   return true;
+}
+
+bool elfGetLoadRange(elf_t *p_elf, uint32_t *p_lo, uint32_t *p_hi)
+{
+  elf_phdr_t ph;
+  uint32_t   lo = 0xFFFFFFFF;
+  uint32_t   hi = 0;
+
+  if (p_elf == NULL) return false;
+
+  for (uint32_t i = 0; i < p_elf->e_phnum; i++)
+  {
+    if (elfGetPhdr(p_elf, i, &ph) == false) continue;
+    if (ph.type != ELF_PT_LOAD)             continue;
+    if (ph.filesz == 0)                     continue;   // .bss 만 있는 세그먼트
+
+    if (ph.paddr < lo)               lo = ph.paddr;
+    if (ph.paddr + ph.filesz > hi)   hi = ph.paddr + ph.filesz;
+  }
+
+  if (lo == 0xFFFFFFFF) return false;
+  if (p_lo) *p_lo = lo;
+  if (p_hi) *p_hi = hi;
+  return true;
+}
+
+bool elfIsElfFile(const char *path)
+{
+  FIL     file;
+  uint8_t magic[4] = {0};
+  UINT    br = 0;
+  bool    ret;
+
+  if (f_open(&file, path, FA_READ) != FR_OK) return false;
+  ret = (f_read(&file, magic, sizeof(magic), &br) == FR_OK) && (br == 4);
+  f_close(&file);
+
+  return ret && magic[0] == 0x7F && magic[1] == 'E' && magic[2] == 'L' && magic[3] == 'F';
 }
 
 bool elfLoadSections(elf_t *p_elf, int32_t delta, const char *skip_name,

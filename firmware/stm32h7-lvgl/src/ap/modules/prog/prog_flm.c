@@ -333,20 +333,209 @@ static swd_err_t flmEraseRange(flm_t *p_flm, uint32_t addr, uint32_t len,
   return flmUnInit(p_flm, FLM_FNC_ERASE);
 }
 
+/* 페이지 한 장을 채우는 콜백. 소스(.bin / .elf)와 굽기 파이프라인을 떼어놓는
+   유일한 접점이다. addr 은 플래시 주소이고, 소스에 그 범위의 데이터가 없으면
+   val_empty 로 채워서라도 len 바이트를 전부 채워야 한다. */
+typedef bool (*flm_fill_t)(void *src, uint32_t addr, uint8_t *p_buf, uint32_t len);
+
+typedef struct
+{
+  FIL     *file;
+  uint32_t base;        // 파일 오프셋 0 이 놓일 플래시 주소
+  uint32_t size;
+  uint8_t  empty;
+} flm_bin_src_t;
+
+typedef struct
+{
+  elf_t      *elf;
+  elf_phdr_t  seg[FLM_ELF_SEG_MAX];
+  uint32_t    seg_cnt;
+  uint8_t     empty;
+} flm_elf_src_t;
+
+
+static bool flmFillBin(void *src, uint32_t addr, uint8_t *p_buf, uint32_t len)
+{
+  flm_bin_src_t *p_src = (flm_bin_src_t *)src;
+  uint32_t       off   = addr - p_src->base;
+  uint32_t       n     = (off < p_src->size) ? (p_src->size - off) : 0;
+  UINT           br    = 0;
+
+  if (n > len) n = len;
+  if (n < len) memset(&p_buf[n], p_src->empty, len - n);
+  if (n == 0)  return true;
+
+  /* 순차 호출이라 대개 이미 그 위치다. FatFs 의 f_lseek 는 뒤로 갈 때 클러스터
+     체인을 처음부터 다시 걷기 때문에 같은 위치인데도 부르면 손해다. */
+  if (f_tell(p_src->file) != off && f_lseek(p_src->file, off) != FR_OK) return false;
+
+  return (f_read(p_src->file, p_buf, n, &br) == FR_OK) && (br == n);
+}
+
+/* 세그먼트 사이의 빈틈은 val_empty 로 남는다. 어차피 그 구간도 지웠으므로
+   되읽으면 그대로 일치한다. */
+static bool flmFillElf(void *src, uint32_t addr, uint8_t *p_buf, uint32_t len)
+{
+  flm_elf_src_t *p_src = (flm_elf_src_t *)src;
+
+  memset(p_buf, p_src->empty, len);
+
+  for (uint32_t i = 0; i < p_src->seg_cnt; i++)
+  {
+    elf_phdr_t *p_seg = &p_src->seg[i];
+    uint32_t    lo    = (p_seg->paddr > addr) ? p_seg->paddr : addr;
+    uint32_t    hi    = p_seg->paddr + p_seg->filesz;
+
+    if (hi > addr + len) hi = addr + len;
+    if (lo >= hi)        continue;
+
+    if (elfRead(p_src->elf, p_seg->offset + (lo - p_seg->paddr),
+                &p_buf[lo - addr], hi - lo) == false)
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+/* 이중 버퍼 파이프라인.
+     1. 페이지 N 을 타깃 버퍼에 올린다
+     2. ProgramPage 를 시작만 하고 기다리지 않는다
+     3. 타깃이 굽는 동안 페이지 N+1 을 읽어 다른 버퍼에 올린다
+     4. 그제서야 N 의 완료를 기다린다
+   AHB-AP 는 코어와 독립적으로 동작하므로 3번이 가능하다.
+   Init(PROGRAM) 은 호출부가 이미 해둔 상태여야 한다. */
+static swd_err_t flmProgramRange(flm_t *p_flm, uint32_t addr, uint32_t len,
+                                 flm_fill_t fill, void *src,
+                                 flm_progress_t cb, void *ctx, flm_time_t *p_tm)
+{
+  static uint8_t page[FLM_PAGE_MAX] __attribute__((aligned(32)));
+  uint32_t  buf[2]    = { p_flm->buf_addr, p_flm->buf_addr_b };
+  uint32_t  sz_page   = p_flm->dev.sz_page;
+  uint32_t  idx       = 0;
+  uint32_t  done      = 0;
+  uint32_t  armed_len = 0;
+  bool      armed     = false;
+  swd_err_t err       = SWD_OK;
+  uint32_t  t0;
+
+  while (done < len || armed)
+  {
+    uint32_t n = 0;
+
+    // 다음 페이지를 준비한다 (타깃은 이전 페이지를 굽는 중일 수 있다)
+    if (done + armed_len < len)
+    {
+      n = len - (done + armed_len);
+      if (n > sz_page) n = sz_page;
+
+      t0 = millis();
+      if (fill(src, addr + done + armed_len, page, sz_page) == false)
+      {
+        err = SWD_ERR_PROTOCOL;
+        break;
+      }
+      p_tm->read_ms += millis() - t0;
+
+      t0 = millis();
+      if (flmLoadCb(buf[idx], page, sz_page, p_flm) == false)
+      {
+        err = SWD_ERR_FAULT;
+        break;
+      }
+      p_tm->xfer_ms += millis() - t0;
+    }
+
+    // 앞서 시작해 둔 것이 있으면 이제 거둔다
+    if (armed)
+    {
+      uint32_t ret = 0;
+
+      t0  = millis();
+      err = swdAlgoWait(&p_flm->algo, p_flm->dev.to_prog, &ret);
+      p_tm->call_ms += millis() - t0;
+      armed = false;
+
+      if (err != SWD_OK || ret != 0)
+      {
+        if (err == SWD_OK) err = SWD_ERR_FAULT;
+        break;
+      }
+      done     += armed_len;
+      armed_len = 0;
+      p_tm->page_cnt++;
+      if (cb) cb("program", addr + done, done, len, ctx);
+    }
+
+    // 준비된 페이지가 있으면 굽기를 시작만 한다
+    if (n > 0)
+    {
+      t0  = millis();
+      err = swdAlgoStart(&p_flm->algo, p_flm->fn_program + (uint32_t)p_flm->delta,
+                         addr + done, sz_page, buf[idx], 0);
+      p_tm->call_ms += millis() - t0;
+      if (err != SWD_OK) break;
+
+      armed     = true;
+      armed_len = n;
+      idx      ^= 1;
+    }
+  }
+
+  return err;
+}
+
+/* 되읽어 소스와 비교한다. 굽기와 같은 fill 콜백을 쓰므로 세그먼트 사이 빈틈의
+   패딩까지 그대로 검증되고, SD 읽기가 깨진 경우도 여기서 걸린다. */
+static swd_err_t flmVerifyRange(flm_t *p_flm, uint32_t addr, uint32_t len,
+                                flm_fill_t fill, void *src,
+                                flm_progress_t cb, void *ctx, uint32_t *p_bad)
+{
+  static uint8_t  page[FLM_PAGE_MAX] __attribute__((aligned(32)));
+  static uint32_t rd[FLM_PAGE_MAX / 4];
+  uint32_t        done = 0;
+  uint32_t        bad  = 0;
+  swd_err_t       err  = SWD_OK;
+
+  while (done < len)
+  {
+    uint32_t n = p_flm->dev.sz_page;
+
+    if (n > len - done) n = len - done;
+
+    if (fill(src, addr + done, page, n) == false) { err = SWD_ERR_PROTOCOL; break; }
+
+    err = swdMemReadBlock(addr + done, rd, (n + 3) / 4);
+    if (err != SWD_OK) break;
+
+    for (uint32_t i = 0; i < n; i++)
+    {
+      if (((uint8_t *)rd)[i] != page[i]) bad++;
+    }
+    done += n;
+    if (cb) cb("verify", addr + done, done, len, ctx);
+  }
+
+  if (p_bad) *p_bad = bad;
+  return err;
+}
+
 swd_err_t flmWriteFile(flm_t *p_flm, const char *path, uint32_t addr,
                        flm_progress_t cb, void *ctx, uint32_t *p_written,
                        flm_time_t *p_time)
 {
-  flm_time_t tm;
-  static uint8_t page[FLM_PAGE_MAX] __attribute__((aligned(32)));
-  FIL        file;
-  swd_err_t  err;
-  uint32_t   size;
-  uint32_t   done = 0;
-  uint32_t   t0;
+  flm_bin_src_t src;
+  flm_time_t    tm;
+  FIL           file;
+  swd_err_t     err;
+  uint32_t      size;
+  uint32_t      t0;
 
   memset(&tm, 0, sizeof(tm));
-  flm_xfer_ms = 0;
+  if (p_written) *p_written = 0;
+  if (p_time)    *p_time    = tm;
+
   if (p_flm == NULL || p_flm->is_loaded == false) return SWD_ERR_PROTOCOL;
   if (flmIsInRange(p_flm, addr) == false)         return SWD_ERR_PROTOCOL;
   if (p_flm->dev.sz_page > FLM_PAGE_MAX)          return SWD_ERR_PROTOCOL;
@@ -360,110 +549,29 @@ swd_err_t flmWriteFile(flm_t *p_flm, const char *path, uint32_t addr,
     return SWD_ERR_PROTOCOL;
   }
 
+  src.file  = &file;
+  src.base  = addr;
+  src.size  = size;
+  src.empty = p_flm->dev.val_empty;
+
   t0  = millis();
   err = flmEraseRange(p_flm, addr, size, cb, ctx);
   tm.erase_ms = millis() - t0;
-  if (err != SWD_OK)
-  {
-    f_close(&file);
-    return err;
-  }
 
-  err = flmInit(p_flm, p_flm->dev.dev_adr, FLM_CLK_DEF, FLM_FNC_PROGRAM);
-  if (err != SWD_OK)
+  if (err == SWD_OK)
   {
-    f_close(&file);
-    return err;
-  }
-
-  /* 이중 버퍼 파이프라인.
-       1. 페이지 N 을 타깃 버퍼에 올린다
-       2. ProgramPage 를 시작만 하고 기다리지 않는다
-       3. 타깃이 굽는 동안 페이지 N+1 을 SD 에서 읽어 다른 버퍼에 올린다
-       4. 그제서야 N 의 완료를 기다린다
-     AHB-AP 는 코어와 독립적으로 동작하므로 3번이 가능하다. */
-  {
-    uint32_t buf[2] = { p_flm->buf_addr, p_flm->buf_addr_b };
-    uint32_t idx    = 0;
-    bool     armed  = false;
-    uint32_t armed_len = 0;
-
-    while (done < size || armed)
+    err = flmInit(p_flm, p_flm->dev.dev_adr, FLM_CLK_DEF, FLM_FNC_PROGRAM);
+    if (err == SWD_OK)
     {
-      uint32_t n  = 0;
-      UINT     br = 0;
-
-      // 다음 페이지를 준비한다 (타깃은 이전 페이지를 굽는 중일 수 있다)
-      if (done + armed_len < size)
-      {
-        uint32_t nxt = p_flm->dev.sz_page;
-
-        if (nxt > size - (done + armed_len)) nxt = size - (done + armed_len);
-
-        t0 = millis();
-        if (f_read(&file, page, nxt, &br) != FR_OK || br != nxt)
-        {
-          err = SWD_ERR_PROTOCOL;
-          break;
-        }
-        tm.read_ms += millis() - t0;
-
-        if (nxt < p_flm->dev.sz_page)
-        {
-          memset(&page[nxt], p_flm->dev.val_empty, p_flm->dev.sz_page - nxt);
-        }
-        n = nxt;
-
-        t0 = millis();
-        if (flmLoadCb(buf[idx], page, p_flm->dev.sz_page, p_flm) == false)
-        {
-          err = SWD_ERR_FAULT;
-          break;
-        }
-        tm.xfer_ms += millis() - t0;
-      }
-
-      // 앞서 시작해 둔 것이 있으면 이제 거둔다
-      if (armed)
-      {
-        uint32_t ret = 0;
-
-        t0  = millis();
-        err = swdAlgoWait(&p_flm->algo, p_flm->dev.to_prog, &ret);
-        tm.call_ms += millis() - t0;
-        armed = false;
-
-        if (err != SWD_OK || ret != 0)
-        {
-          if (err == SWD_OK) err = SWD_ERR_FAULT;
-          break;
-        }
-        done += armed_len;
-        armed_len = 0;
-        tm.page_cnt++;
-        if (cb) cb("program", addr + done, done, size, ctx);
-      }
-
-      // 준비된 페이지가 있으면 굽기를 시작만 한다
-      if (n > 0)
-      {
-        t0  = millis();
-        err = swdAlgoStart(&p_flm->algo, p_flm->fn_program + (uint32_t)p_flm->delta,
-                           addr + done, p_flm->dev.sz_page, buf[idx], 0);
-        tm.call_ms += millis() - t0;
-        if (err != SWD_OK) break;
-
-        armed     = true;
-        armed_len = n;
-        idx      ^= 1;
-      }
+      err = flmProgramRange(p_flm, addr, size, flmFillBin, &src, cb, ctx, &tm);
+      flmUnInit(p_flm, FLM_FNC_PROGRAM);
     }
   }
 
-  flmUnInit(p_flm, FLM_FNC_PROGRAM);
   f_close(&file);
 
-  if (p_written) *p_written = done;
+  if (p_written) *p_written = (uint32_t)tm.page_cnt * p_flm->dev.sz_page;
+  if (p_written && *p_written > size) *p_written = size;
   if (p_time)    *p_time    = tm;
   return err;
 }
@@ -471,38 +579,137 @@ swd_err_t flmWriteFile(flm_t *p_flm, const char *path, uint32_t addr,
 swd_err_t flmVerifyFile(flm_t *p_flm, const char *path, uint32_t addr,
                         flm_progress_t cb, void *ctx, uint32_t *p_bad)
 {
-  static uint8_t  page[FLM_PAGE_MAX] __attribute__((aligned(32)));
-  static uint32_t rd[FLM_PAGE_MAX / 4];
-  FIL       file;
-  uint32_t  size, done = 0, bad = 0;
-  swd_err_t err = SWD_OK;
+  flm_bin_src_t src;
+  FIL           file;
+  swd_err_t     err;
 
   if (p_flm == NULL) return SWD_ERR_PROTOCOL;
-
   if (f_open(&file, path, FA_READ) != FR_OK) return SWD_ERR_PROTOCOL;
-  size = (uint32_t)f_size(&file);
 
-  while (done < size)
-  {
-    uint32_t n = p_flm->dev.sz_page;
-    UINT     br = 0;
+  src.file  = &file;
+  src.base  = addr;
+  src.size  = (uint32_t)f_size(&file);
+  src.empty = p_flm->dev.val_empty;
 
-    if (n > size - done) n = size - done;
-    if (f_read(&file, page, n, &br) != FR_OK || br != n) { err = SWD_ERR_PROTOCOL; break; }
-
-    err = swdMemReadBlock(addr + done, rd, (n + 3) / 4);
-    if (err != SWD_OK) break;
-
-    for (uint32_t i = 0; i < n; i++)
-    {
-      if (((uint8_t *)rd)[i] != page[i]) bad++;
-    }
-    done += n;
-    if (cb) cb("verify", addr + done, done, size, ctx);
-  }
+  err = flmVerifyRange(p_flm, addr, src.size, flmFillBin, &src, cb, ctx, p_bad);
 
   f_close(&file);
-  if (p_bad) *p_bad = bad;
+  return err;
+}
+
+
+// ----------------------------------------------------------------- ELF 굽기
+
+/* .elf 는 굽는 주소가 파일 안에 있다. PT_LOAD 세그먼트의 p_paddr 이 그것이고,
+   .data 처럼 vaddr(RAM)과 paddr(플래시)이 다른 세그먼트가 있으므로 반드시
+   paddr 을 봐야 한다. 그래서 .bin 과 달리 주소 인자가 필요 없다. */
+static bool flmElfCollect(elf_t *p_elf, flm_elf_src_t *p_src)
+{
+  elf_phdr_t ph;
+
+  p_src->elf     = p_elf;
+  p_src->seg_cnt = 0;
+
+  for (uint32_t i = 0; i < p_elf->e_phnum; i++)
+  {
+    if (elfGetPhdr(p_elf, i, &ph) == false) continue;
+    if (ph.type != ELF_PT_LOAD)             continue;
+    if (ph.filesz == 0)                     continue;
+
+    if (p_src->seg_cnt >= FLM_ELF_SEG_MAX) return false;
+    p_src->seg[p_src->seg_cnt++] = ph;
+  }
+  return (p_src->seg_cnt > 0);
+}
+
+/* 굽기 범위를 정한다. 시작은 ProgramPage 를 위해 페이지 경계로 내리고,
+   앞쪽에 생긴 여백은 fill 이 val_empty 로 채운다. */
+static bool flmElfRange(flm_t *p_flm, elf_t *p_elf, uint32_t *p_addr, uint32_t *p_len)
+{
+  uint32_t lo, hi;
+
+  if (elfGetLoadRange(p_elf, &lo, &hi) == false) return false;
+  if (flmIsInRange(p_flm, lo) == false)          return false;
+  if (flmIsInRange(p_flm, hi - 1) == false)      return false;
+
+  lo -= (lo - p_flm->dev.dev_adr) % p_flm->dev.sz_page;
+
+  *p_addr = lo;
+  *p_len  = hi - lo;
+  return true;
+}
+
+swd_err_t flmWriteElf(flm_t *p_flm, const char *path,
+                      flm_progress_t cb, void *ctx, uint32_t *p_written,
+                      flm_time_t *p_time, uint32_t *p_addr)
+{
+  flm_elf_src_t src;
+  flm_time_t    tm;
+  elf_t         elf;
+  swd_err_t     err;
+  uint32_t      addr, len, t0;
+
+  memset(&tm, 0, sizeof(tm));
+  if (p_written) *p_written = 0;
+  if (p_time)    *p_time    = tm;
+
+  if (p_flm == NULL || p_flm->is_loaded == false) return SWD_ERR_PROTOCOL;
+  if (p_flm->dev.sz_page > FLM_PAGE_MAX)          return SWD_ERR_PROTOCOL;
+
+  if (elfOpen(&elf, path) == false) return SWD_ERR_PROTOCOL;
+
+  src.empty = p_flm->dev.val_empty;
+  if (flmElfCollect(&elf, &src) == false ||
+      flmElfRange(p_flm, &elf, &addr, &len) == false)
+  {
+    elfClose(&elf);
+    return SWD_ERR_PROTOCOL;
+  }
+  if (p_addr) *p_addr = addr;
+
+  t0  = millis();
+  err = flmEraseRange(p_flm, addr, len, cb, ctx);
+  tm.erase_ms = millis() - t0;
+
+  if (err == SWD_OK)
+  {
+    err = flmInit(p_flm, p_flm->dev.dev_adr, FLM_CLK_DEF, FLM_FNC_PROGRAM);
+    if (err == SWD_OK)
+    {
+      err = flmProgramRange(p_flm, addr, len, flmFillElf, &src, cb, ctx, &tm);
+      flmUnInit(p_flm, FLM_FNC_PROGRAM);
+    }
+  }
+
+  elfClose(&elf);
+
+  if (p_written) *p_written = (err == SWD_OK) ? len : 0;
+  if (p_time)    *p_time    = tm;
+  return err;
+}
+
+swd_err_t flmVerifyElf(flm_t *p_flm, const char *path,
+                       flm_progress_t cb, void *ctx, uint32_t *p_bad)
+{
+  flm_elf_src_t src;
+  elf_t         elf;
+  swd_err_t     err;
+  uint32_t      addr, len;
+
+  if (p_flm == NULL) return SWD_ERR_PROTOCOL;
+  if (elfOpen(&elf, path) == false) return SWD_ERR_PROTOCOL;
+
+  src.empty = p_flm->dev.val_empty;
+  if (flmElfCollect(&elf, &src) == false ||
+      flmElfRange(p_flm, &elf, &addr, &len) == false)
+  {
+    elfClose(&elf);
+    return SWD_ERR_PROTOCOL;
+  }
+
+  err = flmVerifyRange(p_flm, addr, len, flmFillElf, &src, cb, ctx, p_bad);
+
+  elfClose(&elf);
   return err;
 }
 

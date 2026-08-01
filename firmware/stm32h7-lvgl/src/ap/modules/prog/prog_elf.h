@@ -81,6 +81,7 @@ typedef struct
   uint32_t type;
   uint32_t offset;
   uint32_t vaddr;
+  uint32_t paddr;     // 실제 로드 주소(LMA). .data 는 vaddr 이 RAM, paddr 이 플래시다
   uint32_t filesz;
   uint32_t memsz;
   uint32_t flags;
@@ -117,6 +118,13 @@ bool     elfLoadSegments(elf_t *p_elf, elf_load_cb_t cb, void *ctx,
 
 // SHF_ALLOC 섹션 중 가장 낮은 주소. 재배치 delta 계산에 쓴다.
 bool     elfGetAllocBase(elf_t *p_elf, const char *skip_name, uint32_t *p_base);
+
+/* 플래시에 실제로 올라갈 범위를 paddr 기준으로 구한다. 파일에 내용이 있는
+   (filesz > 0) PT_LOAD 만 본다. 펌웨어를 굽기 위한 용도다. */
+bool     elfGetLoadRange(elf_t *p_elf, uint32_t *p_lo, uint32_t *p_hi);
+
+// 파일이 ELF 인지 본다. 확장자가 아니라 매직으로 판단한다.
+bool     elfIsElfFile(const char *path);
 
 
 #endif
