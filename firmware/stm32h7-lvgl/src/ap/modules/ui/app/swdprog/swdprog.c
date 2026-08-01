@@ -350,29 +350,33 @@ static void homeRefresh(void)
     lv_label_set_text(lbl_fw_sub, sel_proj);
   }
 
-  if (progTaskGetOkCount() > 0)
-    lv_label_set_text_fmt(lbl_count, "%d 장 완료", (int)progTaskGetOkCount());
-  else
-    lv_label_set_text(lbl_count, "");
-
   /* 펌웨어를 골랐고 타깃이 붙어 있어야 시작할 수 있다. 둘 중 하나라도 없으면
-     눌러봐야 실패하므로 아예 못 누르게 하고, 무엇이 빠졌는지 START 자리에 적는다. */
+     눌러봐야 실패하므로 아예 못 누르게 한다.
+
+     버튼 글자는 언제나 START 다. 비활성일 때 "펌웨어 선택" 같은 걸 적으면
+     누르면 선택 화면이 열릴 것처럼 보인다 - 상태를 동작처럼 쓰면 안 된다.
+     이유는 버튼 위 한 줄에 적는다. */
   {
-    lv_obj_t   *l  = lv_obj_get_child(btn_start, 0);
     const char *why = NULL;
 
-    if (t->is_valid == false)   why = "타깃 없음";
-    else if (sel_proj[0] == 0)  why = "펌웨어 선택";
+    if (t->is_valid == false)   why = "타깃이 없다";
+    else if (sel_proj[0] == 0)  why = "펌웨어를 고른다";
 
     if (why != NULL)
     {
       lv_obj_add_state(btn_start, LV_STATE_DISABLED);
-      lv_label_set_text(l, why);
+      lv_label_set_text(lbl_count, why);
+      lv_obj_set_style_text_color(lbl_count, lv_color_hex(UI_COLOR_TEXT_DIM), 0);
     }
     else
     {
       lv_obj_remove_state(btn_start, LV_STATE_DISABLED);
-      lv_label_set_text(l, "START");
+      lv_obj_set_style_text_color(lbl_count, lv_color_hex(UI_COLOR_OK), 0);
+
+      if (progTaskGetOkCount() > 0)
+        lv_label_set_text_fmt(lbl_count, "%d 장 완료", (int)progTaskGetOkCount());
+      else
+        lv_label_set_text(lbl_count, "");
     }
   }
 }
