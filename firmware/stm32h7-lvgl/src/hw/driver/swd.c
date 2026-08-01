@@ -1517,15 +1517,35 @@ void cliSwd(cli_args_t *args)
   }
 
   // 임의의 타깃 함수를 한 번 호출한다
-  if (args->argc == 8 && args->isStr(0, "exec") == true)
+  /* 타깃 함수를 직접 부른다.
+
+     스택 크기를 인자로 받는다. 기본 2KB 로 두고 HAL 을 쓰는 외부 로더의
+     Init 을 부르면 스택이 넘쳐 BKPT 트램폴린을 덮어쓰고, 복귀가 미정의가 되어
+     엉뚱한 r0 를 보게 된다. 실제로 그 값에 속아 진단을 잘못했다.
+
+     스택 영역을 패턴으로 채워두고 호출 뒤 얼마나 썼는지 되읽는다. "스택이
+     모자란가" 는 추측이 아니라 재는 것이다. */
+  if ((args->argc == 8 || args->argc == 9) && args->isStr(0, "exec") == true)
   {
     swd_algo_ctx_t ctx;
     uint32_t  pc      = (uint32_t)args->getData(1);
     uint32_t  base    = (uint32_t)args->getData(2);
+    uint32_t  stk     = (args->argc == 9) ? (uint32_t)args->getData(8) : 0;
     uint32_t  ret_val = 0;
+    uint32_t  used    = 0;
     swd_err_t err;
 
-    err = swdAlgoSetup(&ctx, base, 0);
+    err = swdAlgoSetup(&ctx, base, stk);
+
+    // 스택 영역을 패턴으로 채운다
+    if (err == SWD_OK)
+    {
+      for (uint32_t a = ctx.code_addr; a + 4 <= ctx.stack_top; a += 4)
+      {
+        if (swdMemWrite32(a, 0xA5C3A5C3) != SWD_OK) break;
+      }
+    }
+
     if (err == SWD_OK)
     {
       err = swdAlgoCall(&ctx, pc,
@@ -1533,8 +1553,22 @@ void cliSwd(cli_args_t *args)
                         (uint32_t)args->getData(5), (uint32_t)args->getData(6),
                         (uint32_t)args->getData(7), &ret_val);
     }
+
+    // 아래에서부터 훑어 처음으로 안 건드려진 워드를 찾는다
+    for (uint32_t a = ctx.code_addr; a + 4 <= ctx.stack_top; a += 4)
+    {
+      uint32_t v = 0;
+
+      if (swdMemRead32(a, &v) != SWD_OK) break;
+      if (v == 0xA5C3A5C3) { used = ctx.stack_top - a; break; }
+    }
+
     cliPrintf("exec     : pc 0x%08X  %s\n", pc, swdErrStr(err));
-    cliPrintf("arena    : bkpt 0x%08X  stack 0x%08X\n", ctx.bkpt_addr, ctx.stack_top);
+    cliPrintf("arena    : bkpt 0x%08X  stack 0x%08X ~ 0x%08X (%d B)\n",
+              ctx.bkpt_addr, ctx.code_addr, ctx.stack_top,
+              (int)(ctx.stack_top - ctx.code_addr));
+    cliPrintf("stack 사용 : %d B%s\n", (int)used,
+              (used >= ctx.stack_top - ctx.code_addr) ? "  <- 모자라다!" : "");
     cliPrintf("r0       : 0x%08X (%d)\n", ret_val, (int)ret_val);
     ret = true;
   }

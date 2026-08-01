@@ -52,6 +52,7 @@ static swd_err_t stldrEraseSector(algo_t *p_algo, uint32_t addr, uint32_t size);
 static swd_err_t stldrEraseChip(algo_t *p_algo);
 static swd_err_t stldrProgStart(algo_t *p_algo, uint32_t addr, uint32_t len, uint32_t buf);
 static swd_err_t stldrProgWait(algo_t *p_algo, uint32_t timeout_ms);
+static swd_err_t stldrRead(algo_t *p_algo, uint32_t addr, uint32_t len, uint32_t buf);
 
 static uint32_t  stldrU16(const uint8_t *p);
 static uint32_t  stldrU32(const uint8_t *p);
@@ -73,6 +74,7 @@ const algo_ops_t stldr_ops =
   .erase_chip   = stldrEraseChip,
   .prog_start   = stldrProgStart,
   .prog_wait    = stldrProgWait,
+  .read         = stldrRead,
 };
 
 
@@ -96,6 +98,7 @@ static bool stldrParse(algo_t *p_algo)
   }
   elfFindSym(&p_algo->elf, "SectorErase", &p_algo->fn_erase_sector);
   elfFindSym(&p_algo->elf, "MassErase",   &p_algo->fn_erase_chip);
+  elfFindSym(&p_algo->elf, "Read",        &p_algo->fn_read);
 
   if (elfFindSym(&p_algo->elf, STLDR_INFO_NAME, &info_addr) == false) return false;
   if (stldrReadInfo(p_algo, info_addr) == false)                      return false;
@@ -264,6 +267,19 @@ static swd_err_t stldrProgWait(algo_t *p_algo, uint32_t timeout_ms)
   if (err != SWD_OK) return err;
 
   return (ret != 1) ? SWD_ERR_FAULT : SWD_OK;   // .stldr 은 1 이 성공
+}
+
+
+/* Read(addr, size, buf) -> 1 이면 성공.
+
+   외부 메모리는 memory-mapped 모드를 켜지 않으면 주소를 직접 못 읽는다.
+   로더가 타깃 RAM 버퍼로 옮겨주면 그걸 SWD 로 가져온다. */
+static swd_err_t stldrRead(algo_t *p_algo, uint32_t addr, uint32_t len, uint32_t buf)
+{
+  if (p_algo->is_loaded == false) return SWD_ERR_PROTOCOL;
+  if (p_algo->fn_read == 0)       return SWD_ERR_PROTOCOL;
+
+  return stldrCall(p_algo, p_algo->fn_read, addr, len, buf, 0, STLDR_PROG_TIMEOUT);
 }
 
 

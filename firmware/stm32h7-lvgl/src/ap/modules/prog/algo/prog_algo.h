@@ -112,6 +112,13 @@ typedef struct
      올리기 위한 것이고, AHB-AP 가 코어와 독립이라 성립한다. */
   swd_err_t (*prog_start)(struct algo_t *p_algo, uint32_t addr, uint32_t len, uint32_t buf);
   swd_err_t (*prog_wait)(struct algo_t *p_algo, uint32_t timeout_ms);
+
+  /* 되읽기. 알고리즘이 타깃 RAM 버퍼로 옮겨주면 우리는 그 버퍼를 SWD 로 읽는다.
+
+     내부 플래시는 그냥 주소를 읽으면 되지만 외부 QSPI/NOR 는 memory-mapped
+     모드가 아니면 아예 안 읽힌다. 굽고 나서 0x90000000 을 직접 읽으면 0 만
+     나온다. NULL 이면 공통 계층이 직접 읽는다. */
+  swd_err_t (*read)(struct algo_t *p_algo, uint32_t addr, uint32_t len, uint32_t buf);
 } algo_ops_t;
 
 
@@ -128,6 +135,7 @@ typedef struct algo_t
   uint32_t         fn_erase_chip;
   uint32_t         fn_erase_sector;
   uint32_t         fn_program;
+  uint32_t         fn_read;
 
   uint32_t         buf_addr;      // 굽기 인자로 넘길 타깃 버퍼
   uint32_t         buf_addr_b;    // 이중 버퍼용 두 번째

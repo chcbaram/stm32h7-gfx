@@ -373,7 +373,18 @@ static swd_err_t algoVerifyRange(algo_t *p_algo, uint32_t addr, uint32_t len,
 
     if (fill(src, addr + done, page, n) == false) { err = SWD_ERR_PROTOCOL; break; }
 
-    err = swdMemReadBlock(addr + done, rd, (n + 3) / 4);
+    /* 외부 메모리는 직접 못 읽는다. 알고리즘이 Read 를 갖고 있으면 타깃 RAM
+       버퍼로 옮기게 하고 그 버퍼를 읽는다. */
+    if (p_algo->ops->read != NULL && p_algo->dev.dev_type == ALGO_DEV_EXTERNAL)
+    {
+      err = p_algo->ops->read(p_algo, addr + done, n, p_algo->buf_addr);
+      if (err != SWD_OK) break;
+      err = swdMemReadBlock(p_algo->buf_addr, rd, (n + 3) / 4);
+    }
+    else
+    {
+      err = swdMemReadBlock(addr + done, rd, (n + 3) / 4);
+    }
     if (err != SWD_OK) break;
 
     for (uint32_t i = 0; i < n; i++)

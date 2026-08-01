@@ -66,6 +66,7 @@ const algo_ops_t flm_ops =
   .erase_chip   = flmEraseChip,
   .prog_start   = flmProgStart,
   .prog_wait    = flmProgWait,
+  .read         = NULL,     // 내부 플래시는 주소를 직접 읽으면 된다
 };
 
 
