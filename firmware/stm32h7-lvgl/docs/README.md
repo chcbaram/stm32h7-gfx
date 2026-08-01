@@ -37,7 +37,7 @@ ARM이 정한 규격이라 ST든 Nordic이든 NXP든 같은 코드가 돈다.
 | [8. 얼마나 빠른가](08-performance.md) | pyOCD·ST 도구와 비교, 이중 버퍼링, 병목 분석 | 완료 |
 | [9. 펌웨어 파일 세 가지](09-image-format.md) | `.bin` / `.elf` / Intel HEX, 주소는 어디서 오나 | 완료 |
 | [10. ST 로더를 빌려 쓰다](10-stldr.md) | `.stldr` 지원, 알고리즘 계층 분리, ST 도구 추월 | 완료 |
-| 11. 설정 파일과 잡 제어 | 디바이스 DB, 매니페스트 | 예정 |
+| [11. 인자 네 개를 하나로](11-device-db.md) | 디바이스 DB, 자동 판별, `fw.txt` 잡 | 완료 |
 | 12. GUI | LVGL 앱, 펌웨어 선택, 진행률 | 예정 |
 
 ---
@@ -55,12 +55,13 @@ halt at  : PC 0x08033E70  SP 0x20020000   reason : VCATCH
 cli# swd bench 0x20000000 32
 read 32 KB in 41 ms -> 780 KB/s
 
-cli# prog psize 2
-cli# prog write /prog/loaders/st/0x431.stldr /prog/fw/f411_lcd/app.elf 0x20001000
-algo   : 0x431
-image  : /prog/fw/f411_lcd/app.elf (elf, 주소는 파일 안에)
-write  : OK  0x08000000, 299048 bytes, 5494 ms
-verify : OK  불일치 0, 1639 ms  -> PASS
+cli# prog run f411_lcd
+잡     : STM32F411 LCD demo
+device : (자동 판별)
+ram    : 0x20000000
+algo   : 0x08000000 ~ 0x0807FFFF
+erase / program / verify ...
+run : OK  (7685 ms)
 ```
 
 - SWD 링크, 타깃 메모리 읽기·쓰기 (실용 상한 약 3.5 MHz, 780 KB/s)
@@ -71,6 +72,7 @@ verify : OK  불일치 0, 1639 ms  -> PASS
 - **292KB 펌웨어를 굽고 검증하고 부팅까지** — 7.1초로 **ST CubeProgrammer(7.8초)보다 빠르다**
 - `.bin` / `.elf` / Intel HEX — 확장자가 아니라 내용으로 판별하고, `.bin` 만 주소를 묻는다
 - 알고리즘 `.FLM`(벤더 중립) / ST `.stldr`(내부·외부) — 이것도 내용으로 판별한다
+- 타깃을 읽어 칩을 알아내고 알고리즘·RAM 주소를 디바이스 DB 에서 찾는다 (103개)
 - 순간적인 비트 오류를 스스로 복구 (3.5MHz 에서 52회 발생, 52회 복구)
 - 파형을 직접 보고 프로토콜을 디코드하는 내장 도구
 

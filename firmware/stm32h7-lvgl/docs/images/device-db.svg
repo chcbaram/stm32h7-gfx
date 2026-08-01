@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 440" width="860" height="440" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="ar4" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+  <style>
+    .ttl { font-size: 15px; fill: #111827; font-weight: 700; }
+    .hd  { font-size: 12px; fill: #111827; font-weight: 700; }
+    .lb  { font-size: 11px; fill: #374151; }
+    .sm  { font-size: 10px; fill: #6b7280; }
+    .mn  { font-size: 10px; fill: #374151; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .box { stroke-width: 1.2; rx: 4; }
+  </style>
+
+  <text x="24" y="30" class="ttl">prog run f411_lcd — 나머지는 전부 어딘가에서 온다</text>
+  <text x="24" y="50" class="sm">인자 네 개 중 셋은 사람이 알 필요가 없었다. 명령이 길면 잘리고, 잘린 인자는 엉뚱한 데를 지운다.</text>
+
+  <!-- 네 출처 -->
+  <rect x="24" y="76" width="188" height="104" class="box" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="38" y="96"  class="hd">타깃</text>
+  <text x="38" y="115" class="sm">DB 의 id_addr 를 모아 읽는다</text>
+  <text x="38" y="133" class="mn">0x10006431</text>
+  <text x="38" y="152" class="sm">"어느 주소를 읽어 어느 비트가</text>
+  <text x="38" y="167" class="sm">무엇이면 이 디바이스"</text>
+
+  <rect x="228" y="76" width="188" height="104" class="box" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="242" y="96"  class="hd">디바이스 DB</text>
+  <text x="242" y="115" class="sm">/prog/mcu 의 txt 파일</text>
+  <text x="242" y="133" class="mn" fill="#16a34a">ram 0x20000000  64 KB</text>
+  <text x="242" y="150" class="mn">algo · flash_sz</text>
+  <text x="242" y="169" class="sm">ram 은 다른 어디에도 없다</text>
+
+  <rect x="432" y="76" width="188" height="104" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="446" y="96"  class="hd">알고리즘</text>
+  <text x="446" y="115" class="sm">.FLM / .stldr</text>
+  <text x="446" y="133" class="mn">0x08000000  512 KB</text>
+  <text x="446" y="150" class="mn">섹터 배치 · 타임아웃</text>
+  <text x="446" y="169" class="sm">자기가 다루는 플래시를 안다</text>
+
+  <rect x="636" y="76" width="200" height="104" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="650" y="96"  class="hd">이미지 파일</text>
+  <text x="650" y="115" class="sm">.elf / .hex / .bin</text>
+  <text x="650" y="133" class="mn">p_paddr = 0x08000000</text>
+  <text x="650" y="152" class="sm">.bin 만 주소를 모른다 —</text>
+  <text x="650" y="167" class="sm">그때만 fw.txt 가 적는다</text>
+
+  <path d="M118,182 L118,214" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar4)"/>
+  <path d="M322,182 L322,214" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar4)"/>
+  <path d="M526,182 L526,214" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar4)"/>
+  <path d="M736,182 L736,214" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar4)"/>
+
+  <rect x="24" y="220" width="812" height="40" class="box" fill="#f9fafb" stroke="#9ca3af"/>
+  <text x="38" y="245" class="mn">fw.txt   name = STM32F411 LCD demo   ·   image = app.elf          ← 이게 전부다</text>
+
+  <path d="M430,262 L430,290" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar4)"/>
+
+  <rect x="24" y="296" width="812" height="40" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="430" y="321" class="mn" text-anchor="middle" font-weight="700">cli# prog run f411_lcd</text>
+
+  <!-- 두 알고리즘 -->
+  <text x="24" y="368" class="hd">알고리즘이 둘이면 — 주소로 갈린다</text>
+  <text x="24" y="386" class="sm">적는 문법이 없다. 알고리즘마다 담당 범위를 알고 있어서 algoIsInRange 로 가르면 된다.</text>
+
+  <rect x="24" y="396" width="290" height="30" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="36" y="416" class="mn">algo    0x08000000~  ← app.elf</text>
+
+  <rect x="326" y="396" width="290" height="30" class="box" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="338" y="416" class="mn">loader  0x90000000~  ← res.bin</text>
+
+  <text x="630" y="410" class="sm">둘을 동시에 올리지는 않는다.</text>
+  <text x="630" y="424" class="sm">.stldr 은 절대 주소라 서로 덮어쓴다.</text>
+</svg>
