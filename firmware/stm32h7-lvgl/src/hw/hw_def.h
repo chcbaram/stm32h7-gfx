@@ -82,14 +82,23 @@
 #define      HW_SWD_SPEED_KHZ       1000      // 기본 속도. 0 이면 최대
 #define      HW_SWD_IDLE_CYCLES     8
 #define      HW_SWD_WAIT_RETRY      100
-// SD카드의 다운로더 루트. 하위 경로는 전부 여기 기준이라 루트만 바꾸면 된다.
-//   mcu/     *.txt 를 전부 읽어 디바이스 DB 를 만든다 (벤더별로 쪼갤 수 있다)
-//   loaders/ 플래시 알고리즘 (.FLM / .stldr)
-//   fw/      프로젝트별 폴더. 각 폴더에 fw.txt 와 이미지가 들어간다
+/* SD카드의 다운로더 루트. 하위 경로는 전부 여기 기준이라 루트만 바꾸면 된다.
+
+     mcu/     *.txt 를 전부 읽어 디바이스 DB 를 만든다 (벤더별로 쪼갤 수 있다)
+     fw/      프로젝트별 폴더. 각 폴더에 fw.txt 와 이미지가 들어간다
+     loaders/ 플래시 알고리즘. 세 종류를 나눠 둔다 — 같은 MCU 를 굽는 방법이
+              하나가 아니라서 UI 에서 고를 수 있어야 한다.
+       flm/   CMSIS-Pack .FLM. 벤더 중립이고 ST 이외에도 쓴다
+       st/    CubeProgrammer FlashLoader 의 .stldr. 파일명이 DEV_ID 라 자동 선택이
+              되고, 소거 병렬도를 인자로 받아 .FLM 보다 빠르다
+       ext/   CubeProgrammer ExternalLoader 의 .stldr. 외부 QSPI/NOR/SDRAM 용 */
 #define      HW_SWD_SD_ROOT         "/prog"
 #define      HW_SWD_SD_MCU          HW_SWD_SD_ROOT "/mcu"
-#define      HW_SWD_SD_LOADERS      HW_SWD_SD_ROOT "/loaders"
 #define      HW_SWD_SD_FW           HW_SWD_SD_ROOT "/fw"
+#define      HW_SWD_SD_LOADERS      HW_SWD_SD_ROOT "/loaders"
+#define      HW_SWD_SD_LOADER_FLM   HW_SWD_SD_LOADERS "/flm"
+#define      HW_SWD_SD_LOADER_ST    HW_SWD_SD_LOADERS "/st"
+#define      HW_SWD_SD_LOADER_EXT   HW_SWD_SD_LOADERS "/ext"
 
 #define _USE_HW_SWTIMER
 #define      HW_SWTIMER_MAX_CH      8
