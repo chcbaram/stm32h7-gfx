@@ -40,6 +40,9 @@ static void progDevPrint(const prog_dev_t *p_dev)
   cliPrintf("  id     : 0x%08X @ 0x%08X  mask 0x%08X\n",
             p_dev->id_val, p_dev->id_addr, p_dev->id_mask);
   cliPrintf("  ram    : 0x%08X  %d KB\n", p_dev->ram, (int)(p_dev->ram_sz / 1024));
+  if (p_dev->flash_sz)
+    cliPrintf("  flash  : 0x%08X  %d KB   (알고리즘과 교차 검증용)\n",
+              p_dev->flash, (int)(p_dev->flash_sz / 1024));
   if (p_dev->algo[0]) cliPrintf("  algo   : %s\n", p_dev->algo);
 }
 

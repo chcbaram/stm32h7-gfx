@@ -29,11 +29,34 @@ reset-halt 상태에서 시작해야 하고, 로더를 바꿀 때는 다시 리�
 ST 이외의 MCU 는 이쪽이다. Nordic·NXP·Renesas·Infineon·Microchip·GigaDevice 가
 전부 CMSIS-Pack 으로 배포한다.
 
-`.pack` 파일은 실은 ZIP 이라 그냥 풀어서 `.FLM` 을 꺼내면 된다.
+`.pack` 은 실은 ZIP 이라 풀어서 `.FLM` 을 꺼내도 되지만, 그러면 **어느 칩의
+것인지와 알고리즘을 타깃 RAM 어디에 올려야 하는지가 빠진다.** RAM 주소는
+`.FLM` 안에 없고 `.pdsc` 에만 있다. 그래서 스크립트를 쓴다.
 
 ```sh
-unzip -j Keil.STM32F4xx_DFP.pack '*.FLM' -d <SD>/prog/loaders/flm/
+# 팩 안에 뭐가 있는지
+./tools/python/pack2db.py GigaDevice.GD32H7xx_DFP.1.4.0.pack --list
+./tools/python/pack2db.py <pack> --list GD32H759        # 이름으로 거르기
+
+# 모델을 지정하면 .FLM 추출 + DB 항목 생성까지
+./tools/python/pack2db.py <pack> GD32H759IG
+  [+] assets/sd/prog/loaders/flm/GD32H7xx_1MB.FLM
+  [+] assets/sd/prog/mcu/gigadevice.txt   ([GD32H759IG] 추가)
 ```
+
+자동 판별을 쓰려면 그 칩의 ID 레지스터를 알아야 한다. 알면 같이 넣는다.
+
+```sh
+./tools/python/pack2db.py <pack> GD32H759IG --id-addr 0xE0042000 --id-val 0x750
+```
+
+모르면 자동 판별만 안 될 뿐, `fw.txt` 에 `device = GD32H759IG` 라고 적으면
+그대로 동작한다. **펌웨어는 고치지 않는다.**
 
 pyOCD 를 이미 쓰고 있다면 받아둔 팩이 `~/.local/share/cmsis-pack-manager/` 나
 `~/.pyocd/packs/` 에 있을 수 있다.
+
+> 알고리즘 파일이 자기 크기를 틀리게 적은 경우가 실제로 있다. GigaDevice 팩의
+> `GD32H7xx_1MB.FLM` 과 `2MB.FLM` 은 바이트까지 같은 파일이고 둘 다 자기를
+> 3840KB 라고 소개한다. 그래서 DB 에 `.pdsc` 의 `flash_sz` 를 따로 적어 둔다 —
+> 알고리즘 말만 믿으면 1MB 짜리 칩에서 범위 검사가 3840KB 까지 통과한다.

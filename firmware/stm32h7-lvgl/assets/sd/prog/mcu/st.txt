@@ -8,6 +8,9 @@
 # 무엇이면 이 디바이스" 라고만 적으므로 ST 이외의 벤더도 같은 형식을 쓴다.
 # id_addr 이 없는 항목은 자동 판별이 안 될 뿐, 이름을 직접 지정하면 쓸 수 있다.
 #
+# flash/flash_sz 는 알고리즘이 들고 있는 값과 교차 검증하는 용도다.
+# 알고리즘 파일이 자기 크기를 틀리게 적은 경우가 실제로 있다.
+#
 # ram/ram_sz 는 알고리즘을 올릴 자리다. .FLM 에도 .stldr 에도 없는 값이라
 # 이 DB 를 쓰는 가장 큰 이유가 이것이다.
 
@@ -18,6 +21,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000443
 ram     = 0x20000000
 ram_sz  = 0x1800
+flash   = 0x08000000
+flash_sz = 0x8000
 algo    = /prog/loaders/st/0x443.stldr
 
 [STM32C05x]
@@ -27,6 +32,8 @@ id_mask = 0x00000FFF
 id_val  = 0x0000044C
 ram     = 0x20000000
 ram_sz  = 0x3000
+flash   = 0x08000000
+flash_sz = 0x10000
 algo    = /prog/loaders/st/0x44C.stldr
 
 [STM32C09x]
@@ -36,6 +43,8 @@ id_mask = 0x00000FFF
 id_val  = 0x0000044D
 ram     = 0x20000000
 ram_sz  = 0x7800
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x44D.stldr
 
 [STM32C03x]
@@ -45,6 +54,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000453
 ram     = 0x20000000
 ram_sz  = 0x3000
+flash   = 0x08000000
+flash_sz = 0x8000
 algo    = /prog/loaders/st/0x453.stldr
 
 [STM32C07x]
@@ -54,6 +65,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000493
 ram     = 0x20000000
 ram_sz  = 0x6000
+flash   = 0x08000000
+flash_sz = 0x20000
 algo    = /prog/loaders/st/0x493.stldr
 
 [STM32C5x]
@@ -61,6 +74,8 @@ cpu     = Cortex-M33
 id_val  = 0x0000044E
 ram     = 0x20000000
 ram_sz  = 0x20000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x44E.stldr
 
 [STM32C53x/542]
@@ -68,11 +83,15 @@ cpu     = Cortex-M33
 id_val  = 0x0000044F
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x44F.stldr
 
 [STM32C59x/5A3]
 cpu     = Cortex-M33
 id_val  = 0x0000045A
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x45A.stldr
 
 [STM32F05x/F030x8]
@@ -82,6 +101,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000440
 ram     = 0x20000000
 ram_sz  = 0x1FF8
+flash   = 0x08000000
+flash_sz = 0x10000
 algo    = /prog/loaders/st/0x440.stldr
 
 [STM32F09x/F030xC]
@@ -91,6 +112,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000442
 ram     = 0x20000000
 ram_sz  = 0x8000
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x442.stldr
 
 [STM32F03x]
@@ -100,6 +123,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000444
 ram     = 0x20000000
 ram_sz  = 0x1000
+flash   = 0x08000000
+flash_sz = 0x8000
 algo    = /prog/loaders/st/0x444.stldr
 
 [STM32F04x/F070x6]
@@ -109,6 +134,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000445
 ram     = 0x20000000
 ram_sz  = 0x1800
+flash   = 0x08000000
+flash_sz = 0x8000
 algo    = /prog/loaders/st/0x445.stldr
 
 [STM32F07x]
@@ -118,6 +145,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000448
 ram     = 0x20000000
 ram_sz  = 0x4000
+flash   = 0x08000000
+flash_sz = 0x20000
 algo    = /prog/loaders/st/0x448.stldr
 
 [STM32F101/F102/F103 Medium-density]
@@ -127,6 +156,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000410
 ram     = 0x20000000
 ram_sz  = 0x5000
+flash   = 0x08000000
+flash_sz = 0x20000
 algo    = /prog/loaders/st/0x410.stldr
 
 [STM32F101/F102/F103 Low-density]
@@ -136,6 +167,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000412
 ram     = 0x20000000
 ram_sz  = 0x2800
+flash   = 0x08000000
+flash_sz = 0x8000
 algo    = /prog/loaders/st/0x412.stldr
 
 [STM32F101/F103 High-density]
@@ -145,6 +178,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000414
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x414.stldr
 
 [STM32F105/F107 Connectivity Line]
@@ -154,6 +189,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000418
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x418.stldr
 
 [STM32F100 Low/Medium density Value Line]
@@ -163,6 +200,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000420
 ram     = 0x20000000
 ram_sz  = 0x2000
+flash   = 0x08000000
+flash_sz = 0x20000
 algo    = /prog/loaders/st/0x420.stldr
 
 [STM32F100 High-density Value Line]
@@ -172,6 +211,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000428
 ram     = 0x20000000
 ram_sz  = 0x8000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x428.stldr
 
 [STM32F101/F103 XL-density]
@@ -181,6 +222,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000430
 ram     = 0x20000000
 ram_sz  = 0x18000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x430.stldr
 
 [STM32F2xx]
@@ -190,6 +233,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000411
 ram     = 0x20000000
 ram_sz  = 0x20000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x411.stldr
 
 [STM32F302xB-xC/STM32F303xB-xC/F358xx]
@@ -199,6 +244,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000422
 ram     = 0x20000000
 ram_sz  = 0xA000
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x422.stldr
 
 [STM32F37xx]
@@ -208,6 +255,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000432
 ram     = 0x20000000
 ram_sz  = 0x8000
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x432.stldr
 
 [STM32F303x4-x6-x8/F328xx/F334xx]
@@ -217,6 +266,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000438
 ram     = 0x20000000
 ram_sz  = 0x3000
+flash   = 0x08000000
+flash_sz = 0x10000
 algo    = /prog/loaders/st/0x438.stldr
 
 [STM32F301x4-x6-x8/STM32F302x4-x6-x8/F318xx]
@@ -226,6 +277,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000439
 ram     = 0x20000000
 ram_sz  = 0x4000
+flash   = 0x08000000
+flash_sz = 0x10000
 algo    = /prog/loaders/st/0x439.stldr
 
 [STM32F302xE/F303xE/F398xx]
@@ -235,6 +288,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000446
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x446.stldr
 
 [STM32F405xx/F407xx/F415xx/F417xx]
@@ -244,6 +299,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000413
 ram     = 0x20000000
 ram_sz  = 0x20000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x413.stldr
 
 [STM32F42xxx/F43xxx]
@@ -253,6 +310,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000419
 ram     = 0x20000000
 ram_sz  = 0x30000
+flash   = 0x08000000
+flash_sz = 0x200000
 algo    = /prog/loaders/st/0x419.stldr
 
 [STM32F446xx]
@@ -262,6 +321,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000421
 ram     = 0x20000000
 ram_sz  = 0x20000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x421.stldr
 
 [STM32F401xB/C]
@@ -271,6 +332,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000423
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x423.stldr
 
 [STM32F411xC/E]
@@ -280,6 +343,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000431
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x431.stldr
 
 [STM32F401xD/E]
@@ -289,6 +354,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000433
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x800000
 algo    = /prog/loaders/st/0x433.stldr
 
 [STM32F469xx/F467xx]
@@ -298,6 +365,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000434
 ram     = 0x20000000
 ram_sz  = 0x50000
+flash   = 0x08000000
+flash_sz = 0x200000
 algo    = /prog/loaders/st/0x434.stldr
 
 [STM32F412]
@@ -307,6 +376,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000441
 ram     = 0x20000000
 ram_sz  = 0x40000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x441.stldr
 
 [STM32F410]
@@ -316,6 +387,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000458
 ram     = 0x20000000
 ram_sz  = 0x8000
+flash   = 0x08000000
+flash_sz = 0x20000
 algo    = /prog/loaders/st/0x458.stldr
 
 [STM32F413/F423]
@@ -325,6 +398,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000463
 ram     = 0x20000000
 ram_sz  = 0x50000
+flash   = 0x08000000
+flash_sz = 0x180000
 algo    = /prog/loaders/st/0x463.stldr
 
 [STM32F74x/STM32F75x]
@@ -334,6 +409,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000449
 ram     = 0x20000000
 ram_sz  = 0x50000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x449.stldr
 
 [STM32F76x/STM32F77x]
@@ -343,6 +420,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000451
 ram     = 0x20000000
 ram_sz  = 0x80000
+flash   = 0x08000000
+flash_sz = 0x200000
 algo    = /prog/loaders/st/0x451.stldr
 
 [STM32F72x/STM32F73x]
@@ -352,6 +431,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000452
 ram     = 0x20000000
 ram_sz  = 0x40000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x452.stldr
 
 [STM32G05x/STM32G06x]
@@ -361,6 +442,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000456
 ram     = 0x20000000
 ram_sz  = 0x4000
+flash   = 0x08000000
+flash_sz = 0x10000
 algo    = /prog/loaders/st/0x456.stldr
 
 [STM32G07x/STM32G08x]
@@ -370,6 +453,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000460
 ram     = 0x20000000
 ram_sz  = 0x8000
+flash   = 0x08000000
+flash_sz = 0x20000
 algo    = /prog/loaders/st/0x460.stldr
 
 [STM32G03x/STM32G04x]
@@ -379,6 +464,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000466
 ram     = 0x20000000
 ram_sz  = 0x2000
+flash   = 0x08000000
+flash_sz = 0x10000
 algo    = /prog/loaders/st/0x466.stldr
 
 [STM32G0B0xx/B1xx/C1xx]
@@ -388,6 +475,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000467
 ram     = 0x20000000
 ram_sz  = 0x20000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x467.stldr
 
 [STM32G43x/G44x]
@@ -397,6 +486,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000468
 ram     = 0x20000000
 ram_sz  = 0x5000
+flash   = 0x08000000
+flash_sz = 0x20000
 algo    = /prog/loaders/st/0x468.stldr
 
 [STM32G47x/G48x/G414]
@@ -406,6 +497,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000469
 ram     = 0x20000000
 ram_sz  = 0x18000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x469.stldr
 
 [STM32G491xx]
@@ -415,6 +508,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000479
 ram     = 0x20000000
 ram_sz  = 0x8000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x479.stldr
 
 [STM32G55x/56x]
@@ -422,6 +517,8 @@ cpu     = Cortex-M33
 id_val  = 0x0000044A
 ram     = 0x20005000
 ram_sz  = 0x3000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x44A.stldr
 
 [STM32G53x/54x]
@@ -429,6 +526,8 @@ cpu     = Cortex-M33
 id_val  = 0x0000044B
 ram     = 0x20000000
 ram_sz  = 0x5000
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x44B.stldr
 
 [STM32H50x]
@@ -436,6 +535,8 @@ cpu     = Cortex-M33
 id_val  = 0x00000474
 ram     = 0x20000000
 ram_sz  = 0x8000
+flash   = 0x08000000
+flash_sz = 0x20000
 algo    = /prog/loaders/st/0x474.stldr
 
 [STM32H533/523]
@@ -443,6 +544,8 @@ cpu     = Cortex-M33
 id_val  = 0x00000478
 ram     = 0x20003000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x478.stldr
 
 [STM32H5F4xJ/H5F5xJ/H5E4xJ/H5E5xJ]
@@ -450,6 +553,8 @@ cpu     = Cortex-M33
 id_val  = 0x0000047A
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x400000
 algo    = /prog/loaders/st/0x47A.stldr
 
 [STM32H5x]
@@ -457,6 +562,8 @@ cpu     = Cortex-M33
 id_val  = 0x0000047C
 ram     = 0x20003000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x47C.stldr
 
 [STM32H56x/573]
@@ -464,6 +571,8 @@ cpu     = Cortex-M33
 id_val  = 0x00000484
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x200000
 algo    = /prog/loaders/st/0x484.stldr
 
 [STM32H7xx]
@@ -473,6 +582,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000450
 ram     = 0x24000000
 ram_sz  = 0x80000
+flash   = 0x08000000
+flash_sz = 0x200000
 algo    = /prog/loaders/st/0x450.stldr
 
 [STM32H7Pxxx]
@@ -482,6 +593,8 @@ id_mask = 0x00000FFF
 id_val  = 0x0000047B
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x200000
 algo    = /prog/loaders/st/0x47B.stldr
 
 [STM32H7A/B]
@@ -491,6 +604,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000480
 ram     = 0x24000000
 ram_sz  = 0x100000
+flash   = 0x08000000
+flash_sz = 0x200000
 algo    = /prog/loaders/st/0x480.stldr
 
 [STM32H72x/STM32H73x]
@@ -500,6 +615,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000483
 ram     = 0x24000000
 ram_sz  = 0x20000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x483.stldr
 
 [STM32H7RSxx]
@@ -509,6 +626,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000485
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x10000
 algo    = /prog/loaders/st/0x485.stldr
 
 [STM32L05x/L06x/L010]
@@ -518,6 +637,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000417
 ram     = 0x20000000
 ram_sz  = 0x2000
+flash   = 0x08000000
+flash_sz = 0x10000
 algo    = /prog/loaders/st/0x417.stldr
 
 [STM32L03x/L04x/L010]
@@ -527,6 +648,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000425
 ram     = 0x20000000
 ram_sz  = 0x2000
+flash   = 0x08000000
+flash_sz = 0x8000
 algo    = /prog/loaders/st/0x425.stldr
 
 [STM32L07x/L08x/L010]
@@ -536,6 +659,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000447
 ram     = 0x20000000
 ram_sz  = 0x5000
+flash   = 0x08000000
+flash_sz = 0x20000
 algo    = /prog/loaders/st/0x447.stldr
 
 [STM32L01x/L02x]
@@ -545,6 +670,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000457
 ram     = 0x20000000
 ram_sz  = 0x800
+flash   = 0x08000000
+flash_sz = 0x4000
 algo    = /prog/loaders/st/0x457.stldr
 
 [STM32L100x8/STM32L100xB/STM32L15xx6/STM32L15xx8/STM32L15xxB]
@@ -554,6 +681,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000416
 ram     = 0x20000000
 ram_sz  = 0x2800
+flash   = 0x08000000
+flash_sz = 0x20000
 algo    = /prog/loaders/st/0x416.stldr
 
 [STM32L100xC/STM32L15xxC/STM32L162xC]
@@ -563,6 +692,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000427
 ram     = 0x20000000
 ram_sz  = 0x8000
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x427.stldr
 
 [STM32L100x6xxA/STM32L100x8xxA/STM32L100xBxxA/STM32L15xx6xxA/STM32L15xx8xxA/STM32L15xxBxxA]
@@ -572,6 +703,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000429
 ram     = 0x20000000
 ram_sz  = 0x4000
+flash   = 0x08000000
+flash_sz = 0x20000
 algo    = /prog/loaders/st/0x429.stldr
 
 [STM32L15xxD/STM32L162xD]
@@ -581,6 +714,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000436
 ram     = 0x20000000
 ram_sz  = 0xC000
+flash   = 0x08000000
+flash_sz = 0x60000
 algo    = /prog/loaders/st/0x436.stldr
 
 [STM32L15xxE/STM32L162xE]
@@ -590,6 +725,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000437
 ram     = 0x20000000
 ram_sz  = 0x14000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x437.stldr
 
 [STM32L4x1/STM32L475xx/STM32L476xx/STM32L486xx]
@@ -599,6 +736,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000415
 ram     = 0x20000000
 ram_sz  = 0x18000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x415.stldr
 
 [STM32L43xxx/STM32L44xxx]
@@ -608,6 +747,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000435
 ram     = 0x20000000
 ram_sz  = 0xC000
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x435.stldr
 
 [STM32L496xx/STM32L4A6xx]
@@ -617,6 +758,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000461
 ram     = 0x20000000
 ram_sz  = 0x40000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x461.stldr
 
 [STM32L45x/L46x]
@@ -626,6 +769,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000462
 ram     = 0x20000000
 ram_sz  = 0x20000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x462.stldr
 
 [STM32L41x]
@@ -635,6 +780,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000464
 ram     = 0x20000000
 ram_sz  = 0xA000
+flash   = 0x08000000
+flash_sz = 0x20000
 algo    = /prog/loaders/st/0x464.stldr
 
 [STM32L4Rxxx/STM32L4Sxxx]
@@ -644,6 +791,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000470
 ram     = 0x20000000
 ram_sz  = 0x30000
+flash   = 0x08000000
+flash_sz = 0x200000
 algo    = /prog/loaders/st/0x470.stldr
 
 [STM32L4Pxxx/STM32L4Qxxx]
@@ -653,6 +802,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000471
 ram     = 0x20000000
 ram_sz  = 0x30000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x471.stldr
 
 [STM32L5xx]
@@ -660,6 +811,8 @@ cpu     = Cortex-M33
 id_val  = 0x00000472
 ram     = 0x20000000
 ram_sz  = 0x40000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x472.stldr
 
 [STM32MP15xx]
@@ -698,6 +851,8 @@ cpu     = Cortex-M0+
 id_val  = 0x00000459
 ram     = 0x20000000
 ram_sz  = 0x2000
+flash   = 0x08000000
+flash_sz = 0x10000
 algo    = /prog/loaders/st/0x459.stldr
 
 [STM32U073/STM32U083]
@@ -705,6 +860,8 @@ cpu     = Cortex-M0+
 id_val  = 0x00000489
 ram     = 0x20000000
 ram_sz  = 0x8000
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x489.stldr
 
 [STM32U3C5/STM32U3B5]
@@ -712,6 +869,8 @@ cpu     = Cortex-M33
 id_val  = 0x0000042A
 ram     = 0x20004000
 ram_sz  = 0x3C000
+flash   = 0x08000000
+flash_sz = 0x200000
 algo    = /prog/loaders/st/0x42A.stldr
 
 [STM32U356/STM32U366]
@@ -719,6 +878,8 @@ cpu     = Cortex-M33
 id_val  = 0x0000042B
 ram     = 0x20010000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x42B.stldr
 
 [STM32U335/STM32U345]
@@ -726,6 +887,8 @@ cpu     = Cortex-M33
 id_val  = 0x0000042C
 ram     = 0x20000000
 ram_sz  = 0x3C00
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x42C.stldr
 
 [STM32U375/STM32U385]
@@ -733,6 +896,8 @@ cpu     = Cortex-M33
 id_val  = 0x00000454
 ram     = 0x20004000
 ram_sz  = 0x3C000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x454.stldr
 
 [STM32U535/STM32U545]
@@ -740,6 +905,8 @@ cpu     = Cortex-M33
 id_val  = 0x00000455
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x455.stldr
 
 [STM32U5Fx/5Gx]
@@ -747,6 +914,8 @@ cpu     = Cortex-M33
 id_val  = 0x00000476
 ram     = 0x20000000
 ram_sz  = 0xC0000
+flash   = 0x08000000
+flash_sz = 0x200000
 algo    = /prog/loaders/st/0x476.stldr
 
 [STM32U5xx]
@@ -754,6 +923,8 @@ cpu     = Cortex-M33
 id_val  = 0x00000481
 ram     = 0x20000000
 ram_sz  = 0xC0000
+flash   = 0x08000000
+flash_sz = 0x200000
 algo    = /prog/loaders/st/0x481.stldr
 
 [STM32U575/STM32U585]
@@ -761,6 +932,8 @@ cpu     = Cortex-M33
 id_val  = 0x00000482
 ram     = 0x20000000
 ram_sz  = 0xC0000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x482.stldr
 
 [STM32V8xx]
@@ -768,6 +941,8 @@ cpu     = Cortex-M85
 id_val  = 0x00000499
 ram     = 0x24040000
 ram_sz  = 0x8000
+flash   = 0x08000000
+flash_sz = 0x400000
 algo    = /prog/loaders/st/0x499.stldr
 
 [STM32WB1xxx]
@@ -777,6 +952,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000494
 ram     = 0x20000000
 ram_sz  = 0x3000
+flash   = 0x08000000
+flash_sz = 0x50000
 algo    = /prog/loaders/st/0x494.stldr
 
 [STM32WB5x/35xx]
@@ -786,6 +963,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000495
 ram     = 0x20000000
 ram_sz  = 0x30000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x495.stldr
 
 [STM32WB05/STM32WB05N]
@@ -793,6 +972,8 @@ cpu     = Cortex-M0+
 id_val  = 0x00000028
 ram     = 0x20000000
 ram_sz  = 0x4000
+flash   = 0x10040000
+flash_sz = 0x30000
 algo    = /prog/loaders/st/0x28.stldr
 
 [STM32WB07_06]
@@ -800,6 +981,8 @@ cpu     = Cortex-M0
 id_val  = 0x0000001E
 ram     = 0x20000000
 ram_sz  = 0x4000
+flash   = 0x10040000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x1E.stldr
 
 [STM32WB09]
@@ -807,6 +990,8 @@ cpu     = Cortex-M0
 id_val  = 0x00000032
 ram     = 0x20000000
 ram_sz  = 0x4000
+flash   = 0x10040000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x32.stldr
 
 [STM32WBA52/54/55]
@@ -814,6 +999,8 @@ cpu     = Cortex-M33
 id_val  = 0x00000492
 ram     = 0x20000000
 ram_sz  = 0x20000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x492.stldr
 
 [STM32WBA6]
@@ -821,6 +1008,8 @@ cpu     = Cortex-M33
 id_val  = 0x000004B0
 ram     = 0x20000000
 ram_sz  = 0x80000
+flash   = 0x08000000
+flash_sz = 0x100000
 algo    = /prog/loaders/st/0x4B0.stldr
 
 [STM32WBA2]
@@ -828,6 +1017,8 @@ cpu     = Cortex-M33
 id_val  = 0x000004B2
 ram     = 0x20000000
 ram_sz  = 0x18000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x4B2.stldr
 
 [STM32WLxx]
@@ -837,6 +1028,8 @@ id_mask = 0x00000FFF
 id_val  = 0x00000497
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x497.stldr
 
 [STM32WL3x]
@@ -844,6 +1037,8 @@ cpu     = Cortex-M0+
 id_val  = 0x00000027
 ram     = 0x20000000
 ram_sz  = 0x4000
+flash   = 0x10040000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x27.stldr
 
 [STM32WL3R]
@@ -851,6 +1046,8 @@ cpu     = Cortex-M0+
 id_val  = 0x00000122
 ram     = 0x20000000
 ram_sz  = 0x4000
+flash   = 0x10040000
+flash_sz = 0x40000
 algo    = /prog/loaders/st/0x122.stldr
 
 [STM32WL4x]
@@ -858,5 +1055,7 @@ cpu     = Cortex-M33
 id_val  = 0x0000049A
 ram     = 0x20000000
 ram_sz  = 0x10000
+flash   = 0x08000000
+flash_sz = 0x80000
 algo    = /prog/loaders/st/0x49A.stldr
 

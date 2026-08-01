@@ -227,6 +227,8 @@ static bool devLineCb(const char *sec, const char *key, const char *val, void *c
   else if (strcmp(key, "id_val")  == 0) p_scan->cur.id_val  = cfgNum(val);
   else if (strcmp(key, "ram")     == 0) p_scan->cur.ram     = cfgNum(val);
   else if (strcmp(key, "ram_sz")  == 0) p_scan->cur.ram_sz  = cfgNum(val);
+  else if (strcmp(key, "flash")   == 0) p_scan->cur.flash   = cfgNum(val);
+  else if (strcmp(key, "flash_sz")== 0) p_scan->cur.flash_sz= cfgNum(val);
 
   return true;
 }

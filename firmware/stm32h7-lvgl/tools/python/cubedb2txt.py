@@ -81,6 +81,27 @@ def find_sram(dev):
     return None, None
 
 
+def find_flash(dev):
+    """Embedded Flash 의 시작 주소와 크기. 알고리즘 말과 교차 검증하는 용도다.
+
+    알고리즘 파일이 자기 크기를 틀리게 적어 놓은 경우가 실제로 있다 (GigaDevice
+    팩의 1MB/2MB .FLM 이 둘 다 3840KB 라고 한다). 그러면 범위 검사가 무력해지므로
+    다른 출처의 값을 하나 더 들고 있는다.
+    """
+    for per in dev.iter("Peripheral"):
+        if per.findtext("Name") != "Embedded Flash":
+            continue
+        for cfg in per.iter("Configuration"):
+            p = cfg.find("Parameters")
+            if p is None:
+                continue
+            try:
+                return int(p.get("address"), 16), int(p.get("size"), 16)
+            except (TypeError, ValueError):
+                pass
+    return None, None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("cubeprog", help="STM32CubeProgrammer 폴더 (Data_Base 와 bin 을 담고 있는)")
@@ -125,6 +146,7 @@ def main():
             continue
 
         ram, ram_sz = find_sram(dev)
+        flash, flash_sz = find_flash(dev)
         if ram is None:
             no_sram.append(name)
 
@@ -134,6 +156,7 @@ def main():
 
         entries.append(dict(id=did, name=name, series=series, cpu=cpu,
                             ram=ram, ram_sz=ram_sz, id_addr=addr,
+                            flash=flash, flash_sz=flash_sz,
                             algo=loaders.get(did)))
 
     # 같은 DEV_ID 를 다른 파일이 두 번 기술하는 경우가 있다 (0x485 와 0x485_swv).
@@ -147,6 +170,8 @@ def main():
             # 정보가 더 많은 쪽을 남긴다
             if old["ram"] is None and e["ram"] is not None:
                 old.update(ram=e["ram"], ram_sz=e["ram_sz"])
+            if old["flash"] is None and e["flash"] is not None:
+                old.update(flash=e["flash"], flash_sz=e["flash_sz"])
             if not old["algo"] and e["algo"]:
                 old["algo"] = e["algo"]
             continue
@@ -168,6 +193,9 @@ def main():
         f.write("# 무엇이면 이 디바이스\" 라고만 적으므로 ST 이외의 벤더도 같은 형식을 쓴다.\n")
         f.write("# id_addr 이 없는 항목은 자동 판별이 안 될 뿐, 이름을 직접 지정하면 쓸 수 있다.\n")
         f.write("#\n")
+        f.write("# flash/flash_sz 는 알고리즘이 들고 있는 값과 교차 검증하는 용도다.\n")
+        f.write("# 알고리즘 파일이 자기 크기를 틀리게 적은 경우가 실제로 있다.\n")
+        f.write("#\n")
         f.write("# ram/ram_sz 는 알고리즘을 올릴 자리다. .FLM 에도 .stldr 에도 없는 값이라\n")
         f.write("# 이 DB 를 쓰는 가장 큰 이유가 이것이다.\n")
         f.write("\n")
@@ -183,6 +211,9 @@ def main():
             if e["ram"] is not None:
                 f.write(f"ram     = 0x{e['ram']:08X}\n")
                 f.write(f"ram_sz  = 0x{e['ram_sz']:X}\n")
+            if e["flash"] is not None:
+                f.write(f"flash   = 0x{e['flash']:08X}\n")
+                f.write(f"flash_sz = 0x{e['flash_sz']:X}\n")
             if e["algo"]:
                 f.write(f"algo    = {args.loader_dir}/{e['algo']}\n")
             f.write("\n")

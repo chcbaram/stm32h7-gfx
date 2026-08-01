@@ -1,0 +1,14 @@
+# GigaDevice 디바이스 DB
+#
+#   tools/python/pack2db.py 가 CMSIS-Pack 에서 만든다.
+#   id_addr 이 없는 항목은 자동 판별이 안 된다 — 이름을 직접 지정해야 한다.
+#   ID 레지스터 주소를 알면 --id-addr / --id-val 로 넣어라.
+
+[GD32H759IG]
+cpu     = Cortex-M7
+ram     = 0x24000000
+ram_sz  = 0xD0000
+flash    = 0x08000000
+flash_sz = 0x100000
+algo    = /prog/loaders/flm/GD32H7xx_1MB.FLM
+

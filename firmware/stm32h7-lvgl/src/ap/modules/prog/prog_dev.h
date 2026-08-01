@@ -47,6 +47,11 @@ typedef struct
   uint32_t id_val;
   uint32_t ram;
   uint32_t ram_sz;
+  /* 알고리즘이 들고 있는 값과 교차 검증하는 용도다. 알고리즘 파일이 자기
+     크기를 틀리게 적은 경우가 실제로 있다 — GigaDevice 팩의 1MB/2MB .FLM 이
+     둘 다 3840KB 라고 한다. 그러면 범위 검사가 무력해진다. 0 이면 모른다. */
+  uint32_t flash;
+  uint32_t flash_sz;
   char     algo[DEV_PATH_MAX];    // 기본 알고리즘 경로 (비어 있을 수 있다)
   bool     is_valid;
 } prog_dev_t;
