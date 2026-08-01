@@ -77,6 +77,7 @@ typedef enum
   PROG_RUNNING,         // 굽는 중
   PROG_DONE,
   PROG_ERROR,
+  PROG_STATE_CNT,     // UI 가 "아직 못 본 상태" 표시로 쓴다
 } prog_state_t;
 
 typedef struct
