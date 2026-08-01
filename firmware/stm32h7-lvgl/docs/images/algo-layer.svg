@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 430" width="860" height="430" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="ar3" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+  <style>
+    .ttl { font-size: 15px; fill: #111827; font-weight: 700; }
+    .hd  { font-size: 12px; fill: #111827; font-weight: 700; }
+    .lb  { font-size: 11px; fill: #374151; }
+    .sm  { font-size: 10px; fill: #6b7280; }
+    .mn  { font-size: 10px; fill: #374151; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .box { stroke-width: 1.2; rx: 4; }
+  </style>
+
+  <text x="24" y="30" class="ttl">알고리즘 계층 — .FLM 이 기본, .stldr 이 가속</text>
+  <text x="24" y="50" class="sm">순서가 중요하다. 반대로 두면 ST 아닌 MCU 를 붙일 때 구조를 뒤집어야 한다.</text>
+
+  <!-- 상위 -->
+  <rect x="24" y="72" width="812" height="46" class="box" fill="#f9fafb" stroke="#d1d5db"/>
+  <text x="40" y="92"  class="hd">prog.c · LVGL 앱</text>
+  <text x="40" y="109" class="sm">"이 파일을 이 칩에 구워라" — 어떤 로더를 쓰는지는 알지만 어떻게 부르는지는 모른다</text>
+
+  <path d="M430,120 L430,142" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar3)"/>
+
+  <!-- 공통 계층 -->
+  <rect x="24" y="148" width="812" height="86" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="40" y="169" class="hd">prog_algo.c — 벤더도 파일 포맷도 모른다</text>
+  <text x="40" y="188" class="lb">섹터 훑기 · 이중 버퍼 굽기 · 되읽기 검증 · .bin/.elf/.hex 소스</text>
+  <text x="40" y="210" class="mn">algo_ops_t { probe · parse · load · init · erase_sector · prog_start · prog_wait }</text>
+  <text x="40" y="227" class="sm">호출 규약의 차이가 전부 이 표 뒤에 갇힌다. 성공 코드 극성도 각 구현 안에서 흡수한다.</text>
+
+  <path d="M240,236 L240,268" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar3)"/>
+  <path d="M620,236 L620,268" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar3)"/>
+
+  <!-- FLM -->
+  <rect x="24" y="274" width="396" height="122" class="box" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="40" y="295" class="hd">prog_flm.c — CMSIS-Pack .FLM</text>
+  <text x="40" y="313" class="lb">ARM 표준. 벤더 중립 <tspan font-weight="700">기본 경로</tspan></text>
+  <text x="40" y="332" class="sm">Nordic · NXP · Renesas · Infineon · Microchip 이</text>
+  <text x="40" y="347" class="sm">전부 배포한다. 벤더가 늘어도 이 파일은 그대로고,</text>
+  <text x="40" y="362" class="sm">늘어나는 건 .FLM 파일과 DB 항목뿐이다.</text>
+  <text x="40" y="384" class="mn">재배치 O · 성공 0 · 섹터 1개씩 · UnInit 있음</text>
+
+  <!-- stldr -->
+  <rect x="440" y="274" width="396" height="122" class="box" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="456" y="295" class="hd">prog_stldr.c — ST .stldr</text>
+  <text x="456" y="313" class="lb">ST 전용. <tspan font-weight="700">가속 경로</tspan> (없어도 동작해야 한다)</text>
+  <text x="456" y="332" class="sm">FlashLoader — 내부 플래시. 파일명이 DEV_ID</text>
+  <text x="456" y="347" class="sm">ExternalLoader — 외부 QSPI / NOR / SDRAM</text>
+  <text x="456" y="362" class="sm" fill="#2563eb">소거·굽기 병렬도를 인자로 받는다 → 빠르다</text>
+  <text x="456" y="384" class="mn">재배치 X · 성공 1 · 섹터 범위 · UnInit 없음</text>
+
+  <text x="24" y="420" class="sm">실측 (STM32F411 299,048 B, 3.5MHz, 굽기+검증) — .stldr x32 <tspan font-weight="700">7,115 ms</tspan> · ST CubeProgrammer 7,840 · .FLM 10,224 · pyOCD 21,800 ms</text>
+</svg>
