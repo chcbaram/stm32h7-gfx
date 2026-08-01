@@ -24,6 +24,7 @@
 #include "swd.h"
 #include "swd/swd_dap.h"
 #include "swd/swd_cm.h"
+#include "swd/swd_algo.h"
 #include "swd/swd_la.h"
 #include "cli.h"
 
@@ -1370,6 +1371,98 @@ void cliSwd(cli_args_t *args)
     ret = true;
   }
 
+  // ---- 타깃 RAM 알고리즘 러너 -----------------------------------------
+
+  // ELF 를 건드리기 전에 러너 자체를 검증한다. 손으로 짠 4바이트 기계어라
+  // 파일도 파서도 필요 없고, 실패하면 원인이 바로 갈린다.
+  if (args->argc >= 2 && args->isStr(0, "test") == true)
+  {
+    uint32_t base = 0x20001000;      // 타깃 RAM. 필요하면 인자로 바꾼다
+    uint32_t a_val = 0, b_val = 0;
+    swd_algo_test_t t;
+    bool ok = false;
+
+    if      (args->isStr(1, "alu")) { t = SWD_ALGO_TEST_ALU;     ok = true; }
+    else if (args->isStr(1, "lr"))  { t = SWD_ALGO_TEST_LR;      ok = true; }
+    else if (args->isStr(1, "to"))  { t = SWD_ALGO_TEST_TIMEOUT; ok = true; }
+
+    if (ok)
+    {
+      uint32_t  ret_val = 0;
+      uint32_t  ms = 0;
+      swd_err_t err;
+
+      if (args->argc >= 4)
+      {
+        a_val = (uint32_t)args->getData(2);
+        b_val = (uint32_t)args->getData(3);
+      }
+      if (args->argc == 5)
+      {
+        base = (uint32_t)args->getData(4);
+      }
+
+      cliPrintf("test     : %s\n", swdAlgoTestName(t));
+      cliPrintf("ram base : 0x%08X\n", base);
+
+      err = swdAlgoSelfTest(base, t, a_val, b_val, &ret_val, &ms);
+
+      if (t == SWD_ALGO_TEST_TIMEOUT)
+      {
+        // 여기서는 타임아웃이 나야 정상이다
+        cliPrintf("result   : %s (%d ms)\n", swdErrStr(err), (int)ms);
+        cliPrintf("           %s\n", (err == SWD_ERR_WAIT) ? "PASS (타임아웃 후 강제 정지)"
+                                                            : "FAIL (타임아웃이 나야 한다)");
+      }
+      else
+      {
+        cliPrintf("args     : r0=%d r1=%d\n", (int)a_val, (int)b_val);
+        cliPrintf("result   : %s (%d ms)\n", swdErrStr(err), (int)ms);
+        if (err == SWD_OK)
+        {
+          cliPrintf("r0       : %d  ->  %s\n", (int)ret_val,
+                    (ret_val == (a_val + b_val)) ? "PASS" : "FAIL (합이 안 맞는다)");
+        }
+        else
+        {
+          cliPrintf("           FAIL\n");
+          if (t == SWD_ALGO_TEST_LR)
+          {
+            cliPrintf("  alu 는 되는데 lr 만 실패하면 LR 의 Thumb 비트를 의심한다\n");
+          }
+          else
+          {
+            cliPrintf("  swd regs 가 정상인데 여기서 실패하면 xPSR 의 T 비트를 의심한다\n");
+          }
+        }
+      }
+      ret = true;
+    }
+  }
+
+  // 임의의 타깃 함수를 한 번 호출한다
+  if (args->argc == 8 && args->isStr(0, "exec") == true)
+  {
+    swd_algo_ctx_t ctx;
+    uint32_t  pc      = (uint32_t)args->getData(1);
+    uint32_t  base    = (uint32_t)args->getData(2);
+    uint32_t  ret_val = 0;
+    swd_err_t err;
+
+    err = swdAlgoSetup(&ctx, base, 0);
+    if (err == SWD_OK)
+    {
+      err = swdAlgoCall(&ctx, pc,
+                        (uint32_t)args->getData(3), (uint32_t)args->getData(4),
+                        (uint32_t)args->getData(5), (uint32_t)args->getData(6),
+                        (uint32_t)args->getData(7), &ret_val);
+    }
+    cliPrintf("exec     : pc 0x%08X  %s\n", pc, swdErrStr(err));
+    cliPrintf("arena    : bkpt 0x%08X  stack 0x%08X\n", ctx.bkpt_addr, ctx.stack_top);
+    cliPrintf("r0       : 0x%08X (%d)\n", ret_val, (int)ret_val);
+    ret = true;
+  }
+
   // ---- 내장 로직 애널라이저 -------------------------------------------
   //
   // 캡처는 원샷이고 8000샘플이면 20MSPS 에서 400us 만에 찬다. arm 만 해 두고
@@ -1540,6 +1633,11 @@ void cliSwd(cli_args_t *args)
     cliPrintf("swd regs               R0~R15, xPSR, MSP, PSP, CONTROL\n");
     cliPrintf("swd reg <n> [v]        13=SP 14=LR 15=PC 16=xPSR\n");
     cliPrintf("swd core               CPUID 디코드 + 디바이스 ID\n");
+    cliPrintf("\n");
+    cliPrintf("swd test alu <a> <b> [ram]   러너 자가검증 (레지스터/실행/반환)\n");
+    cliPrintf("swd test lr  <a> <b> [ram]   bx lr 복귀 경로\n");
+    cliPrintf("swd test to                  타임아웃 경로\n");
+    cliPrintf("swd exec <pc> <ram> <r0> <r1> <r2> <r3> <ms>\n");
     cliPrintf("\n");
     cliPrintf("swd la connect         캡처하며 connect\n");
     cliPrintf("swd la id              캡처하며 DPIDR 읽기\n");

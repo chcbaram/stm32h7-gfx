@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" width="820" height="520" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#9ca3af"/>
+    </marker>
+  </defs>
+
+  <style>
+    .ttl { font-size: 15px; fill: #111827; font-weight: 700; }
+    .sub { font-size: 11px; fill: #6b7280; }
+    .fil { font-size: 13px; fill: #111827; font-weight: 600; }
+    .rol { font-size: 12px; fill: #374151; }
+    .stg { font-size: 11px; fill: #9ca3af; }
+    .dsc { font-size: 11px; fill: #6b7280; }
+    .box { stroke-width: 1.5; rx: 4; }
+  </style>
+
+  <text x="24" y="32" class="ttl">계층 구조</text>
+  <text x="24" y="52" class="sub">아래 네 층이 지금까지 만든 것. 위 세 층은 앞으로 올라간다.</text>
+
+  <!-- 앞으로 (점선) -->
+  <rect x="150" y="74" width="360" height="56" class="box" fill="#fafafa" stroke="#d1d5db" stroke-dasharray="5 3"/>
+  <text x="330" y="97"  class="fil" text-anchor="middle" fill="#9ca3af">prog_elf / prog_flm / prog_stldr</text>
+  <text x="330" y="115" class="fil" text-anchor="middle" fill="#9ca3af">prog.c · swdprog.c (LVGL 앱)</text>
+  <text x="138" y="106" class="stg" text-anchor="end">Stage 5~9</text>
+  <text x="526" y="97"  class="dsc">ELF 파싱, 잡 오케스트레이션,</text>
+  <text x="526" y="113" class="dsc">펌웨어 선택 UI</text>
+
+  <line x1="330" y1="130" x2="330" y2="156" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- swd_algo -->
+  <rect x="150" y="160" width="360" height="46" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="166" y="180" class="fil">swd_algo.c</text>
+  <text x="166" y="197" class="rol">타깃 RAM 알고리즘 러너</text>
+  <text x="138" y="187" class="stg" text-anchor="end">Stage 4</text>
+  <text x="526" y="180" class="dsc">C 함수 호출 규약(AAPCS)을</text>
+  <text x="526" y="196" class="dsc">SWD 로 흉내 낸다</text>
+
+  <!-- swd_cm -->
+  <rect x="150" y="212" width="360" height="46" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="166" y="232" class="fil">swd_cm.c</text>
+  <text x="166" y="249" class="rol">Cortex-M 디버그 코어</text>
+  <text x="138" y="239" class="stg" text-anchor="end">Stage 3</text>
+  <text x="526" y="232" class="dsc">halt / run / step, 레지스터,</text>
+  <text x="526" y="248" class="dsc">nRST 없는 reset-halt</text>
+
+  <!-- swd_dap -->
+  <rect x="150" y="264" width="360" height="46" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="166" y="284" class="fil">swd_dap.c</text>
+  <text x="166" y="301" class="rol">ARM ADIv5 DP / AP</text>
+  <text x="138" y="291" class="stg" text-anchor="end">Stage 2</text>
+  <text x="526" y="284" class="dsc">타깃 메모리 읽기·쓰기</text>
+  <text x="526" y="300" class="dsc">(posted read, 1KB TAR 랩)</text>
+
+  <!-- swd.c -->
+  <rect x="150" y="316" width="360" height="46" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="166" y="336" class="fil">swd.c</text>
+  <text x="166" y="353" class="rol">SWD 전송 (GPIO 비트뱅잉)</text>
+  <text x="138" y="343" class="stg" text-anchor="end">Stage 1</text>
+  <text x="526" y="336" class="dsc">패킷, ACK, 패리티, turnaround</text>
+  <text x="526" y="352" class="dsc">MODER 캐싱으로 방향 전환</text>
+
+  <!-- 핀 -->
+  <line x1="150" y1="380" x2="510" y2="380" stroke="#374151" stroke-width="2"/>
+  <text x="330" y="399" class="rol" text-anchor="middle">PE3 (SWCLK) · PC10 (SWDIO)</text>
+
+  <!-- 로직 애널라이저 -->
+  <rect x="180" y="424" width="300" height="44" class="box" fill="#f5f3ff" stroke="#7c3aed" stroke-dasharray="4 2"/>
+  <text x="196" y="443" class="fil" fill="#5b21b6">swd_la.c</text>
+  <text x="196" y="460" class="rol" fill="#5b21b6">내장 로직 애널라이저</text>
+  <text x="138" y="450" class="stg" text-anchor="end">Stage 1.5</text>
+  <text x="496" y="443" class="dsc">TIM2 + DMA2 로 두 핀을</text>
+  <text x="496" y="459" class="dsc">21 MSPS 샘플링 + 프로토콜 디코드</text>
+
+  <path d="M 200,424 L 200,386" fill="none" stroke="#7c3aed" stroke-width="1.5"
+        stroke-dasharray="4 2" marker-end="url(#a)"/>
+
+  <!-- 범례 -->
+  <rect x="24" y="490" width="14" height="12" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="44" y="500" class="dsc">ARM 표준 — 벤더가 바뀌어도 그대로 돈다</text>
+  <rect x="330" y="490" width="14" height="12" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="350" y="500" class="dsc">이 보드에 묶인 부분 (핀·레지스터)</text>
+  <rect x="600" y="490" width="14" height="12" class="box" fill="#f5f3ff" stroke="#7c3aed" stroke-dasharray="4 2"/>
+  <text x="620" y="500" class="dsc">진단 도구</text>
+</svg>
