@@ -120,7 +120,7 @@ static bool swdprogEnter(lv_obj_t *scr)
   last_pct     = 0xFF;
   last_state   = PROG_IDLE;
 
-  title = uiCreateLabel(scr, "SWD Programmer", uiStyleTextBody());
+  title = uiCreateLabel(scr, "SWD PROG", uiStyleTextTitle());
   lv_obj_align(title, LV_ALIGN_TOP_LEFT, UI_MARGIN, UI_SPACE_MD);
 
   lbl_chip = uiCreateLabel(scr, "-", uiStyleTextDim());
@@ -429,63 +429,82 @@ static void swdprogStartCb(lv_event_t *e)
 
 // ----------------------------------------------------------------- 모달
 
+/* 펌웨어 목록은 전체 화면으로 연다.
+
+   400x340 팝업에는 다섯 개쯤 들어가는데 프로젝트가 열 개를 넘으면 그 안에서
+   또 스크롤하게 되어 답답하다. 화면이 작을수록 한 번에 한 가지만 보여주는 편이
+   낫다 — 돌아가기는 닫기 버튼과 런처의 좌측 엣지 스와이프를 쓴다. */
 static void swdprogOpenModal(void)
 {
-  lv_obj_t *panel;
   lv_obj_t *header;
+  lv_obj_t *close;
   lv_obj_t *list;
   uint32_t  cnt = progTaskGetProjCnt();
 
   modal = lv_obj_create(swd_scr);
   lv_obj_remove_style_all(modal);
   lv_obj_set_size(modal, LV_PCT(100), LV_PCT(100));
-  lv_obj_set_style_bg_color(modal, lv_color_hex(0x000000), 0);
-  lv_obj_set_style_bg_opa(modal, LV_OPA_60, 0);
+  lv_obj_set_style_bg_color(modal, lv_color_hex(UI_COLOR_BG), 0);
+  lv_obj_set_style_bg_opa(modal, LV_OPA_COVER, 0);
   lv_obj_add_flag(modal, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_add_event_cb(modal, swdprogModalBgCb, LV_EVENT_CLICKED, NULL);
 
-  panel = uiCreateCard(modal, 400, 340);
-  lv_obj_center(panel);
-  lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_style_pad_all(panel, 0, 0);
-  lv_obj_add_flag(panel, LV_OBJ_FLAG_CLICKABLE);   // 배경 클릭이 새지 않게
+  header = uiCreateLabel(modal, "FIRMWARE", uiStyleTextBody());
+  lv_obj_align(header, LV_ALIGN_TOP_LEFT, UI_MARGIN, UI_SPACE_MD);
 
-  header = uiCreateLabel(panel, "FIRMWARE", uiStyleTextDim());
-  lv_obj_set_style_pad_left(header, UI_SPACE_MD, 0);
-  lv_obj_set_style_pad_top(header, UI_SPACE_MD, 0);
+  close = uiCreateButton(modal, LV_SYMBOL_CLOSE, false);
+  lv_obj_set_size(close, 60, 40);
+  lv_obj_align(close, LV_ALIGN_TOP_RIGHT, -UI_MARGIN, UI_SPACE_SM);
+  lv_obj_add_event_cb(close, swdprogModalBgCb, LV_EVENT_CLICKED, NULL);
 
-  list = lv_obj_create(panel);
+  list = lv_obj_create(modal);
   lv_obj_remove_style_all(list);
-  lv_obj_set_width(list, LV_PCT(100));
-  lv_obj_set_flex_grow(list, 1);
+  lv_obj_set_size(list, 480 - UI_MARGIN * 2, 480 - 60 - UI_MARGIN);
+  lv_obj_align(list, LV_ALIGN_TOP_MID, 0, 60);
   lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_style_pad_all(list, UI_SPACE_SM, 0);
+  lv_obj_set_style_pad_row(list, SWDPROG_GAP, 0);
+  lv_obj_set_scroll_dir(list, LV_DIR_VER);
+  lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_AUTO);
+  lv_obj_set_style_bg_color(list, lv_color_hex(UI_COLOR_TEXT_DIM), LV_PART_SCROLLBAR);
+  lv_obj_set_style_bg_opa(list, LV_OPA_50, LV_PART_SCROLLBAR);
+  lv_obj_set_style_width(list, 4, LV_PART_SCROLLBAR);
+  lv_obj_set_style_radius(list, 2, LV_PART_SCROLLBAR);
 
   if (cnt == 0)
   {
-    uiCreateLabel(list, "fw.txt 가 없다", uiStyleTextDim());
+    uiCreateLabel(list, "fw.txt 가 없다", uiStyleTextBody());
   }
 
   for (uint32_t i = 0; i < cnt; i++)
   {
     const prog_proj_t *p = progTaskGetProj(i);
     lv_obj_t          *row;
+    lv_obj_t          *l;
 
     if (p == NULL) break;
 
-    row = lv_obj_create(list);
-    lv_obj_remove_style_all(row);
-    lv_obj_set_size(row, LV_PCT(100), UI_TOUCH_MIN);
+    row = uiCreateCard(list, LV_PCT(100), 68);
+    lv_obj_set_style_pad_all(row, 0, 0);
     lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(row, swdprogItemCb, LV_EVENT_RELEASED, (void *)(uintptr_t)i);
 
+    /* 지금 걸려 있는 것을 표시한다. 같은 펌웨어를 여러 보드에 반복해 굽는
+       쓰임이라 "무엇이 선택돼 있나" 가 목록에서 바로 보여야 한다. */
+    if (strcmp(p->proj, sel_proj) == 0)
     {
-      lv_obj_t *l = uiCreateLabel(row, p->name, uiStyleTextBody());
-
-      lv_obj_align(l, LV_ALIGN_LEFT_MID, UI_SPACE_SM, -10);
-      l = uiCreateLabel(row, p->proj, uiStyleTextDim());
-      lv_obj_align(l, LV_ALIGN_LEFT_MID, UI_SPACE_SM, 12);
+      lv_obj_set_style_border_color(row, lv_color_hex(UI_COLOR_ACCENT), 0);
+      lv_obj_set_style_border_width(row, 2, 0);
     }
+
+    l = uiCreateLabel(row, p->name, uiStyleTextBody());
+    lv_obj_set_style_text_font(l, uiFontCaption(), 0);
+    lv_obj_set_width(l, LV_PCT(92));
+    lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
+    lv_obj_align(l, LV_ALIGN_TOP_LEFT, UI_SPACE_MD, SWDPROG_LINE(0));
+
+    l = uiCreateLabel(row, p->proj, uiStyleTextDim());
+    lv_obj_set_width(l, LV_PCT(92));
+    lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
+    lv_obj_align(l, LV_ALIGN_TOP_LEFT, UI_SPACE_MD, SWDPROG_LINE(1));
   }
 }
 
@@ -500,7 +519,8 @@ static void swdprogCloseModal(void)
 
 static void swdprogModalBgCb(lv_event_t *e)
 {
-  if (lv_event_get_target(e) == modal) swdprogCloseModal();
+  (void)e;
+  swdprogCloseModal();
 }
 
 /* 스크롤 플릭이 선택으로 새지 않게 릴리즈 좌표가 행 안인지 본다.

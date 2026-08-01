@@ -69,16 +69,22 @@ static lv_font_t font_title;
 static lv_font_t font_body;
 static lv_font_t font_caption;
 
-static const lv_font_t *kr_font = NULL;
+static const lv_font_t *kr_title_font   = NULL;
+static const lv_font_t *kr_body_font    = NULL;
+static const lv_font_t *kr_caption_font = NULL;
 
 const lv_font_t *uiFontTitle(void)   { return &font_title; }
 const lv_font_t *uiFontBody(void)    { return &font_body; }
 const lv_font_t *uiFontCaption(void) { return &font_caption; }
 
 /* 한글 fallback 폰트 지정. uiThemeInit 전에 호출한다. NULL 이면 영문만. */
-void uiThemeSetKrFont(const lv_font_t *kr)
+void uiThemeSetKrFont(const lv_font_t *kr_title,
+                      const lv_font_t *kr_body,
+                      const lv_font_t *kr_caption)
 {
-  kr_font = kr;
+  kr_title_font   = kr_title;
+  kr_body_font    = kr_body;
+  kr_caption_font = kr_caption;
 }
 
 
@@ -150,9 +156,9 @@ bool uiThemeInit(void)
   font_title   = lv_font_montserrat_40;
   font_body    = lv_font_montserrat_28;
   font_caption = lv_font_montserrat_20;
-  font_title.fallback   = kr_font;
-  font_body.fallback    = kr_font;
-  font_caption.fallback = kr_font;
+  font_title.fallback   = kr_title_font;
+  font_body.fallback    = kr_body_font;
+  font_caption.fallback = kr_caption_font;
 
   /* 스타일은 여기서 딱 한 번만 init 한다. (재테마 시엔 속성만 다시 세팅) */
   lv_style_init(&style_screen);

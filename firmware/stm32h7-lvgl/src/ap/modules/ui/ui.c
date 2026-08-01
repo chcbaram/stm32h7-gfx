@@ -24,14 +24,24 @@ bool uiInit(void)
 
   lvglInit();
 
-  /* SPI Flash 의 한글 폰트를 fallback 으로 로드한다. (없으면 영문만 표시) */
+  /* SPI Flash 의 한글 폰트를 fallback 으로 로드한다. (없으면 영문만 표시)
+
+     크기별로 따로 둔다. fallback 은 크기를 안 바꾸므로 28px 하나로 20px 캡션까지
+     덮으면 한글만 크게 나와 줄을 넘친다. */
   {
-    lv_font_t *kr = lv_binfont_create("F:/font/kr.bin");
+    lv_font_t *kr    = lv_binfont_create("F:/font/kr.bin");     /* 28px */
+    lv_font_t *kr_20 = lv_binfont_create("F:/font/kr_20.bin");  /* 20px */
+
+    if (kr_20 != NULL)
+      logPrintf("[OK] kr_20 font loaded\n");
+    else
+      logPrintf("[  ] kr_20 font not found (F:/font/kr_20.bin)\n");
+
     if (kr != NULL)
       logPrintf("[OK] kr font loaded\n");
     else
       logPrintf("[  ] kr font not found (S:/font/kr.bin)\n");
-    uiThemeSetKrFont(kr);
+    uiThemeSetKrFont(kr, kr, (kr_20 != NULL) ? kr_20 : kr);
   }
 
   uiThemeInit();

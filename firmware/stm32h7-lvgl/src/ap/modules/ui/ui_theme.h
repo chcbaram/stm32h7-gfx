@@ -99,7 +99,14 @@ const lv_font_t *uiFontCaption(void);   /* 14 - 라벨, 부가정보  */
  * 위젯마다 인라인으로 스타일을 박으면 RAM 도 낭비된다.
  * ------------------------------------------------------------------------- */
 bool uiThemeInit(void);
-void uiThemeSetKrFont(const lv_font_t *kr);   /* 한글 fallback 폰트 (uiThemeInit 전에) */
+/* 한글 fallback 폰트. 역할마다 따로 받는다 (uiThemeInit 전에).
+
+   fallback 은 크기를 안 바꾸고 그 폰트의 원래 크기로 그린다. 28px 한글 하나로
+   20px 캡션까지 덮으면 한글만 40% 크게 나와 줄을 넘친다. 실제로 그랬다.
+   NULL 을 주면 그 역할은 영문만 나온다. */
+void                uiThemeSetKrFont(const lv_font_t *kr_title,
+                                     const lv_font_t *kr_body,
+                                     const lv_font_t *kr_caption);
 
 lv_style_t *uiStyleScreen(void);        /* 화면 바탕            */
 lv_style_t *uiStyleCard(void);          /* 패널/카드            */
