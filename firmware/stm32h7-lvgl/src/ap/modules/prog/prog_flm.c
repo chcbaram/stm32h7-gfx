@@ -348,6 +348,12 @@ typedef struct
 
 typedef struct
 {
+  hex_t   *hex;
+  uint8_t  empty;
+} flm_hex_src_t;
+
+typedef struct
+{
   elf_t      *elf;
   elf_phdr_t  seg[FLM_ELF_SEG_MAX];
   uint32_t    seg_cnt;
@@ -685,6 +691,105 @@ swd_err_t flmWriteElf(flm_t *p_flm, const char *path,
 
   if (p_written) *p_written = (err == SWD_OK) ? len : 0;
   if (p_time)    *p_time    = tm;
+  return err;
+}
+
+static bool flmFillHex(void *src, uint32_t addr, uint8_t *p_buf, uint32_t len)
+{
+  flm_hex_src_t *p_src = (flm_hex_src_t *)src;
+
+  return hexFill(p_src->hex, addr, p_buf, len, p_src->empty);
+}
+
+/* .hex 도 주소가 파일 안에 있다. 다만 .elf 처럼 세그먼트로 묶여 있지 않고
+   레코드마다 흩어져 있어서, 굽는 범위는 열 때의 전체 스캔으로 얻는다. */
+static bool flmHexRange(flm_t *p_flm, hex_t *p_hex, uint32_t *p_addr, uint32_t *p_len)
+{
+  uint32_t lo = p_hex->lo;
+
+  if (flmIsInRange(p_flm, lo) == false)             return false;
+  if (flmIsInRange(p_flm, p_hex->hi - 1) == false)  return false;
+
+  lo -= (lo - p_flm->dev.dev_adr) % p_flm->dev.sz_page;
+
+  *p_addr = lo;
+  *p_len  = p_hex->hi - lo;
+  return true;
+}
+
+swd_err_t flmWriteHex(flm_t *p_flm, const char *path,
+                      flm_progress_t cb, void *ctx, uint32_t *p_written,
+                      flm_time_t *p_time, uint32_t *p_addr)
+{
+  static hex_t  hex;
+  flm_hex_src_t src;
+  flm_time_t    tm;
+  swd_err_t     err;
+  uint32_t      addr, len, t0;
+
+  memset(&tm, 0, sizeof(tm));
+  if (p_written) *p_written = 0;
+  if (p_time)    *p_time    = tm;
+
+  if (p_flm == NULL || p_flm->is_loaded == false) return SWD_ERR_PROTOCOL;
+  if (p_flm->dev.sz_page > FLM_PAGE_MAX)          return SWD_ERR_PROTOCOL;
+
+  if (hexOpen(&hex, path) == false) return SWD_ERR_PROTOCOL;
+
+  src.hex   = &hex;
+  src.empty = p_flm->dev.val_empty;
+
+  if (flmHexRange(p_flm, &hex, &addr, &len) == false)
+  {
+    hexClose(&hex);
+    return SWD_ERR_PROTOCOL;
+  }
+  if (p_addr) *p_addr = addr;
+
+  t0  = millis();
+  err = flmEraseRange(p_flm, addr, len, cb, ctx);
+  tm.erase_ms = millis() - t0;
+
+  if (err == SWD_OK)
+  {
+    err = flmInit(p_flm, p_flm->dev.dev_adr, FLM_CLK_DEF, FLM_FNC_PROGRAM);
+    if (err == SWD_OK)
+    {
+      err = flmProgramRange(p_flm, addr, len, flmFillHex, &src, cb, ctx, &tm);
+      flmUnInit(p_flm, FLM_FNC_PROGRAM);
+    }
+  }
+
+  hexClose(&hex);
+
+  if (p_written) *p_written = (err == SWD_OK) ? len : 0;
+  if (p_time)    *p_time    = tm;
+  return err;
+}
+
+swd_err_t flmVerifyHex(flm_t *p_flm, const char *path,
+                       flm_progress_t cb, void *ctx, uint32_t *p_bad)
+{
+  static hex_t  hex;
+  flm_hex_src_t src;
+  swd_err_t     err;
+  uint32_t      addr, len;
+
+  if (p_flm == NULL) return SWD_ERR_PROTOCOL;
+  if (hexOpen(&hex, path) == false) return SWD_ERR_PROTOCOL;
+
+  src.hex   = &hex;
+  src.empty = p_flm->dev.val_empty;
+
+  if (flmHexRange(p_flm, &hex, &addr, &len) == false)
+  {
+    hexClose(&hex);
+    return SWD_ERR_PROTOCOL;
+  }
+
+  err = flmVerifyRange(p_flm, addr, len, flmFillHex, &src, cb, ctx, p_bad);
+
+  hexClose(&hex);
   return err;
 }
 

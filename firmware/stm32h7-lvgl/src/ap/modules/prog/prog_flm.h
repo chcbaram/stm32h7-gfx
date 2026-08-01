@@ -21,6 +21,7 @@ extern "C" {
 
 #include "ap_def.h"
 #include "prog/prog_elf.h"
+#include "prog/prog_hex.h"
 #include "swd.h"
 #include "swd/swd_algo.h"
 
@@ -135,6 +136,14 @@ swd_err_t flmWriteElf(flm_t *p_flm, const char *path,
                       flm_time_t *p_time, uint32_t *p_addr);
 
 swd_err_t flmVerifyElf(flm_t *p_flm, const char *path,
+                       flm_progress_t cb, void *ctx, uint32_t *p_bad);
+
+// .hex 도 주소가 파일 안에 있다. 굽는 범위는 hexOpen 의 전체 스캔에서 나온다.
+swd_err_t flmWriteHex(flm_t *p_flm, const char *path,
+                      flm_progress_t cb, void *ctx, uint32_t *p_written,
+                      flm_time_t *p_time, uint32_t *p_addr);
+
+swd_err_t flmVerifyHex(flm_t *p_flm, const char *path,
                        flm_progress_t cb, void *ctx, uint32_t *p_bad);
 
 swd_err_t flmVerifyFile(flm_t *p_flm, const char *path, uint32_t addr,

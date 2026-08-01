@@ -405,6 +405,30 @@ void cliProg(cli_args_t *args)
     }
   }
 
+  /* .hex 를 굽기 전에 훑어본다. 체크섬과 주소 순서도 여기서 다 확인된다. */
+  if (args->argc == 3 && args->isStr(0, "hex") == true && args->isStr(1, "info") == true)
+  {
+    static hex_t hex;
+    char *path = args->getStr(2);
+
+    if (hexOpen(&hex, path) == false)
+    {
+      cliPrintf("hex 열기 실패 : %s\n", path);
+      cliPrintf("  체크섬 오류거나 주소가 역행하는 파일이다\n");
+    }
+    else
+    {
+      cliPrintf("records  : %d\n", (int)hex.rec_cnt);
+      cliPrintf("range    : 0x%08X ~ 0x%08X  (%d bytes)\n",
+                hex.lo, hex.hi - 1, (int)(hex.hi - hex.lo));
+      cliPrintf("data     : %d bytes  (빈틈 %d)\n",
+                (int)hex.data_bytes, (int)(hex.hi - hex.lo - hex.data_bytes));
+      if (hex.has_entry) cliPrintf("entry    : 0x%08X\n", hex.entry);
+      hexClose(&hex);
+    }
+    ret = true;
+  }
+
   /* 파일 하나를 통째로 굽는다. 다운로더의 핵심 경로다.
      .elf 는 굽는 주소가 파일 안에 있으므로 flash 인자가 없고, .bin 은 필요하다. */
   if ((args->argc == 4 || args->argc == 5) && args->isStr(0, "write") == true)
@@ -415,10 +439,12 @@ void cliProg(cli_args_t *args)
     uint32_t  ram    = (uint32_t)args->getData(3);
     uint32_t  flash  = (args->argc == 5) ? (uint32_t)args->getData(4) : 0;
     bool      is_elf = elfIsElfFile(img);
+    bool      is_hex = (is_elf == false) && hexIsHexFile(img);
+    bool      has_addr = is_elf || is_hex;      // 주소가 파일 안에 있다
     swd_err_t err;
     uint32_t  written = 0, bad = 0, t0;
 
-    if (is_elf == false && args->argc == 4)
+    if (has_addr == false && args->argc == 4)
     {
       cliPrintf(".bin 은 굽는 주소가 파일에 없다. flash 주소를 지정해라\n");
       ret = true;
@@ -428,7 +454,7 @@ void cliProg(cli_args_t *args)
       cliPrintf("FLM 열기 실패 : %s\n", algo);
       ret = true;
     }
-    else if (is_elf == false && flmIsInRange(&flm, flash) == false)
+    else if (has_addr == false && flmIsInRange(&flm, flash) == false)
     {
       cliPrintf("주소가 플래시 범위 밖이다 : 0x%08X (0x%08X ~ 0x%08X)\n",
                 flash, flm.dev.dev_adr, flm.dev.dev_adr + flm.dev.sz_dev - 1);
@@ -438,8 +464,8 @@ void cliProg(cli_args_t *args)
     else
     {
       cliPrintf("algo   : %s\n", flm.dev.name);
-      if (is_elf)
-        cliPrintf("image  : %s (elf, 주소는 파일 안에)\n", img);
+      if (has_addr)
+        cliPrintf("image  : %s (%s, 주소는 파일 안에)\n", img, is_elf ? "elf" : "hex");
       else
         cliPrintf("image  : %s -> 0x%08X\n", img, flash);
 
@@ -458,6 +484,8 @@ void cliProg(cli_args_t *args)
         t0 = millis();
         if (is_elf)
           err = flmWriteElf(&flm, img, NULL, NULL, &written, &tm, &flash);
+        else if (is_hex)
+          err = flmWriteHex(&flm, img, NULL, NULL, &written, &tm, &flash);
         else
           err = flmWriteFile(&flm, img, flash, NULL, NULL, &written, &tm);
 
@@ -473,6 +501,8 @@ void cliProg(cli_args_t *args)
           t0 = millis();
           if (is_elf)
             err = flmVerifyElf(&flm, img, NULL, NULL, &bad);
+          else if (is_hex)
+            err = flmVerifyHex(&flm, img, NULL, NULL, &bad);
           else
             err = flmVerifyFile(&flm, img, flash, NULL, NULL, &bad);
 
@@ -493,8 +523,9 @@ void cliProg(cli_args_t *args)
     cliPrintf("prog elf load <path> <ram>  타깃 RAM 으로 재배치 로드\n");
     cliPrintf("prog flm info <path>        FlashDevice + 심볼\n");
     cliPrintf("prog flm test <path> <ram> <flash>  한 페이지 지우기/굽기/검증\n");
+    cliPrintf("prog hex info <path>        레코드 수/주소 범위/엔트리\n");
     cliPrintf("prog write <algo> <img> <ram> [flash]  파일 통째로 굽고 검증\n");
-    cliPrintf("                                       .elf 는 flash 주소 생략\n");
+    cliPrintf("                                       .elf/.hex 는 flash 주소 생략\n");
   }
 }
 #endif
