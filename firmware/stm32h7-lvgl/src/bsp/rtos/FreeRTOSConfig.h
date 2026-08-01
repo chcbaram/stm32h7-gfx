@@ -63,7 +63,10 @@
 #define configCPU_CLOCK_HZ                (SystemCoreClock)
 #define configTICK_RATE_HZ                ((TickType_t)1000)
 #define configMINIMAL_STACK_SIZE          ((uint16_t)128)
-#define configTOTAL_HEAP_SIZE             ((size_t)(48 * 1024))
+/* 스레드 스택이 전부 여기서 나온다. 다운로더 워커(8KB)를 추가하면서 48KB 로는
+   ui 스레드 생성이 조용히 실패했다 - 화면이 통째로 검게 나오는데 로그에는
+   아무것도 안 남는다. */
+#define configTOTAL_HEAP_SIZE             ((size_t)(64 * 1024))
 #define configMAX_TASK_NAME_LEN           (16)
 #define configUSE_TRACE_FACILITY          1
 #define configUSE_16_BIT_TICKS            0

@@ -11,6 +11,7 @@
 #include "prog/algo/prog_stldr.h"
 #include "prog/job/prog_dev.h"
 #include "prog/job/prog_job.h"
+#include "prog/prog_task.h"
 #include "swd.h"
 #include "swd/swd_dap.h"
 #include "swd/swd_cm.h"
@@ -43,6 +44,8 @@ MODULE_DEF(prog){
 bool progInit(void)
 {
   bool ret = true;
+
+  ret = progTaskInit();
 
 #ifdef _USE_HW_CLI
   cliAdd("prog", cliProg);
@@ -368,6 +371,46 @@ void cliProg(cli_args_t *args)
       elfClose(&elf);
       ret = true;
     }
+  }
+
+  /* 워커에 요청만 남긴다. GUI 의 SCAN/START 가 부르는 것과 같은 경로라,
+     화면을 안 보고도 그 경로를 시험할 수 있다. */
+  if (args->argc >= 1 && args->isStr(0, "task") == true)
+  {
+    const char *st[] = { "IDLE", "SCANNING", "LISTING", "RUNNING", "DONE", "ERROR" };
+
+    if (args->argc == 2 && args->isStr(1, "scan"))
+    {
+      cliPrintf("%s\n", progTaskScan() ? "scan 요청" : "이미 무언가 돌고 있다");
+    }
+    else if (args->argc == 2 && args->isStr(1, "list"))
+    {
+      cliPrintf("%s\n", progTaskList() ? "list 요청" : "이미 무언가 돌고 있다");
+    }
+    else if (args->argc == 3 && args->isStr(1, "run"))
+    {
+      cliPrintf("%s\n", progTaskRun(args->getStr(2)) ? "run 요청" : "이미 무언가 돌고 있다");
+    }
+    else if (args->argc == 2 && args->isStr(1, "abort"))
+    {
+      progTaskAbort();
+      cliPrintf("abort\n");
+    }
+    else
+    {
+      uint32_t cnt = progTaskGetLogCnt();
+
+      cliPrintf("state  : %s  %d%%\n", st[progTaskGetState()], (int)progTaskGetPercent());
+      cliPrintf("phase  : %s\n", progTaskGetPhase());
+      for (uint32_t i = 0; i < cnt; i++) cliPrintf("  %s\n", progTaskGetLog(i));
+      cnt = progTaskGetProjCnt();
+      for (uint32_t i = 0; i < cnt; i++)
+      {
+        cliPrintf("  [%d] %-16s %s\n", (int)i,
+                  progTaskGetProj(i)->proj, progTaskGetProj(i)->name);
+      }
+    }
+    ret = true;
   }
 
   /* 프로젝트 목록 */
@@ -738,6 +781,7 @@ void cliProg(cli_args_t *args)
     cliPrintf("prog info\n");
     cliPrintf("prog elf info <path>        ELF 섹션/세그먼트/심볼 덤프\n");
     cliPrintf("prog elf load <path> <ram>  타깃 RAM 으로 재배치 로드\n");
+    cliPrintf("prog task [scan|list|run <p>|abort]  워커에 요청 (GUI 와 같은 경로)\n");
     cliPrintf("prog list                   /prog/fw 의 프로젝트 목록\n");
     cliPrintf("prog run <프로젝트>         fw.txt 대로 굽고 검증\n");
     cliPrintf("prog dev [이름]              디바이스 DB 훑기 / 타깃 자동 판별\n");
