@@ -398,11 +398,18 @@ void cliProg(cli_args_t *args)
     }
     else
     {
-      uint32_t cnt = progTaskGetLogCnt();
+      uint32_t cnt = progTaskGetStepCnt();
+      const char *mark[] = { "..", "OK", "!!" };
 
       cliPrintf("state  : %s  %d%%\n", st[progTaskGetState()], (int)progTaskGetPercent());
-      cliPrintf("phase  : %s\n", progTaskGetPhase());
-      for (uint32_t i = 0; i < cnt; i++) cliPrintf("  %s\n", progTaskGetLog(i));
+      cliPrintf("phase  : %s   성공 %d 회\n", progTaskGetPhase(), (int)progTaskGetOkCount());
+      for (uint32_t i = 0; i < cnt; i++)
+      {
+        const prog_step_t *p = progTaskGetStep(i);
+
+        cliPrintf("  %s %s%-28s %5d ms\n", mark[p->state],
+                  p->depth ? "  " : "", p->text, (int)p->ms);
+      }
       cnt = progTaskGetProjCnt();
       for (uint32_t i = 0; i < cnt; i++)
       {

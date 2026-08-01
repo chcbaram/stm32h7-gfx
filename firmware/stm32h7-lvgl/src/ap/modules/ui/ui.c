@@ -29,7 +29,7 @@ bool uiInit(void)
      크기별로 따로 둔다. fallback 은 크기를 안 바꾸므로 28px 하나로 20px 캡션까지
      덮으면 한글만 크게 나와 줄을 넘친다. */
   {
-    lv_font_t *kr    = lv_binfont_create("F:/font/kr.bin");     /* 28px */
+    lv_font_t *kr    = lv_binfont_create("F:/font/kr_28.bin");     /* 28px */
     lv_font_t *kr_20 = lv_binfont_create("F:/font/kr_20.bin");  /* 20px */
 
     if (kr_20 != NULL)
@@ -38,9 +38,9 @@ bool uiInit(void)
       logPrintf("[  ] kr_20 font not found (F:/font/kr_20.bin)\n");
 
     if (kr != NULL)
-      logPrintf("[OK] kr font loaded\n");
+      logPrintf("[OK] kr_28 font loaded\n");
     else
-      logPrintf("[  ] kr font not found (S:/font/kr.bin)\n");
+      logPrintf("[  ] kr_28 font not found (F:/font/kr_28.bin)\n");
     uiThemeSetKrFont(kr, kr, (kr_20 != NULL) ? kr_20 : kr);
   }
 

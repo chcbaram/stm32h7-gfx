@@ -11,6 +11,7 @@
 #include "swd.h"
 #include "swd/swd_dap.h"
 #include "swd/swd_cm.h"
+#include "nvs.h"
 
 
 #ifdef _USE_HW_SWD
@@ -40,16 +41,25 @@ static prog_target_t target;
 static prog_proj_t   proj_list[PROG_PROJ_CNT];
 static uint32_t      proj_cnt;
 
-static char          log_buf[PROG_LOG_CNT][PROG_LOG_LEN];
-static uint32_t      log_cnt;
-static volatile uint8_t log_seq;
+static prog_step_t   step[PROG_STEP_CNT];
+static uint32_t      step_cnt;
+static volatile uint8_t step_seq;
+static uint32_t      step_t0;          // 지금 진행 중인 단계의 시작 시각
+
+static prog_opt_t    opt = { PROG_RESET_RUN, true, ALGO_PSIZE_8, 0 };
+static char          sel_project[JOB_PROJ_MAX];
+static uint32_t      ok_count;
+
+#define PROG_NVS_OPT   "prog.opt"
+#define PROG_NVS_PROJ  "prog.proj"
 
 
 static void progTaskThread(void const *arg);
 static void progTaskDoScan(void);
 static void progTaskDoList(void);
 static void progTaskDoRun(void);
-static void progTaskLog(const char *fmt, ...);
+static void progTaskStep(uint8_t depth, const char *fmt, ...);
+static void progTaskStepEnd(prog_step_state_t st);
 static bool progTaskProjCb(const char *proj, const char *name, void *ctx);
 static void progTaskProgressCb(const char *phase, uint32_t addr, uint32_t done,
                                uint32_t total, void *ctx);
@@ -60,6 +70,14 @@ static void progTaskProgressCb(const char *phase, uint32_t addr, uint32_t done,
 bool progTaskInit(void)
 {
   prog_state = PROG_IDLE;
+
+  /* 설정과 마지막 프로젝트를 되살린다. 같은 펌웨어를 여러 보드에 반복해 굽는
+     쓰임이라 전원을 껐다 켤 때마다 다시 고르게 하면 안 된다. */
+  nvsGet(PROG_NVS_OPT,  &opt,         sizeof(opt));
+  nvsGet(PROG_NVS_PROJ, sel_project, sizeof(sel_project));
+  sel_project[sizeof(sel_project) - 1] = 0;
+  if (opt.psize > ALGO_PSIZE_64) opt.psize = ALGO_PSIZE_8;
+  if (opt.reset > PROG_RESET_NONE) opt.reset = PROG_RESET_RUN;
 
   return threadCreate("swd_prog", progTaskThread, NULL,
                       osPriorityBelowNormal, PROG_THREAD_STACK);
@@ -112,8 +130,37 @@ prog_state_t progTaskGetState(void)   { return prog_state; }
 uint8_t      progTaskGetPercent(void) { return prog_pct; }
 const char  *progTaskGetPhase(void)   { return prog_phase; }
 uint32_t     progTaskGetElapsed(void) { return prog_ms; }
-uint8_t      progTaskGetLogSeq(void)  { return log_seq; }
-uint32_t     progTaskGetLogCnt(void)  { return log_cnt; }
+uint8_t      progTaskGetStepSeq(void) { return step_seq; }
+uint32_t     progTaskGetStepCnt(void) { return step_cnt; }
+uint32_t     progTaskGetOkCount(void) { return ok_count; }
+const char  *progTaskGetProject(void) { return sel_project; }
+
+const prog_step_t *progTaskGetStep(uint32_t idx)
+{
+  if (idx >= step_cnt) return NULL;
+  return &step[idx];
+}
+
+const prog_opt_t *progTaskGetOpt(void)
+{
+  return &opt;
+}
+
+void progTaskSetOpt(const prog_opt_t *p_opt)
+{
+  if (p_opt == NULL) return;
+
+  opt = *p_opt;
+  nvsSet(PROG_NVS_OPT, &opt, sizeof(opt));
+}
+
+void progTaskSetProject(const char *project)
+{
+  if (project == NULL) return;
+
+  snprintf(sel_project, sizeof(sel_project), "%s", project);
+  nvsSet(PROG_NVS_PROJ, sel_project, sizeof(sel_project));
+}
 uint32_t     progTaskGetProjCnt(void) { return proj_cnt; }
 
 const prog_target_t *progTaskGetTarget(void)
@@ -126,13 +173,6 @@ const prog_proj_t *progTaskGetProj(uint32_t idx)
   if (idx >= proj_cnt) return NULL;
   return &proj_list[idx];
 }
-
-const char *progTaskGetLog(uint32_t idx)
-{
-  if (idx >= log_cnt) return "";
-  return log_buf[idx];
-}
-
 
 // ----------------------------------------------------------------- 내부
 
@@ -173,16 +213,16 @@ static void progTaskDoScan(void)
   prog_state = PROG_SCANNING;
   prog_phase = "scan";
   prog_pct   = 0;
-  log_cnt    = 0;
-  log_seq++;
+  step_cnt   = 0;
+  step_seq++;
 
   memset(&target, 0, sizeof(target));
 
   err = swdConnect(&idcode);
   if (err != SWD_OK)
   {
-    progTaskLog("연결 실패 : %s", swdErrStr(err));
-    progTaskLog("배선과 타깃 전원을 확인해라");
+    progTaskStep(0, "연결 실패 : %s", swdErrStr(err));
+    progTaskStep(0, "배선과 타깃 전원을 확인해라");
     prog_ms    = millis() - t0;
     prog_state = PROG_ERROR;
     return;
@@ -190,24 +230,24 @@ static void progTaskDoScan(void)
 
   target.idcode = idcode;
   target.dp_ver = (idcode >> 12) & 0xF;
-  progTaskLog("DPIDR  : 0x%08X  DPv%d", idcode, (int)target.dp_ver);
+  progTaskStep(0, "DPIDR  : 0x%08X  DPv%d", idcode, (int)target.dp_ver);
   prog_pct = 25;
 
   swdCmInvalidate();
   err = swdCmEnsureAp();
   if (err != SWD_OK)
   {
-    progTaskLog("코어 디버그를 못 찾았다");
+    progTaskStep(0, "코어 디버그를 못 찾았다");
     prog_ms    = millis() - t0;
     prog_state = PROG_ERROR;
     return;
   }
   target.ap = swdDapGetAp();
-  progTaskLog("AP     : %d", (int)target.ap);
+  progTaskStep(0, "AP     : %d", (int)target.ap);
   prog_pct = 50;
 
   swdMemRead32(0xE000ED00, &target.cpuid);
-  progTaskLog("CPUID  : 0x%08X", target.cpuid);
+  progTaskStep(0, "CPUID  : 0x%08X", target.cpuid);
   prog_pct = 75;
 
   err = devDetect(&target.dev, &target.id_read);
@@ -215,21 +255,21 @@ static void progTaskDoScan(void)
 
   if (target.dev_found)
   {
-    progTaskLog("%s", target.dev.name);
-    progTaskLog("ram 0x%08X  %d KB", target.dev.ram, (int)(target.dev.ram_sz / 1024));
+    progTaskStep(0, "%s", target.dev.name);
+    progTaskStep(0, "ram 0x%08X  %d KB", target.dev.ram, (int)(target.dev.ram_sz / 1024));
     if (target.dev.flash_sz)
     {
-      progTaskLog("flash 0x%08X  %d KB", target.dev.flash,
+      progTaskStep(0, "flash 0x%08X  %d KB", target.dev.flash,
                   (int)(target.dev.flash_sz / 1024));
     }
   }
   else if (err == SWD_ERR_FAULT)
   {
-    progTaskLog("0x%08X 에 맞는 항목이 둘 이상", target.id_read);
+    progTaskStep(0, "0x%08X 에 맞는 항목이 둘 이상", target.id_read);
   }
   else
   {
-    progTaskLog("DB 에 없다 (읽은값 0x%08X)", target.id_read);
+    progTaskStep(0, "DB 에 없다 (읽은값 0x%08X)", target.id_read);
   }
 
   target.is_valid = true;
@@ -258,36 +298,55 @@ static void progTaskDoRun(void)
   prog_state = PROG_RUNNING;
   prog_phase = "load";
   prog_pct   = 0;
-  log_cnt    = 0;
-  log_seq++;
+  step_cnt   = 0;
+  step_seq++;
+
+  progTaskStep(0, "%s", req_proj);
 
   if (jobLoad(&job, req_proj) == false)
   {
-    progTaskLog("fw.txt 를 읽지 못했다");
+    progTaskStepEnd(PROG_STEP_FAIL);
+    progTaskStep(0, "fw.txt 를 읽지 못했다");
+    progTaskStepEnd(PROG_STEP_FAIL);
     prog_ms    = millis() - t0;
     prog_state = PROG_ERROR;
     return;
   }
 
-  progTaskLog("%s", job.name);
-  for (uint32_t i = 0; i < job.image_cnt; i++)
+  /* 설정이 fw.txt 를 덮어쓴다. 화면에서 고른 값이 파일보다 우선이어야
+     "지금 이 보드는 리셋하지 말고" 같은 즉석 판단이 가능하다. */
+  job.has_psize = true;
+  job.psize     = opt.psize;
+  if (opt.speed_khz > 0)
   {
-    progTaskLog("image  : %s", job.image[i].file);
+    job.has_speed  = true;
+    job.speed_khz  = opt.speed_khz;
   }
 
-  err = jobRun(&job, progTaskProgressCb, NULL, true);
+  err = jobRun(&job, progTaskProgressCb, NULL, opt.verify);
+  progTaskStepEnd((err == SWD_OK) ? PROG_STEP_OK : PROG_STEP_FAIL);
+
+  // 굽고 나서 타깃을 어떻게 둘지
+  if (err == SWD_OK && opt.reset != PROG_RESET_NONE)
+  {
+    progTaskStep(0, (opt.reset == PROG_RESET_RUN) ? "리셋 후 실행" : "리셋 후 정지");
+    if (swdCmSysReset() == SWD_OK && opt.reset == PROG_RESET_RUN)
+    {
+      swdCmDetach();
+    }
+    progTaskStepEnd(PROG_STEP_OK);
+  }
 
   prog_ms = millis() - t0;
 
   if (err == SWD_OK)
   {
-    progTaskLog("완료 : %d.%d 초", (int)(prog_ms / 1000), (int)((prog_ms % 1000) / 100));
+    ok_count++;
     prog_pct   = 100;
     prog_state = PROG_DONE;
   }
   else
   {
-    progTaskLog("실패 : %s", swdErrStr(err));
     prog_state = PROG_ERROR;
   }
 }
@@ -312,56 +371,82 @@ static void progTaskProgressCb(const char *phase, uint32_t addr, uint32_t done,
 
   if (strcmp(phase, "ap") == 0)
   {
-    progTaskLog("ap     : %d", (int)addr);
+    progTaskStepEnd(PROG_STEP_OK);
+    progTaskStep(0, "AP %d 선택", (int)addr);
+    progTaskStepEnd(PROG_STEP_OK);
     return;
   }
-  if (strcmp(phase, "device") == 0)
-  {
-    progTaskLog("ram    : 0x%08X", addr);
-    return;
-  }
+  if (strcmp(phase, "device") == 0)  return;
   if (strcmp(phase, "clamp") == 0)
   {
-    progTaskLog("범위를 %d KB 로 좁힘", (int)(done / 1024));
+    progTaskStep(0, "범위를 %d KB 로 좁힘", (int)(done / 1024));
+    progTaskStepEnd(PROG_STEP_OK);
     return;
   }
   if (strcmp(phase, "dup") == 0)
   {
-    progTaskLog("0x%08X 담당이 %d 개", addr, (int)done);
+    progTaskStep(0, "0x%08X 담당이 %d 개", addr, (int)done);
+    progTaskStepEnd(PROG_STEP_FAIL);
     return;
   }
   if (strcmp(phase, "algo") == 0)
   {
-    progTaskLog("algo   : 0x%08X", addr);
+    progTaskStepEnd(PROG_STEP_OK);
+    progTaskStep(0, "0x%08X", addr);
     prog_pct = 0;
     return;
   }
 
-  prog_phase = phase;
-  if (total > 0) prog_pct = (uint8_t)(done * 100 / total);
+  /* erase / program / verify. 단계가 바뀔 때만 새로 만들고 그 안에서는
+     퍼센트만 갱신한다 — 페이지마다 줄을 만들면 목록이 순식간에 넘친다. */
+  if (phase != prog_phase)
+  {
+    progTaskStepEnd(PROG_STEP_OK);
+    progTaskStep(1, "%s", phase);
+    prog_phase = phase;
+  }
+  if (total > 0)
+  {
+    prog_pct = (uint8_t)(done * 100 / total);
+    if (step_cnt > 0)
+    {
+      step[step_cnt - 1].pct = prog_pct;
+      step[step_cnt - 1].ms  = millis() - step_t0;
+      step_seq++;
+    }
+  }
 }
 
-static void progTaskLog(const char *fmt, ...)
+/* 단계를 하나 시작한다. 지나간 단계는 지우지 않는다 — 실패했을 때 어디까지
+   갔었는지가 가장 알고 싶은 정보다. 가득 차면 더 담지 않는다. */
+static void progTaskStep(uint8_t depth, const char *fmt, ...)
 {
   va_list args;
 
-  if (log_cnt >= PROG_LOG_CNT)
-  {
-    // 한 칸씩 밀어 가장 오래된 것을 버린다
-    for (uint32_t i = 0; i + 1 < PROG_LOG_CNT; i++)
-    {
-      memcpy(log_buf[i], log_buf[i + 1], PROG_LOG_LEN);
-    }
-    log_cnt = PROG_LOG_CNT - 1;
-  }
+  if (step_cnt >= PROG_STEP_CNT) return;
+
+  memset(&step[step_cnt], 0, sizeof(prog_step_t));
 
   va_start(args, fmt);
-  vsnprintf(log_buf[log_cnt], PROG_LOG_LEN, fmt, args);
+  vsnprintf(step[step_cnt].text, PROG_STEP_LEN, fmt, args);
   va_end(args);
 
-  log_cnt++;
-  log_seq++;
+  step[step_cnt].state = PROG_STEP_RUN;
+  step[step_cnt].depth = depth;
+  step_t0 = millis();
+  step_cnt++;
+  step_seq++;
 }
 
+// 진행 중이던 단계를 마감한다. 없으면 아무 일도 하지 않는다.
+static void progTaskStepEnd(prog_step_state_t st)
+{
+  if (step_cnt == 0) return;
+  if (step[step_cnt - 1].state != PROG_STEP_RUN) return;
+
+  step[step_cnt - 1].state = st;
+  step[step_cnt - 1].ms    = millis() - step_t0;
+  step_seq++;
+}
 
 #endif

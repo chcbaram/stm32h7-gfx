@@ -71,7 +71,7 @@
     {
       "label": "tools- init 기본 폰트 전송 (SPI)",
       "type": "shell",
-      "command": "python3 tools/python/upload.py -p ${input:serialPort} -d spi tools/fonts/kr.bin /font/kr.bin",
+      "command": "python3 tools/python/upload.py -p ${input:serialPort} -d spi --dir assets/spi/font /font",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",

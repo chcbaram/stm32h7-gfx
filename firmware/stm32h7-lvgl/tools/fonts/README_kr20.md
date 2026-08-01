@@ -8,8 +8,8 @@ LVGL 의 fallback 폰트는 **크기를 바꾸지 않는다.** 그 폰트가 가
 
 역할마다 같은 크기의 한글 폰트가 하나씩 있어야 한다.
 
-    font_title   = montserrat_40  +  kr.bin(28)
-    font_body    = montserrat_28  +  kr.bin(28)     크기가 맞는다
+    font_title   = montserrat_40  +  kr_28.bin(28)
+    font_body    = montserrat_28  +  kr_28.bin(28)     크기가 맞는다
     font_caption = montserrat_20  +  kr_20.bin(20)  <- 이걸 위해 만들었다
 
 ## 만드는 법 — 공식 도구가 우선이다
@@ -19,14 +19,14 @@ LVGL 의 fallback 폰트는 **크기를 바꾸지 않는다.** 그 폰트가 가
 
 ```sh
 npm install -g lv_font_conv
-./gen_kr_font.py --size 20 -o kr_20.bin
+./gen_kr_font.py --size 20 -o ../../assets/spi/font/kr_20.bin
 ```
 
 node 가 없을 때만 `tools/python/font_bin.py` 를 쓴다. 이건 LVGL 의
 `lv_binfont_loader.c` 를 거꾸로 구현한 것이라 공식 도구가 아니다.
 
 ```sh
-../python/font_bin.py -i NanumGothicCoding-Bold.ttf -o kr_20.bin -s 20 \
+../python/font_bin.py -i NanumGothicCoding-Bold.ttf -o ../../assets/spi/font/kr_20.bin -s 20 \
                       --textfile ksx1001.txt
 ```
 
@@ -36,5 +36,5 @@ node 가 없을 때만 `tools/python/font_bin.py` 를 쓴다. 이건 LVGL 의
 ## 업로드
 
 ```sh
-../python/upload.py -p PORT -d spi kr_20.bin /font/kr_20.bin
+../python/upload.py -p PORT --sync ../../assets
 ```

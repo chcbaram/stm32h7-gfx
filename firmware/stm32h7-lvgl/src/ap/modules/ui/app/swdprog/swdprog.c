@@ -270,7 +270,7 @@ static void swdprogUpdate(void)
 
   st  = progTaskGetState();
   pct = progTaskGetPercent();
-  seq = progTaskGetLogSeq();
+  seq = progTaskGetStepSeq();
 
   if (pct != last_pct)
   {
@@ -308,14 +308,15 @@ static void swdprogUpdate(void)
 
   if (seq != last_log_seq)
   {
-    uint32_t cnt   = progTaskGetLogCnt();
+    uint32_t cnt   = progTaskGetStepCnt();
     uint32_t first = (cnt > SWDPROG_LOG_ROWS) ? cnt - SWDPROG_LOG_ROWS : 0;
 
     for (int i = 0; i < SWDPROG_LOG_ROWS; i++)
     {
-      uint32_t idx = first + (uint32_t)i;
+      uint32_t           idx = first + (uint32_t)i;
+      const prog_step_t *p   = progTaskGetStep(idx);
 
-      lv_label_set_text(lbl_log[i], (idx < cnt) ? progTaskGetLog(idx) : "");
+      lv_label_set_text(lbl_log[i], (p != NULL) ? p->text : "");
     }
     last_log_seq = seq;
   }

@@ -27,5 +27,6 @@ assets/spi/**  -> SPI Flash (littlefs)
 | `sd/prog/mcu/st.txt` | **들어 있다** (18 KB) | 생성에 CubeProgrammer 설치가 필요한데 모두가 깔았을 리 없다 |
 | `sd/prog/loaders/**` | 폴더만 | 30 MB 고 ST/ARM 배포물이다 |
 | `sd/prog/fw/**` | 폴더만 | 각자의 펌웨어 |
+| `spi/font/*.bin` | **들어 있다** (890 KB) | 만들려면 node 나 TTF 가 필요하다 |
 
 각 폴더의 `README.md` 에 무엇을 어디서 가져와 넣는지 적어뒀다.

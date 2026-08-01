@@ -29,9 +29,44 @@ extern "C" {
 #ifdef _USE_HW_SWD
 
 
-#define PROG_LOG_CNT      12
-#define PROG_LOG_LEN      56
+#define PROG_STEP_CNT     48      // 단계는 링버퍼가 아니라 누적이다
+#define PROG_STEP_LEN     40
 #define PROG_PROJ_CNT     16
+
+
+/* 굽고 나서 타깃을 어떻게 둘지. fw.txt 의 reset 키와 같은 뜻이고 설정 화면에서
+   덮어쓴다. 여러 보드에 반복해 굽는 쓰임이라 대개 RUN 이 편하다. */
+typedef enum
+{
+  PROG_RESET_RUN = 0,     // 리셋하고 놓아준다 (보드가 바로 동작)
+  PROG_RESET_HALT,        // 리셋 후 정지 상태로 둔다
+  PROG_RESET_NONE,        // 아무것도 안 한다
+} prog_reset_t;
+
+typedef struct
+{
+  prog_reset_t reset;
+  bool         verify;
+  uint8_t      psize;       // ALGO_PSIZE_*
+  uint32_t     speed_khz;   // 0 이면 지금 설정을 그대로
+} prog_opt_t;
+
+/* 단계 하나. 진행 중인 것과 끝난 것을 같이 보여주려고 상태와 시간을 함께 든다. */
+typedef enum
+{
+  PROG_STEP_RUN = 0,
+  PROG_STEP_OK,
+  PROG_STEP_FAIL,
+} prog_step_state_t;
+
+typedef struct
+{
+  char              text[PROG_STEP_LEN];
+  prog_step_state_t state;
+  uint8_t           pct;
+  uint32_t          ms;
+  uint8_t           depth;    // 0 = 큰 단계, 1 = 그 안의 단계
+} prog_step_t;
 
 
 typedef enum
@@ -80,10 +115,23 @@ uint32_t             progTaskGetProjCnt(void);
 const prog_proj_t   *progTaskGetProj(uint32_t idx);
 uint32_t             progTaskGetElapsed(void);
 
-/* 로그는 링버퍼다. seq 가 바뀌었을 때만 다시 그리면 된다. */
-uint8_t              progTaskGetLogSeq(void);
-uint32_t             progTaskGetLogCnt(void);
-const char          *progTaskGetLog(uint32_t idx);   // 0 이 가장 오래된 것
+/* 단계 목록. seq 가 바뀌었을 때만 다시 그리면 된다.
+   지나간 단계를 지우지 않는다 — 실패했을 때 어디까지 갔었는지가 가장 알고 싶다. */
+uint8_t              progTaskGetStepSeq(void);
+uint32_t             progTaskGetStepCnt(void);
+const prog_step_t   *progTaskGetStep(uint32_t idx);
+
+/* 설정. 바꾸면 NVS 에 저장한다. */
+const prog_opt_t    *progTaskGetOpt(void);
+void                 progTaskSetOpt(const prog_opt_t *p_opt);
+
+/* 마지막으로 고른 프로젝트. 전원을 껐다 켜도 남는다 — 같은 펌웨어를 여러 보드에
+   반복해 굽는 쓰임이라 매번 고르게 하면 안 된다. */
+const char          *progTaskGetProject(void);
+void                 progTaskSetProject(const char *project);
+
+// 이번 전원 인가 후 성공한 횟수. 반복 작업에서 세는 게 실제로 쓸모 있다.
+uint32_t             progTaskGetOkCount(void);
 
 
 #endif
