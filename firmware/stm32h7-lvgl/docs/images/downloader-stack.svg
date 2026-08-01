@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 790" width="900" height="790" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#9ca3af"/>
+    </marker>
+    <marker id="b" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <style>
+    .ttl { font-size: 15px; fill: #111827; font-weight: 700; }
+    .sub { font-size: 11px; fill: #6b7280; }
+    .lay { font-size: 10px; fill: #9ca3af; font-weight: 700; letter-spacing: .3px; }
+    .fil { font-size: 12px; fill: #111827; font-weight: 700; }
+    .rol { font-size: 10px; fill: #4b5563; }
+    .dsc { font-size: 10px; fill: #6b7280; }
+    .box { stroke-width: 1.5; rx: 4; }
+  </style>
+
+  <text x="24" y="30" class="ttl">다운로더 블록도 — 아래에서 위로</text>
+  <text x="24" y="50" class="sub">핀 두 개에서 화면까지. 각 층은 바로 아래 층만 안다 — swdprog 는 GPIO 를 모르고 swd.c 는 .FLM 을 모른다.</text>
+
+  <!-- ============================ 앱 ============================ -->
+  <text x="244" y="80" class="lay">앱 (UI 스레드)</text>
+  <rect x="244" y="88" width="396" height="60" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="258" y="110" class="fil">swdprog.c <tspan class="rol">— LVGL 앱</tspan></text>
+  <text x="258" y="130" class="rol">PAGE_HOME · PAGE_LIST · PAGE_RUN · PAGE_CFG</text>
+
+  <!-- 공통 UI -->
+  <rect x="24" y="88" width="196" height="60" class="box" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="38" y="110" class="fil">launcher · ui_theme</text>
+  <text x="38" y="130" class="rol">app_info_t · 색·폰트·뒤로가기</text>
+  <line x1="220" y1="118" x2="238" y2="118" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- ==================== 스레드 경계 ==================== -->
+  <line x1="244" y1="170" x2="640" y2="170" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="648" y="167" class="dsc" fill="#dc2626">스레드 경계 — 요청 하나와 상태 몇 개.</text>
+  <text x="648" y="181" class="dsc" fill="#dc2626">워커는 lv_* 를 절대 부르지 않는다.</text>
+
+  <!-- ============================ 워커 ============================ -->
+  <text x="244" y="204" class="lay">워커 스레드</text>
+  <rect x="244" y="212" width="396" height="52" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="258" y="234" class="fil">prog_task.c</text>
+  <text x="258" y="252" class="rol">SCAN / LIST / RUN 요청 처리, 진행 상태·단계 누적</text>
+
+  <rect x="24" y="212" width="196" height="52" class="box" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="38" y="234" class="fil">nvs</text>
+  <text x="38" y="252" class="rol">마지막 선택·설정 보존</text>
+  <line x1="220" y1="238" x2="238" y2="238" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- ============================ 잡 ============================ -->
+  <text x="244" y="296" class="lay">잡 오케스트레이션</text>
+  <rect x="244" y="304" width="396" height="56" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="258" y="326" class="fil">job/prog_job.c</text>
+  <text x="258" y="344" class="rol">판별 → 신원 대조 → 소거 → 굽기 → 검증 → 리셋</text>
+
+  <!-- ============================ 세 갈래 ============================ -->
+  <rect x="244" y="380" width="122" height="88" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="256" y="402" class="fil">job/</text>
+  <text x="256" y="420" class="rol">prog_cfg — key=value</text>
+  <text x="256" y="436" class="rol">prog_dev — 디바이스 DB</text>
+  <text x="256" y="456" class="dsc">어느 칩인가</text>
+
+  <rect x="381" y="380" width="122" height="88" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="393" y="402" class="fil">image/</text>
+  <text x="393" y="420" class="rol">prog_elf · prog_hex</text>
+  <text x="393" y="436" class="rol">(.bin 은 그대로)</text>
+  <text x="393" y="456" class="dsc">무엇을 쓰는가</text>
+
+  <rect x="518" y="380" width="122" height="88" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="530" y="402" class="fil">algo/</text>
+  <text x="530" y="420" class="rol">prog_algo — vtable</text>
+  <text x="530" y="436" class="rol">prog_flm · prog_stldr</text>
+  <text x="530" y="456" class="dsc">어떻게 쓰는가</text>
+
+  <line x1="305" y1="360" x2="305" y2="374" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="442" y1="360" x2="442" y2="374" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="579" y1="360" x2="579" y2="374" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- SD 카드 -->
+  <rect x="24" y="380" width="196" height="88" class="box" fill="#f3f4f6" stroke="#9ca3af"/>
+  <text x="38" y="402" class="fil">SD카드 <tspan class="rol">(FatFs)</tspan></text>
+  <text x="38" y="422" class="rol">/prog/mcu/*.txt</text>
+  <text x="38" y="440" class="rol">/prog/loaders/{flm,st,ext}</text>
+  <text x="38" y="458" class="rol">/prog/fw/&lt;프로젝트&gt;</text>
+  <line x1="220" y1="424" x2="238" y2="424" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- ============================ SWD 계층 ============================ -->
+  <text x="244" y="500" class="lay">SWD 드라이버</text>
+
+  <rect x="244" y="508" width="396" height="46" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="258" y="528" class="fil">swd_algo.c</text>
+  <text x="258" y="545" class="rol">타깃 RAM 알고리즘 러너 — AAPCS 를 SWD 로 흉내</text>
+
+  <rect x="244" y="560" width="396" height="46" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="258" y="580" class="fil">swd_cm.c</text>
+  <text x="258" y="597" class="rol">Cortex-M 디버그 — halt / run / 레지스터 / reset-halt</text>
+
+  <rect x="244" y="612" width="396" height="46" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="258" y="632" class="fil">swd_dap.c</text>
+  <text x="258" y="649" class="rol">ARM ADIv5 DP / AP — 타깃 메모리 읽기·쓰기</text>
+
+  <rect x="244" y="664" width="396" height="46" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="258" y="684" class="fil">swd.c</text>
+  <text x="258" y="701" class="rol">GPIO 비트뱅잉 — 패킷·ACK·패리티·turnaround</text>
+
+  <!-- ARM 표준 브래킷 -->
+  <path d="M 652,508 L 664,508 L 664,658 L 652,658" fill="none" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="674" y="565" class="fil" fill="#1d4ed8">ARM 표준</text>
+  <text x="674" y="583" class="dsc">ADIv5 · Cortex-M 디버그 ·</text>
+  <text x="674" y="599" class="dsc">CMSIS-Pack .FLM 규격.</text>
+  <text x="674" y="615" class="dsc">벤더가 바뀌어도 그대로 돈다.</text>
+
+  <text x="674" y="684" class="fil" fill="#b45309">이 보드</text>
+  <text x="674" y="701" class="dsc">핀·GPIO 레지스터·클럭</text>
+
+  <!-- 진단 -->
+  <rect x="24" y="664" width="196" height="46" class="box" fill="#f5f3ff" stroke="#7c3aed" stroke-dasharray="4 2"/>
+  <text x="38" y="684" class="fil" fill="#5b21b6">swd_la.c</text>
+  <text x="38" y="701" class="rol" fill="#5b21b6">TIM2+DMA2 로직 애널라이저</text>
+  <line x1="220" y1="687" x2="238" y2="687" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4 2" marker-end="url(#a)"/>
+
+  <!-- ============================ 핀 / 타깃 ============================ -->
+  <line x1="244" y1="726" x2="640" y2="726" stroke="#374151" stroke-width="2"/>
+  <text x="252" y="744" class="rol">PE3 (SWCLK) · PC10 (SWDIO) — 이 두 가닥이 전부다</text>
+
+  <rect x="660" y="716" width="216" height="52" class="box" fill="#ffffff" stroke="#374151"/>
+  <text x="674" y="738" class="fil">타깃 MCU</text>
+  <text x="674" y="756" class="rol">STM32F411 · STM32H7S3 · GD32 …</text>
+  <line x1="642" y1="726" x2="654" y2="726" stroke="#374151" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- ============================ 범례 ============================ -->
+  <rect x="24" y="514" width="14" height="12" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="44" y="524" class="dsc">보드가 바뀌어도 그대로</text>
+  <rect x="24" y="536" width="14" height="12" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="44" y="546" class="dsc">이 보드에 묶인 것</text>
+  <rect x="24" y="558" width="14" height="12" class="box" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="44" y="568" class="dsc">빌려 쓰는 공통 모듈</text>
+  <rect x="24" y="580" width="14" height="12" class="box" fill="#f5f3ff" stroke="#7c3aed" stroke-dasharray="4 2"/>
+  <text x="44" y="590" class="dsc">진단 도구</text>
+
+  <text x="24" y="622" class="dsc">다운로더 코드에서</text>
+  <text x="24" y="638" class="dsc">이 보드에 묶인 건</text>
+  <text x="24" y="654" class="dsc">swd.c 하나뿐이다.</text>
+</svg>

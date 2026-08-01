@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 420" width="820" height="420" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#9ca3af"/>
+    </marker>
+  </defs>
+
+  <style>
+    .ttl { font-size: 15px; fill: #111827; font-weight: 700; }
+    .sub { font-size: 11px; fill: #6b7280; }
+    .hdr { font-size: 12px; fill: #111827; font-weight: 700; }
+    .cap { font-size: 8.5px; fill: #9ca3af; letter-spacing: .4px; }
+    .val { font-size: 11px; fill: #111827; }
+    .dim { font-size: 10px; fill: #6b7280; }
+    .btn { font-size: 11px; fill: #ffffff; font-weight: 700; }
+    .arw { font-size: 10.5px; fill: #6b7280; }
+    .box { stroke-width: 1.5; rx: 6; }
+  </style>
+
+  <text x="24" y="26" class="ttl">화면 구성</text>
+  <text x="24" y="46" class="sub">고르는 화면과 굽는 화면을 나눈다. 굽는 중에는 선택 UI 가 아예 없다.</text>
+
+  <!-- ================= HOME ================= -->
+  <rect x="60" y="90" width="170" height="270" class="box" fill="#ffffff" stroke="#2563eb"/>
+  <text x="74" y="112" class="hdr">SWD PROG</text>
+
+  <rect x="72" y="124" width="146" height="46" class="box" fill="#f8fafc" stroke="#e5e7eb"/>
+  <text x="84" y="141" class="cap">TARGET</text>
+  <text x="84" y="158" class="val">STM32F411xC/E</text>
+
+  <rect x="72" y="180" width="146" height="46" class="box" fill="#f8fafc" stroke="#e5e7eb"/>
+  <text x="84" y="197" class="cap">FIRMWARE</text>
+  <text x="84" y="214" class="val">f411_lcd</text>
+
+  <rect x="72" y="240" width="146" height="34" class="box" fill="#2563eb" stroke="#2563eb"/>
+  <text x="145" y="262" class="btn" text-anchor="middle">START</text>
+
+  <rect x="72" y="284" width="146" height="28" class="box" fill="#f8fafc" stroke="#e5e7eb"/>
+  <text x="84" y="303" class="dim">설정</text>
+  <text x="206" y="303" class="dim" text-anchor="end">›</text>
+
+  <text x="145" y="334" class="dim" text-anchor="middle">3 장 완료</text>
+  <text x="145" y="352" class="cap" text-anchor="middle">PAGE_HOME</text>
+
+  <!-- ================= LIST ================= -->
+  <rect x="320" y="70" width="170" height="130" class="box" fill="#ffffff" stroke="#2563eb"/>
+  <text x="334" y="90" class="hdr">펌웨어</text>
+
+  <rect x="332" y="98" width="146" height="20" class="box" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="342" y="112" class="val">f411_lcd</text>
+  <text x="342" y="132" class="val">h7r_mini</text>
+  <text x="342" y="150" class="val">f411_blink</text>
+
+  <rect x="332" y="160" width="146" height="24" class="box" fill="#f8fafc" stroke="#e5e7eb"/>
+  <text x="342" y="176" class="dim">이 타깃만</text>
+  <rect x="446" y="166" width="24" height="13" rx="6.5" fill="#2563eb"/>
+  <circle cx="463" cy="172.5" r="5" fill="#ffffff"/>
+  <text x="405" y="196" class="cap" text-anchor="middle">PAGE_LIST</text>
+
+  <!-- ================= CFG ================= -->
+  <rect x="320" y="230" width="170" height="130" class="box" fill="#ffffff" stroke="#2563eb"/>
+  <text x="334" y="250" class="hdr">설정</text>
+
+  <text x="342" y="274" class="dim">리셋 후</text>
+  <text x="470" y="274" class="val" text-anchor="end">RUN</text>
+  <text x="342" y="294" class="dim">검증</text>
+  <text x="470" y="294" class="val" text-anchor="end">ON</text>
+  <text x="342" y="314" class="dim">속도</text>
+  <text x="470" y="314" class="val" text-anchor="end">3.5 MHz</text>
+  <text x="342" y="334" class="dim">쓰기 폭</text>
+  <text x="470" y="334" class="val" text-anchor="end">x32</text>
+  <text x="405" y="354" class="cap" text-anchor="middle">PAGE_CFG</text>
+
+  <!-- ================= RUN ================= -->
+  <rect x="580" y="90" width="170" height="270" class="box" fill="#ffffff" stroke="#d97706"/>
+  <text x="594" y="112" class="cap">PROGRAMMING</text>
+  <text x="594" y="146" style="font-size:26px; fill:#d97706; font-weight:700;">62 %</text>
+
+  <rect x="592" y="156" width="146" height="8" rx="4" fill="#fef3c7"/>
+  <rect x="592" y="156" width="90"  height="8" rx="4" fill="#d97706"/>
+
+  <text x="594" y="188" class="val">✔ h7r_mini</text>
+  <text x="594" y="206" class="val">✔ 0x08000000</text>
+  <text x="604" y="224" class="dim">✔ erase</text>
+  <text x="604" y="242" class="dim">✔ program</text>
+  <text x="604" y="260" class="dim">✔ verify</text>
+  <text x="594" y="278" class="val">✔ 0x90000000</text>
+  <text x="604" y="296" class="dim">▶ program</text>
+
+  <rect x="592" y="310" width="146" height="34" class="box" fill="#ffffff" stroke="#d97706"/>
+  <text x="665" y="332" style="font-size:11px; fill:#d97706; font-weight:700;" text-anchor="middle">ABORT</text>
+  <text x="665" y="354" class="cap" text-anchor="middle">PAGE_RUN</text>
+
+  <!-- ================= 화살표 ================= -->
+  <line x1="230" y1="135" x2="314" y2="135" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="272" y="128" class="arw" text-anchor="middle">카드 탭</text>
+
+  <line x1="230" y1="295" x2="314" y2="295" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="272" y="288" class="arw" text-anchor="middle">카드 탭</text>
+
+  <line x1="230" y1="215" x2="574" y2="215" stroke="#d97706" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="402" y="208" class="arw" text-anchor="middle" fill="#d97706">START — 굽는 동안 화면 전체가 진행 표시가 된다</text>
+
+  <path d="M 665,360 L 665,388 L 145,388 L 145,366" fill="none" stroke="#9ca3af"
+        stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="405" y="404" class="arw" text-anchor="middle">왼쪽 엣지 스와이프 — 런처가 아니라 앱 홈으로 (굽는 중에는 막힌다)</text>
+</svg>
