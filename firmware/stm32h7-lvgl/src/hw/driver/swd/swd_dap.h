@@ -79,6 +79,15 @@ swd_err_t swdDapPowerUp(void);
 bool      swdDapIsPowered(void);
 
 swd_err_t swdDpRead(uint8_t addr, uint32_t *p_data);
+
+/* DPv2 의 TARGETID. 메모리도 AP 도 안 거치고 DP 만 읽는다.
+
+   요즘 ST 파트는 여기에 파트 번호가 들어 있다 (H7S3 실측 0x14850041 —
+   TPARTNO 0x4850 = DEV_ID 0x485 << 4, TDESIGNER 0x020 = ST). CubeProgrammer 의
+   디바이스 DB 에 ID 레지스터 주소가 없는 이유가 이것으로 설명된다.
+
+   DPv1 이면 이 레지스터가 없으므로 SWD_ERR_PROTOCOL 을 돌려준다. */
+swd_err_t swdDapReadTargetId(uint32_t *p_id);
 swd_err_t swdDpWrite(uint8_t addr, uint32_t data);
 swd_err_t swdApRead(uint8_t addr, uint32_t *p_data);
 swd_err_t swdApWrite(uint8_t addr, uint32_t data);

@@ -37,6 +37,13 @@ extern "C" {
 #define DEV_PATH_MAX    64
 #define DEV_ADDR_MAX    16      // 순회할 서로 다른 id_addr 개수
 
+/* id_addr 이 이 값이면 메모리가 아니라 DP 의 TARGETID 에서 읽는다.
+
+   요즘 ST 파트는 DBGMCU 를 못 읽거나 주소가 알려져 있지 않은데, DPv2 의
+   TARGETID 에 파트 번호가 들어 있다. 마스크·비교는 메모리 경우와 똑같이 하므로
+   벤더별 인코딩(ST 는 DEV_ID 를 4비트 왼쪽으로 민다)은 코드가 아니라 DB 에 있다. */
+#define DEV_ID_TARGETID 0xFFFFFFFF
+
 
 typedef struct
 {
@@ -53,6 +60,10 @@ typedef struct
   uint32_t flash;
   uint32_t flash_sz;
   char     algo[DEV_PATH_MAX];    // 기본 알고리즘 경로 (비어 있을 수 있다)
+  /* 코어 디버그가 물려 있는 AP. 요즘 ST 파트는 AP0 이 아니다 — H7RS 는 AP1 이고
+     ST-LINK gdbserver 도 -m 1 로 지정한다. 0xFF 면 안 적혀 있다는 뜻이고,
+     그때는 CPUID 가 읽히는 AP 를 직접 찾는다. */
+  uint8_t  ap;
   bool     is_valid;
 } prog_dev_t;
 

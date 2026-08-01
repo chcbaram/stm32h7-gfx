@@ -1013,6 +1013,62 @@ void cliSwd(cli_args_t *args)
     ret = true;
   }
 
+  /* AP 를 훑는다. 코어 디버그 레지스터가 어느 AP 뒤에 있는지 찾기 위한 것이다.
+
+     Cortex-M3/M4 는 AP0 하나로 시스템 메모리도 PPB 도 다 닿는데, 요즘 파트는
+     그렇지 않다. STM32H7S3 에서 AP0 이 0x08000000 은 읽으면서 0xE000ED00 은
+     FAULT 였다 — 시스템 버스와 디버그 버스가 서로 다른 AP 에 물려 있다.
+     그래서 "CPUID 가 읽히는 AP" 를 직접 찾는다. */
+  if (args->argc == 1 && args->isStr(0, "apscan") == true)
+  {
+    uint8_t  keep = swdDapGetAp();
+    uint32_t found = 0;
+
+    if (swdDapEnsure() != SWD_OK)
+    {
+      cliPrintf("connect fail\n");
+    }
+    else
+    {
+      cliPrintf("AP   IDR         BASE        CLASS TYPE  CPUID\n");
+      for (uint32_t ap = 0; ap < 8; ap++)
+      {
+        uint32_t idr = 0, base = 0, cpuid = 0;
+
+        swdDapSetAp((uint8_t)ap);
+        if (swdApRead(SWD_AP_IDR, &idr) != SWD_OK || idr == 0) continue;
+        swdApRead(SWD_AP_BASE, &base);
+
+        found++;
+        cliPrintf("%-4d 0x%08X  0x%08X  %-5d %-5d ", (int)ap, idr, base,
+                  (int)((idr >> 13) & 0xF), (int)(idr & 0xF));
+
+        // 이 AP 로 코어 디버그가 닿는지 본다
+        if (swdMemRead32(0xE000ED00, &cpuid) == SWD_OK && (cpuid & 0xFF000000) == 0x41000000)
+        {
+          cliPrintf("0x%08X  <- 코어 디버그", cpuid);
+        }
+        else
+        {
+          cliPrintf("-");
+        }
+        cliPrintf("\n");
+      }
+      cliPrintf("---- %d 개\n", (int)found);
+      if (found == 0) cliPrintf("AP 를 하나도 못 찾았다\n");
+    }
+    swdDapSetAp(keep);
+    ret = true;
+  }
+
+  // AP 를 고른다. 멀티코어나 디버그 버스가 따로인 파트에서 쓴다.
+  if (args->argc == 2 && args->isStr(0, "ap") == true)
+  {
+    swdDapSetAp((uint8_t)args->getData(1));
+    cliPrintf("ap       : %d\n", swdDapGetAp());
+    ret = true;
+  }
+
   if (args->argc == 1 && args->isStr(0, "apid") == true)
   {
     uint32_t idr = 0, cfg = 0, base = 0;

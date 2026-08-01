@@ -25,7 +25,7 @@
 #ifdef _USE_HW_SWD
 
 
-#define JOB_ALGO_MAX    2       // 내부 + 외부
+#define JOB_ALGO_MAX    (1 + JOB_LOADER_MAX)   // 내부 하나 + 외부 여럿
 
 
 typedef struct
@@ -54,6 +54,7 @@ bool jobLoad(job_t *p_job, const char *project)
   if (p_job == NULL || project == NULL) return false;
 
   memset(p_job, 0, sizeof(job_t));
+  p_job->ap = 0xFF;
   snprintf(p_job->proj, sizeof(p_job->proj), "%s", project);
   snprintf(p_job->dir,  sizeof(p_job->dir),  "%s/%s", HW_SWD_SD_FW, project);
   snprintf(path, sizeof(path), "%s/fw.txt", p_job->dir);
@@ -118,6 +119,20 @@ swd_err_t jobRun(job_t *p_job, algo_progress_t cb, void *ctx, bool do_verify)
   err = swdConnect(NULL);
   if (err != SWD_OK) return err;
 
+  /* 코어 디버그가 어느 AP 뒤에 있는지 먼저 정한다. 이게 틀리면 디바이스 판별도
+     알고리즘 로드도 전부 엉뚱한 버스로 간다. */
+  swdCmInvalidate();
+  if (p_job->ap != 0xFF)
+  {
+    swdCmSetAp(p_job->ap);
+  }
+  else
+  {
+    err = swdCmEnsureAp();
+    if (err != SWD_OK) return err;
+  }
+  if (cb) cb("ap", swdDapGetAp(), 0, 0, ctx);
+
   // 2) 디바이스
   if (p_job->device[0] != 0)
   {
@@ -128,16 +143,19 @@ swd_err_t jobRun(job_t *p_job, algo_progress_t cb, void *ctx, bool do_verify)
     err = devDetect(&dev, &id);
     if (err != SWD_OK) return err;
   }
+  if (p_job->ap == 0xFF && dev.ap != 0xFF) swdCmSetAp(dev.ap);
   if (cb) cb("device", dev.ram, 0, 0, ctx);
 
   // 3) 알고리즘 목록을 만든다 (열기만 한다. 타깃은 아직 안 건드린다)
   {
     const char *paths[JOB_ALGO_MAX];
+    uint32_t    n_path = 0;
 
-    paths[0] = (p_job->algo[0] != 0) ? p_job->algo : dev.algo;
-    paths[1] = (p_job->loader[0] != 0) ? p_job->loader : NULL;
+    /* 내부를 먼저 담는다. 주소가 없는 .bin 이 기본으로 갈 곳이라 순서가 있다. */
+    paths[n_path++] = (p_job->algo[0] != 0) ? p_job->algo : dev.algo;
+    for (uint32_t i = 0; i < p_job->loader_cnt; i++) paths[n_path++] = p_job->loader[i];
 
-    for (uint32_t i = 0; i < JOB_ALGO_MAX; i++)
+    for (uint32_t i = 0; i < n_path; i++)
     {
       if (paths[i] == NULL || paths[i][0] == 0) continue;
 
@@ -173,18 +191,33 @@ swd_err_t jobRun(job_t *p_job, algo_progress_t cb, void *ctx, bool do_verify)
     }
     p_job->image[i].addr = addr;
 
-    for (uint32_t k = 0; k < n_algo; k++)
     {
-      if (algoIsInRange(&ja[k].algo, addr) == false) continue;
-      if (ja[k].img_cnt >= JOB_IMAGE_MAX)            continue;
+      uint32_t hit = 0;
+      uint32_t sel = 0;
 
-      ja[k].img[ja[k].img_cnt++] = i;
-      put = true;
-      break;
+      for (uint32_t k = 0; k < n_algo; k++)
+      {
+        if (algoIsInRange(&ja[k].algo, addr) == false) continue;
+        if (hit == 0) sel = k;
+        hit++;
+      }
+
+      /* 담당이 둘 이상이면 조용히 첫 번째를 쓰면 안 된다. 로더 두 개가 같은
+         주소를 주장하는 건 설정이 잘못된 것이고, 잘못된 쪽으로 구우면 지운
+         뒤에야 알게 된다. */
+      if (hit == 1 && ja[sel].img_cnt < JOB_IMAGE_MAX)
+      {
+        ja[sel].img[ja[sel].img_cnt++] = i;
+        put = true;
+      }
+      else if (hit > 1 && cb)
+      {
+        cb("dup", addr, hit, 0, ctx);
+      }
     }
     if (put == false)
     {
-      err = SWD_ERR_PROTOCOL;             // 어느 알고리즘도 담당하지 않는 주소다
+      err = SWD_ERR_PROTOCOL;             // 담당이 없거나 둘 이상이다
       goto done;
     }
   }
@@ -243,7 +276,15 @@ static bool jobLineCb(const char *sec, const char *key, const char *val, void *c
   }
   else if (strcmp(key, "loader") == 0)
   {
-    snprintf(p_job->loader, sizeof(p_job->loader), "%s", val);
+    if (p_job->loader_cnt < JOB_LOADER_MAX)
+    {
+      snprintf(p_job->loader[p_job->loader_cnt], JOB_PATH_MAX, "%s", val);
+      p_job->loader_cnt++;
+    }
+  }
+  else if (strcmp(key, "ap") == 0)
+  {
+    p_job->ap = (uint8_t)cfgNum(val);
   }
   else if (strcmp(key, "psize") == 0)
   {

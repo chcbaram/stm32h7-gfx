@@ -162,16 +162,27 @@ static swd_err_t stldrLoadCode(algo_t *p_algo, uint32_t ram_base, uint32_t ram_s
     p_algo->buf_addr_b = p_algo->buf_addr + ((p_algo->buf_size + 3) & ~3UL);
   }
 
-  // 아레나가 RAM 을 넘으면 조각 크기를 줄여 본다
-  while (p_algo->buf_addr_b + p_algo->buf_size > p_algo->ram_end &&
-         p_algo->buf_size > ALGO_BUF_MIN)
+  /* 로더가 DB 가 아는 RAM 영역 안에 자리를 잡았을 때만 넘침을 검사한다.
+
+     .stldr 은 자기 주소를 갖고 있고, 그게 DB 의 ram 과 다른 영역일 수 있다.
+     STM32H7S3 이 그렇다 - DB 는 DTCM(0x20000000)을 알려주는데 이 보드의 외부
+     로더는 AXI SRAM(0x24000004)에 링크되어 있다. ST 의 내부 플래시 로더는
+     DTCM 을 쓰므로 둘 다 맞다.
+
+     이때는 검사할 근거가 없다. 로더를 만든 사람이 그 보드의 RAM 을 알고 고른
+     주소이므로 그대로 믿되, 검사를 건너뛰었다는 것은 알린다. */
+  if (lo >= p_algo->ram_base && lo < p_algo->ram_end)
   {
-    p_algo->buf_size  /= 2;
-    p_algo->buf_addr_b = p_algo->buf_addr + ((p_algo->buf_size + 3) & ~3UL);
-  }
-  if (p_algo->buf_addr_b + p_algo->buf_size > p_algo->ram_end)
-  {
-    return SWD_ERR_PROTOCOL;
+    while (p_algo->buf_addr_b + p_algo->buf_size > p_algo->ram_end &&
+           p_algo->buf_size > ALGO_BUF_MIN)
+    {
+      p_algo->buf_size  /= 2;
+      p_algo->buf_addr_b = p_algo->buf_addr + ((p_algo->buf_size + 3) & ~3UL);
+    }
+    if (p_algo->buf_addr_b + p_algo->buf_size > p_algo->ram_end)
+    {
+      return SWD_ERR_PROTOCOL;
+    }
   }
 
   p_algo->is_loaded = true;
@@ -257,7 +268,12 @@ static bool stldrReadInfo(algo_t *p_algo, uint32_t vaddr)
   uint32_t   dev_type;
   uint32_t   off = 0;
 
-  // StorageInfo 는 타깃에 안 올라갈 수도 있으므로 파일에서 직접 읽는다
+  /* StorageInfo 는 타깃에 안 올라갈 수도 있으므로 파일에서 직접 읽는다.
+
+     세그먼트가 겹치는 파일이 있다. 직접 만든 로더에서 봤는데, 코드 세그먼트가
+     기술자 주소까지 덮고 있고 그 자리는 0 인 반면 진짜 값은 뒤에 따로 놓인
+     작은 세그먼트에 있었다. 로더는 순서대로 올리므로 나중 것이 이긴다 —
+     그래서 처음 맞는 걸 잡지 말고 끝까지 훑어 마지막 것을 쓴다. */
   for (uint32_t i = 0; i < p_algo->elf.e_phnum; i++)
   {
     if (elfGetPhdr(&p_algo->elf, i, &ph) == false) continue;
@@ -266,7 +282,6 @@ static bool stldrReadInfo(algo_t *p_algo, uint32_t vaddr)
 
     off   = ph.offset + (vaddr - ph.vaddr);
     found = true;
-    break;
   }
   if (found == false)                                        return false;
   if (elfRead(&p_algo->elf, off, info, sizeof(info)) == false) return false;

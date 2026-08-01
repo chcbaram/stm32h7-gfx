@@ -25,6 +25,7 @@ extern "C" {
 
 // 디버그 레지스터 (코어 자신의 메모리 맵)
 #define CM_CPUID          0xE000ED00
+#define SWD_CM_AP_MAX     8       // 훑어볼 AP 개수
 #define CM_AIRCR          0xE000ED0C
 #define CM_DFSR           0xE000ED30
 #define CM_DHCSR          0xE000EDF0
@@ -104,6 +105,12 @@ swd_err_t   swdCmGetDhcsr(uint32_t *p_dhcsr);
 // 일부 패밀리는 리셋이 DP 까지 날려서 링크가 끊기므로, 그 경우 재연결하며
 // 계속 폴링한다. 처음부터 그렇게 짜지 않으면 나중에 반드시 물린다.
 swd_err_t   swdCmResetHalt(void);
+
+/* 코어 디버그가 닿는 AP 를 고른다. 파트에 따라 AP0 이 아니다 —
+   STM32H7S3 은 AP1(APB) 뒤에 있다. 연결 직후 한 번 부르면 된다. */
+swd_err_t   swdCmEnsureAp(void);
+void        swdCmSetAp(uint8_t apsel);
+void        swdCmInvalidate(void);
 // resetHalt/halt 가 DFSR 을 지우기 직전에 읽어 둔 값. 정지 사유 확인용.
 uint32_t    swdCmGetLastDfsr(void);
 swd_err_t   swdCmSysReset(void);

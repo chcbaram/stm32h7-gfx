@@ -52,6 +52,27 @@ ID_ADDR = {
 
 ID_MASK = 0x00000FFF
 
+# 시리즈 표가 맞지 않는 것으로 실기 확인된 디바이스. 이름에 이 문자열이 들어가면
+# id_addr 를 넣지 않는다.
+#
+#   STM32H7RS : Series 가 STM32H7 라 0x5C001000 이 들어가는데, 실기에서 그 주소도
+#               0x44002000 / 0xE0044000 / 0x40015800 도 전부 0 이거나 FAULT 였다.
+#               틀린 주소를 적어두면 엉뚱한 레지스터를 읽는다. 이름을 직접
+#               지정하면 그대로 쓸 수 있으므로 비워두는 편이 낫다.
+NO_ID_ADDR = ("H7RS",)
+
+# DBGMCU 주소를 모를 때 쓰는 대안. DPv2 의 TARGETID 에서 읽는다.
+#
+#   STM32H7S3 실측 : TARGETID = 0x14850041
+#                    TPARTNO[27:12] = 0x4850 = DEV_ID 0x485 << 4
+#                    TDESIGNER[11:1] = 0x020 = ST (JEP106)
+#
+# TPARTNO 만 비교한다. 이 인코딩은 관측 하나에 기댄 것이라 다른 파트에서 다를 수
+# 있는데, 값이 정확히 맞아야 하므로 틀리면 "판별 실패" 지 오인은 아니다.
+# DPv1 파트에는 TARGETID 자체가 없어서 그 항목은 그냥 맞지 않는다.
+ID_TARGETID   = 0xFFFFFFFF      # 펌웨어의 DEV_ID_TARGETID 센티널
+TARGETID_MASK = 0x0FFFF000
+
 
 def dev_id(text):
     """'0x431' / '0x01E' / '0x485_swv' 를 정수로. 뒤에 붙은 꼬리표는 버린다."""
@@ -151,6 +172,8 @@ def main():
             no_sram.append(name)
 
         addr = ID_ADDR.get(series)
+        if addr is not None and any(k in name for k in NO_ID_ADDR):
+            addr = None
         if addr is None:
             no_addr.append(series)
 
@@ -191,7 +214,7 @@ def main():
         f.write("#\n")
         f.write("# id_addr/id_mask/id_val 은 벤더 중립 3연이다. \"어느 주소를 읽어 어느 비트가\n")
         f.write("# 무엇이면 이 디바이스\" 라고만 적으므로 ST 이외의 벤더도 같은 형식을 쓴다.\n")
-        f.write("# id_addr 이 없는 항목은 자동 판별이 안 될 뿐, 이름을 직접 지정하면 쓸 수 있다.\n")
+        f.write("# id_addr 이 0xFFFFFFFF 면 메모리가 아니라 DPv2 의 TARGETID 에서 읽는다.\n")
         f.write("#\n")
         f.write("# flash/flash_sz 는 알고리즘이 들고 있는 값과 교차 검증하는 용도다.\n")
         f.write("# 알고리즘 파일이 자기 크기를 틀리게 적은 경우가 실제로 있다.\n")
@@ -207,7 +230,12 @@ def main():
             if e["id_addr"] is not None:
                 f.write(f"id_addr = 0x{e['id_addr']:08X}\n")
                 f.write(f"id_mask = 0x{ID_MASK:08X}\n")
-            f.write(f"id_val  = 0x{e['id']:08X}\n")
+                f.write(f"id_val  = 0x{e['id']:08X}\n")
+            else:
+                # DBGMCU 주소를 모른다. DPv2 TARGETID 로 간다.
+                f.write(f"id_addr = 0x{ID_TARGETID:08X}   # DP TARGETID\n")
+                f.write(f"id_mask = 0x{TARGETID_MASK:08X}\n")
+                f.write(f"id_val  = 0x{(e['id'] << 16) & TARGETID_MASK:08X}\n")
             if e["ram"] is not None:
                 f.write(f"ram     = 0x{e['ram']:08X}\n")
                 f.write(f"ram_sz  = 0x{e['ram_sz']:X}\n")
@@ -218,16 +246,17 @@ def main():
                 f.write(f"algo    = {args.loader_dir}/{e['algo']}\n")
             f.write("\n")
 
-    auto = sum(1 for e in entries if e["id_addr"] is not None)
+    auto = len(entries)
+    tgt  = sum(1 for e in entries if e["id_addr"] is None)
     with_algo = sum(1 for e in entries if e["algo"])
     print(f"{args.out}")
     print(f"  항목        : {len(entries)} 개")
     if dup:
         print(f"  중복 병합   : {dup} 개  (같은 이름·DEV_ID 를 두 파일이 기술)")
-    print(f"  자동 판별   : {auto} 개  (id_addr 있음)")
+    print(f"  자동 판별   : {auto} 개  (DBGMCU {auto - tgt} / DPv2 TARGETID {tgt})")
     print(f"  로더 연결   : {with_algo} 개")
     if no_addr:
-        print(f"  id_addr 없음: {', '.join(sorted(set(no_addr)))}")
+        print(f"  TARGETID 로 : {', '.join(sorted(set(no_addr)))}")
     if no_sram:
         print(f"  SRAM 없음   : {len(no_sram)} 개")
     return 0

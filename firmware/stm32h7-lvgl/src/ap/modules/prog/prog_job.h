@@ -15,7 +15,8 @@
  *
  *      device = STM32F411xC/E      자동 판별을 끄고 강제 지정
  *      algo   = /prog/loaders/st/0x431.stldr        내부 플래시 알고리즘
- *      loader = /prog/loaders/ext/MX25L512G_xx.stldr 외부 메모리 로더
+ *      loader = /prog/loaders/ext/MX25L512G_xx.stldr 외부 메모리 로더 (여러 번 가능)
+ *      ap     = 1                  코어 디버그가 물려 있는 AP (기본은 자동 탐색)
  *      psize  = 2                  소거/굽기 병렬도 (.stldr 전용)
  *      speed  = 3500               SWD kHz
  *      image  = app.elf
@@ -48,6 +49,7 @@ extern "C" {
 #define JOB_PATH_MAX    96
 #define JOB_NAME_MAX    48
 #define JOB_PROJ_MAX    32
+#define JOB_LOADER_MAX  3       // 외부 로더. 내부까지 합쳐 JOB_ALGO_MAX 개
 
 
 typedef struct
@@ -64,9 +66,14 @@ typedef struct
   char        name[JOB_NAME_MAX];
   char        device[DEV_NAME_MAX];
   char        algo[JOB_PATH_MAX];     // 내부. 비어 있으면 DB 의 algo
-  char        loader[JOB_PATH_MAX];   // 외부. 비어 있으면 안 쓴다
+  /* 외부 로더. image 처럼 여러 번 적을 수 있다 — QSPI 와 SDRAM 을 같이 쓰거나
+     칩이 두 개 달린 보드가 있다. 어느 이미지가 어느 로더로 갈지는 주소로
+     정해지므로 순서는 상관없다. */
+  char        loader[JOB_LOADER_MAX][JOB_PATH_MAX];
+  uint32_t    loader_cnt;
   uint32_t    psize;
   uint32_t    speed_khz;
+  uint8_t     ap;             // 0xFF = 안 적혀 있다 (자동 탐색)
   bool        has_psize;
   bool        has_speed;
 

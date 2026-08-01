@@ -49,11 +49,67 @@ static const cm_idloc_t id_loc_tbl[] =
 
 
 static uint32_t  last_dfsr;
+static bool      ap_done;         // 코어 디버그가 닿는 AP 를 찾아놨나
 
 static swd_err_t swdCmWaitRegRdy(void);
 
 
 // ----------------------------------------------------------------- 코어 제어
+
+/* 코어 디버그 레지스터가 닿는 AP 를 고른다.
+
+   Cortex-M3/M4 는 AP0 하나로 시스템 메모리도 PPB 도 다 닿아서 신경 쓸 일이
+   없었다. 요즘 파트는 그렇지 않다 — STM32H7S3 은 AP0(AHB)이 어느 주소를 읽어도
+   같은 값을 돌려주고 PPB 는 FAULT 인 반면, AP1(APB)이 메모리도 코어 디버그도
+   전부 닿는다.
+
+   그래서 CPUID 가 ARM 값(0x41______)으로 읽히는 AP 를 찾는다. 링크가 새로
+   맺어지면 다시 찾아야 하므로 swdCmInvalidate 로 캐시를 버린다. */
+swd_err_t swdCmEnsureAp(void)
+{
+  uint32_t cpuid = 0;
+  uint8_t  keep;
+
+  if (ap_done) return SWD_OK;
+
+  if (swdMemRead32(CM_CPUID, &cpuid) == SWD_OK && (cpuid & 0xFF000000) == 0x41000000)
+  {
+    ap_done = true;
+    return SWD_OK;
+  }
+
+  keep = swdDapGetAp();
+
+  for (uint32_t ap = 0; ap < SWD_CM_AP_MAX; ap++)
+  {
+    uint32_t idr = 0;
+
+    swdDapSetAp((uint8_t)ap);
+    if (swdApRead(SWD_AP_IDR, &idr) != SWD_OK || idr == 0) continue;
+
+    if (swdMemRead32(CM_CPUID, &cpuid) == SWD_OK && (cpuid & 0xFF000000) == 0x41000000)
+    {
+      ap_done = true;
+      return SWD_OK;
+    }
+  }
+
+  swdDapSetAp(keep);
+  return SWD_ERR_NORESP;
+}
+
+// AP 를 직접 지정한다. DB 나 fw.txt 가 적어둔 경우에 쓴다.
+void swdCmSetAp(uint8_t apsel)
+{
+  swdDapSetAp(apsel);
+  ap_done = true;
+}
+
+// 링크가 끊겼다 붙으면 AP 도 다시 찾아야 한다.
+void swdCmInvalidate(void)
+{
+  ap_done = false;
+}
 
 swd_err_t swdCmHalt(void)
 {

@@ -168,6 +168,17 @@ static void progJobProgressCb(const char *phase, uint32_t addr, uint32_t done,
     last = NULL;
     return;
   }
+  if (strcmp(phase, "ap") == 0)
+  {
+    cliPrintf("ap     : %d\n", (int)addr);
+    return;
+  }
+  if (strcmp(phase, "dup") == 0)
+  {
+    cliPrintf("0x%08X 을 담당하는 알고리즘이 %d 개다. loader 설정을 확인해라\n",
+              addr, (int)done);
+    return;
+  }
   if (strcmp(phase, "clamp") == 0)
   {
     cliPrintf("clamp  : 알고리즘이 크게 잡고 있어 DB 값 %d KB 로 좁힌다\n", (int)(done / 1024));
@@ -389,7 +400,10 @@ void cliProg(cli_args_t *args)
       cliPrintf("잡     : %s\n", job.name);
       cliPrintf("device : %s\n", job.device[0] ? job.device : "(자동 판별)");
       if (job.algo[0])   cliPrintf("algo   : %s\n", job.algo);
-      if (job.loader[0]) cliPrintf("loader : %s\n", job.loader);
+      for (uint32_t i = 0; i < job.loader_cnt; i++)
+      {
+        cliPrintf("loader : %s\n", job.loader[i]);
+      }
       for (uint32_t i = 0; i < job.image_cnt; i++)
       {
         cliPrintf("image  : %s", job.image[i].file);
@@ -413,6 +427,9 @@ void cliProg(cli_args_t *args)
     prog_dev_t dev;
     uint32_t   id = 0;
     swd_err_t  err;
+
+    swdCmInvalidate();
+    swdCmEnsureAp();
 
     if (args->argc == 2)                    // 이름으로 찾기
     {

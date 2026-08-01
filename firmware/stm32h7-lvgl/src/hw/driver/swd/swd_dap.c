@@ -175,6 +175,34 @@ swd_err_t swdDapRecover(void)
 
 // ----------------------------------------------------------------- DP/AP 레지스터
 
+swd_err_t swdDapReadTargetId(uint32_t *p_id)
+{
+  swd_err_t err;
+  uint32_t  dpidr = 0;
+  uint32_t  val   = 0;
+
+  if (p_id == NULL) return SWD_ERR_PROTOCOL;
+
+  // DPv1 에는 TARGETID 가 없다
+  err = swdDpRead(SWD_DP_DPIDR, &dpidr);
+  if (err != SWD_OK)                  return err;
+  if (((dpidr >> 12) & 0xF) < 2)      return SWD_ERR_PROTOCOL;
+
+  /* SELECT 를 직접 건드리므로 캐시를 버려야 한다. 안 그러면 다음 AP 접근이
+     DPBANKSEL 이 2 인 줄 모르고 그대로 쓴다. */
+  err = swdDpWrite(SWD_DP_SELECT, 0x00000002);      // DPBANKSEL = 2
+  if (err == SWD_OK) err = swdDpRead(0x4, &val);
+
+  swdDpWrite(SWD_DP_SELECT, 0x00000000);
+  swdDapInvalidate();
+
+  if (err != SWD_OK) return err;
+  if ((val & 1) == 0) return SWD_ERR_PROTOCOL;      // bit0 은 RAO 다
+
+  *p_id = val;
+  return SWD_OK;
+}
+
 swd_err_t swdDpRead(uint8_t addr, uint32_t *p_data)
 {
   return swdXfer(0, 1, addr, p_data);

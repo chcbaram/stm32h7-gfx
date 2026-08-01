@@ -111,7 +111,14 @@ swd_err_t devDetect(prog_dev_t *p_dev, uint32_t *p_id)
         후보를 좁히는 게 목적이라 실패한 건 그냥 빼고 간다. */
   for (uint32_t i = 0; i < addrs.cnt; i++)
   {
-    addrs.ok[i] = (swdMemRead32(addrs.addr[i], &addrs.val[i]) == SWD_OK);
+    if (addrs.addr[i] == DEV_ID_TARGETID)
+    {
+      addrs.ok[i] = (swdDapReadTargetId(&addrs.val[i]) == SWD_OK);
+    }
+    else
+    {
+      addrs.ok[i] = (swdMemRead32(addrs.addr[i], &addrs.val[i]) == SWD_OK);
+    }
   }
 
   // 3) 다시 훑으면서 맞는 항목을 찾는다
@@ -218,6 +225,7 @@ static bool devLineCb(const char *sec, const char *key, const char *val, void *c
     memset(&p_scan->cur, 0, sizeof(prog_dev_t));
     snprintf(p_scan->cur.name, sizeof(p_scan->cur.name), "%s", sec);
     p_scan->cur.id_mask = 0xFFFFFFFF;
+    p_scan->cur.ap      = 0xFF;
   }
 
   if      (strcmp(key, "cpu")     == 0) snprintf(p_scan->cur.cpu,  sizeof(p_scan->cur.cpu),  "%s", val);
@@ -229,6 +237,7 @@ static bool devLineCb(const char *sec, const char *key, const char *val, void *c
   else if (strcmp(key, "ram_sz")  == 0) p_scan->cur.ram_sz  = cfgNum(val);
   else if (strcmp(key, "flash")   == 0) p_scan->cur.flash   = cfgNum(val);
   else if (strcmp(key, "flash_sz")== 0) p_scan->cur.flash_sz= cfgNum(val);
+  else if (strcmp(key, "ap")      == 0) p_scan->cur.ap      = (uint8_t)cfgNum(val);
 
   return true;
 }
