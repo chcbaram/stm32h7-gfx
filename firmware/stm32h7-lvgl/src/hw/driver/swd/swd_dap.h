@@ -87,6 +87,12 @@ void      swdDapSetAp(uint8_t apsel);
 uint8_t   swdDapGetAp(void);
 swd_err_t swdDapClearError(void);
 
+/* 링크를 다시 세운다. line reset -> DPIDR 재동기 -> sticky 클리어.
+   순간적인 비트 오류로 DP 가 응답을 멈췄을 때 쓴다.
+   SELECT/CSW 캐시가 무효화되므로 호출한 쪽은 CSW/TAR 부터 다시 세워야 한다. */
+swd_err_t swdDapRecover(void);
+bool      swdIsLinkErr(swd_err_t err);
+
 // 타깃 메모리
 swd_err_t swdMemRead32(uint32_t addr, uint32_t *p_data);
 swd_err_t swdMemWrite32(uint32_t addr, uint32_t data);

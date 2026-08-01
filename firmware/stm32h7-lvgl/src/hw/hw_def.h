@@ -59,7 +59,7 @@
 #define      HW_CLI_CMD_LIST_MAX    40
 #define      HW_CLI_CMD_NAME_MAX    16
 #define      HW_CLI_LINE_HIS_MAX    8
-#define      HW_CLI_LINE_BUF_MAX    64
+#define      HW_CLI_LINE_BUF_MAX    128     // 경로 인자가 붙으면 64 로는 잘린다
 
 #define _USE_HW_CLI_GUI
 #define      HW_CLI_GUI_WIDTH       80

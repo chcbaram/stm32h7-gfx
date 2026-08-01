@@ -34,6 +34,7 @@ static uint8_t  ap_sel       = 0;
 static swd_err_t swdXfer(uint8_t ap_ndp, uint8_t rd_nwr, uint8_t addr, uint32_t *p_data);
 static swd_err_t swdApSelect(uint8_t addr);
 static swd_err_t swdCswSet(uint32_t csw);
+static swd_err_t swdMemRead32Once(uint32_t addr, uint32_t *p_data);
 static swd_err_t swdMemReadChunk(uint32_t addr, uint32_t *p_data, uint32_t count);
 static swd_err_t swdMemWriteChunk(uint32_t addr, const uint32_t *p_data, uint32_t count);
 
@@ -131,6 +132,35 @@ swd_err_t swdDapClearError(void)
 }
 
 
+/* 순간적인 비트 오류로 링크가 죽었는지 판단한다. WAIT/FAULT 는 타깃이 응답은
+   하고 있는 상태라 여기 포함하지 않는다. */
+bool swdIsLinkErr(swd_err_t err)
+{
+  return (err == SWD_ERR_NORESP) || (err == SWD_ERR_PROTOCOL) || (err == SWD_ERR_PARITY);
+}
+
+swd_err_t swdDapRecover(void)
+{
+  uint32_t id = 0;
+
+  swdLineReset();
+  swdIdle(8);
+
+  // line reset 뒤에는 DPIDR 을 한 번 읽어야 DP 가 reset state 를 벗어난다
+  if (swdTransfer(0, 1, SWD_DP_DPIDR, &id) != SWD_ACK_OK)
+  {
+    return SWD_ERR_NORESP;
+  }
+
+  // 재동기 후 DP 상태를 모르므로 캐시를 버린다
+  select_cache = 0xFFFFFFFF;
+  csw_cache    = 0xFFFFFFFF;
+  swdDapClearError();
+
+  return SWD_OK;
+}
+
+
 // ----------------------------------------------------------------- DP/AP 레지스터
 
 swd_err_t swdDpRead(uint8_t addr, uint32_t *p_data)
@@ -172,6 +202,18 @@ swd_err_t swdApWrite(uint8_t addr, uint32_t data)
 // ----------------------------------------------------------------- 타깃 메모리
 
 swd_err_t swdMemRead32(uint32_t addr, uint32_t *p_data)
+{
+  swd_err_t err;
+
+  err = swdMemRead32Once(addr, p_data);
+  if (swdIsLinkErr(err) && swdDapRecover() == SWD_OK)
+  {
+    err = swdMemRead32Once(addr, p_data);
+  }
+  return err;
+}
+
+static swd_err_t swdMemRead32Once(uint32_t addr, uint32_t *p_data)
 {
   swd_err_t err;
 
@@ -273,6 +315,15 @@ swd_err_t swdMemReadBlock(uint32_t addr, uint32_t *p_data, uint32_t count)
     uint32_t chunk = (count < room) ? count : room;
 
     err = swdMemReadChunk(addr, p_data, chunk);
+    if (swdIsLinkErr(err))
+    {
+      // 링크만 다시 세우고 이 청크를 통째로 다시 한다. 전송 단위로 재시도하면
+      // TAR 이 이미 증가해 있어서 엉뚱한 주소를 읽는다.
+      if (swdDapRecover() == SWD_OK)
+      {
+        err = swdMemReadChunk(addr, p_data, chunk);
+      }
+    }
     if (err != SWD_OK) return err;
 
     addr   += chunk * 4;
@@ -298,6 +349,13 @@ swd_err_t swdMemWriteBlock(uint32_t addr, const uint32_t *p_data, uint32_t count
     uint32_t chunk = (count < room) ? count : room;
 
     err = swdMemWriteChunk(addr, p_data, chunk);
+    if (swdIsLinkErr(err))
+    {
+      if (swdDapRecover() == SWD_OK)
+      {
+        err = swdMemWriteChunk(addr, p_data, chunk);
+      }
+    }
     if (err != SWD_OK) return err;
 
     addr   += chunk * 4;
