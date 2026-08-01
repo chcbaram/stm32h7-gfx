@@ -82,6 +82,14 @@
 #define      HW_SWD_SPEED_KHZ       1000      // 기본 속도. 0 이면 최대
 #define      HW_SWD_IDLE_CYCLES     8
 #define      HW_SWD_WAIT_RETRY      100
+// SD카드의 다운로더 루트. 하위 경로는 전부 여기 기준이라 루트만 바꾸면 된다.
+//   mcu/     *.txt 를 전부 읽어 디바이스 DB 를 만든다 (벤더별로 쪼갤 수 있다)
+//   loaders/ 플래시 알고리즘 (.FLM / .stldr)
+//   fw/      프로젝트별 폴더. 각 폴더에 fw.txt 와 이미지가 들어간다
+#define      HW_SWD_SD_ROOT         "/prog"
+#define      HW_SWD_SD_MCU          HW_SWD_SD_ROOT "/mcu"
+#define      HW_SWD_SD_LOADERS      HW_SWD_SD_ROOT "/loaders"
+#define      HW_SWD_SD_FW           HW_SWD_SD_ROOT "/fw"
 
 #define _USE_HW_SWTIMER
 #define      HW_SWTIMER_MAX_CH      8
