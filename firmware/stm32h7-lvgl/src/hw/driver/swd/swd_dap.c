@@ -23,12 +23,20 @@
 
 
 #define SWD_PWRUP_TIMEOUT_MS    100
+#define SWD_CHUNK_RETRY         4
 
 
 static bool     is_powered   = false;
 static uint32_t select_cache = 0xFFFFFFFF;    // 무효값으로 시작
 static uint32_t csw_cache    = 0xFFFFFFFF;
 static uint8_t  ap_sel       = 0;
+
+// 링크 오류와 복구 통계. 어디서 얼마나 깨지는지 알아야 대책이 선다.
+static uint32_t stat_link_err;
+static uint32_t stat_recover_ok;
+static uint32_t stat_recover_ng;
+static uint32_t stat_retry_ok;
+static uint32_t stat_retry_ng;
 
 
 static swd_err_t swdXfer(uint8_t ap_ndp, uint8_t rd_nwr, uint8_t addr, uint32_t *p_data);
@@ -155,9 +163,13 @@ swd_err_t swdDapRecover(void)
   // 재동기 후 DP 상태를 모르므로 캐시를 버린다
   select_cache = 0xFFFFFFFF;
   csw_cache    = 0xFFFFFFFF;
-  swdDapClearError();
 
-  return SWD_OK;
+  /* line reset 은 DP 를 리셋 상태로 되돌린다. CTRL/STAT 의 CDBGPWRUPREQ 까지
+     지워지므로 파워업을 다시 해야 한다. 이걸 빠뜨리면 재동기는 되는데 이후
+     AP 접근이 전부 실패해서, 복구가 아무 소용이 없다. */
+  is_powered = false;
+
+  return swdDapPowerUp();
 }
 
 
@@ -314,17 +326,23 @@ swd_err_t swdMemReadBlock(uint32_t addr, uint32_t *p_data, uint32_t count)
     uint32_t room  = (SWD_TAR_WRAP - (addr & (SWD_TAR_WRAP - 1))) / 4;
     uint32_t chunk = (count < room) ? count : room;
 
-    err = swdMemReadChunk(addr, p_data, chunk);
-    if (swdIsLinkErr(err))
+    /* 링크만 다시 세우고 이 청크를 통째로 다시 한다. 전송 단위로 재시도하면
+       TAR 이 이미 증가해 있어서 엉뚱한 주소를 읽는다. */
+    for (int try = 0; try < SWD_CHUNK_RETRY; try++)
     {
-      // 링크만 다시 세우고 이 청크를 통째로 다시 한다. 전송 단위로 재시도하면
-      // TAR 이 이미 증가해 있어서 엉뚱한 주소를 읽는다.
-      if (swdDapRecover() == SWD_OK)
+      err = swdMemReadChunk(addr, p_data, chunk);
+      if (err == SWD_OK)
       {
-        err = swdMemReadChunk(addr, p_data, chunk);
+        if (try > 0) stat_retry_ok++;
+        break;
       }
+      if (swdIsLinkErr(err) == false) break;
+
+      stat_link_err++;
+      if (swdDapRecover() == SWD_OK) stat_recover_ok++;
+      else                         { stat_recover_ng++; break; }
     }
-    if (err != SWD_OK) return err;
+    if (err != SWD_OK) { stat_retry_ng++; return err; }
 
     addr   += chunk * 4;
     p_data += chunk;
@@ -348,15 +366,21 @@ swd_err_t swdMemWriteBlock(uint32_t addr, const uint32_t *p_data, uint32_t count
     uint32_t room  = (SWD_TAR_WRAP - (addr & (SWD_TAR_WRAP - 1))) / 4;
     uint32_t chunk = (count < room) ? count : room;
 
-    err = swdMemWriteChunk(addr, p_data, chunk);
-    if (swdIsLinkErr(err))
+    for (int try = 0; try < SWD_CHUNK_RETRY; try++)
     {
-      if (swdDapRecover() == SWD_OK)
+      err = swdMemWriteChunk(addr, p_data, chunk);
+      if (err == SWD_OK)
       {
-        err = swdMemWriteChunk(addr, p_data, chunk);
+        if (try > 0) stat_retry_ok++;
+        break;
       }
+      if (swdIsLinkErr(err) == false) break;
+
+      stat_link_err++;
+      if (swdDapRecover() == SWD_OK) stat_recover_ok++;
+      else                         { stat_recover_ng++; break; }
     }
-    if (err != SWD_OK) return err;
+    if (err != SWD_OK) { stat_retry_ng++; return err; }
 
     addr   += chunk * 4;
     p_data += chunk;
@@ -398,6 +422,22 @@ swd_err_t swdMemFill(uint32_t addr, uint32_t data, uint32_t count)
   }
 
   return SWD_OK;
+}
+
+void swdDapGetStat(uint32_t *p_err, uint32_t *p_rec_ok, uint32_t *p_rec_ng,
+                   uint32_t *p_retry_ok, uint32_t *p_retry_ng)
+{
+  if (p_err)      *p_err      = stat_link_err;
+  if (p_rec_ok)   *p_rec_ok   = stat_recover_ok;
+  if (p_rec_ng)   *p_rec_ng   = stat_recover_ng;
+  if (p_retry_ok) *p_retry_ok = stat_retry_ok;
+  if (p_retry_ng) *p_retry_ng = stat_retry_ng;
+}
+
+void swdDapClearStat(void)
+{
+  stat_link_err = stat_recover_ok = stat_recover_ng = 0;
+  stat_retry_ok = stat_retry_ng = 0;
 }
 
 const char *swdErrStr(swd_err_t err)

@@ -995,6 +995,24 @@ void cliSwd(cli_args_t *args)
     ret = true;
   }
 
+  if (args->argc == 1 && args->isStr(0, "stat") == true)
+  {
+    uint32_t e=0, ro=0, rn=0, to=0, tn=0;
+
+    swdDapGetStat(&e, &ro, &rn, &to, &tn);
+    cliPrintf("link err   : %d\n", (int)e);
+    cliPrintf("recover    : ok %d / fail %d\n", (int)ro, (int)rn);
+    cliPrintf("chunk retry: ok %d / 최종실패 %d\n", (int)to, (int)tn);
+    ret = true;
+  }
+
+  if (args->argc == 2 && args->isStr(0, "stat") == true && args->isStr(1, "clear") == true)
+  {
+    swdDapClearStat();
+    cliPrintf("stat cleared\n");
+    ret = true;
+  }
+
   if (args->argc == 1 && args->isStr(0, "apid") == true)
   {
     uint32_t idr = 0, cfg = 0, base = 0;
@@ -1618,6 +1636,7 @@ void cliSwd(cli_args_t *args)
     cliPrintf("\n");
     cliPrintf("swd power              디버그 파워업 + CTRL/STAT\n");
     cliPrintf("swd apid / apscan      AP IDR/CFG/BASE, AP 열거\n");
+    cliPrintf("swd stat [clear]       링크 오류/복구 통계\n");
     cliPrintf("swd ap <n>             AP 선택\n");
     cliPrintf("swd dpread <a> / dpwrite <a> <v>\n");
     cliPrintf("swd md <addr> [cnt]    타깃 메모리 32bit 덤프\n");

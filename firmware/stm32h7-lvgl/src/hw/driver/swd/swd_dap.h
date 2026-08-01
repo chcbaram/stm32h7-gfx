@@ -93,6 +93,11 @@ swd_err_t swdDapClearError(void);
 swd_err_t swdDapRecover(void);
 bool      swdIsLinkErr(swd_err_t err);
 
+// 링크 오류/복구 통계
+void      swdDapGetStat(uint32_t *p_err, uint32_t *p_rec_ok, uint32_t *p_rec_ng,
+                        uint32_t *p_retry_ok, uint32_t *p_retry_ng);
+void      swdDapClearStat(void);
+
 // 타깃 메모리
 swd_err_t swdMemRead32(uint32_t addr, uint32_t *p_data);
 swd_err_t swdMemWrite32(uint32_t addr, uint32_t data);
