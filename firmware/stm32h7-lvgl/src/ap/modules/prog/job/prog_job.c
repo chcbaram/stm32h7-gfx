@@ -74,7 +74,8 @@ bool jobLoad(job_t *p_job, const char *project)
   return (p_job->image_cnt > 0);
 }
 
-uint32_t jobList(bool (*cb)(const char *proj, const char *name, void *ctx), void *ctx)
+uint32_t jobList(bool (*cb)(const char *proj, const char *name, const char *device,
+                            void *ctx), void *ctx)
 {
   DIR      dir;
   FILINFO  fno;
@@ -95,11 +96,16 @@ uint32_t jobList(bool (*cb)(const char *proj, const char *name, void *ctx), void
     cnt++;
     if (cb != NULL)
     {
-      job_t job;
-      const char *nm = fno.fname;
+      static job_t job;
+      const char  *nm  = fno.fname;
+      const char  *dev = "";
 
-      if (jobLoad(&job, fno.fname)) nm = job.name;
-      if (cb(fno.fname, nm, ctx) == false) break;
+      if (jobLoad(&job, fno.fname))
+      {
+        nm  = job.name;
+        dev = job.device;
+      }
+      if (cb(fno.fname, nm, dev, ctx) == false) break;
     }
   }
 

@@ -4,6 +4,10 @@
 # DB 에서 온다. .elf 는 굽는 주소를 스스로 알고 있다. 그래서 두 줄이면 된다.
 
 name  = STM32F411 LCD demo
+
+# 대상 MCU. 적어두면 목록에서 이 타깃에 맞는지 미리 가려낼 수 있다.
+# 안 적으면 런타임 자동 판별에 맡긴다는 뜻이라 미리 알 수 없다.
+device = STM32F411xC/E
 image = app.elf
 
 # 소거·굽기 병렬도. .stldr 만 쓰고 .FLM 은 무시한다.
@@ -13,7 +17,6 @@ psize = 2
 
 # 필요할 때만 덧붙인다
 #
-# device = STM32F411xC/E                          자동 판별을 끄고 강제 지정
 # algo   = /prog/loaders/flm/STM32F4xx_512.FLM    DB 기본값 대신 이걸로
 # loader = /prog/loaders/ext/MX25L512G_xx.stldr   외부 QSPI 로더
 # speed  = 3500                                   SWD kHz

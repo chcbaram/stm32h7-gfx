@@ -9,6 +9,9 @@
 
 name   = STM32H7R mini (FSBL + QSPI)
 
+# 대상 MCU. 적어두면 목록에서 이 타깃에 맞는지 미리 가려낼 수 있다.
+device = STM32H7RSxx
+
 # 외부 로더는 여러 번 적을 수 있다. 담당 주소가 겹치면 거부한다.
 loader = /prog/loaders/ext/W25Q128JV_STM32H7R-MINI.stldr
 
