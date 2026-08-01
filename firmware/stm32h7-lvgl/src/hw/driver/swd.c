@@ -834,6 +834,8 @@ void cliSwd(cli_args_t *args)
 
   if (args->argc == 1 && args->isStr(0, "connect") == true)
   {
+    swdCmInvalidate();      // 링크가 새로 맺어지면 AP 도 다시 찾는다
+
     uint32_t  id = 0;
     swd_err_t err;
 

@@ -114,6 +114,11 @@ void swdCmInvalidate(void)
 swd_err_t swdCmHalt(void)
 {
   swd_err_t err;
+
+  /* 코어 디버그가 AP0 이 아닌 파트가 있다. 여기서 확보해 두지 않으면 CLI 로
+     직접 halt 를 부르는 경로가 PPB 를 못 읽고 FAULT 로 끝난다. */
+  err = swdCmEnsureAp();
+  if (err != SWD_OK) return err;
   uint32_t  dhcsr = 0;
   uint32_t  t_start;
 
@@ -208,6 +213,9 @@ swd_err_t swdCmDetach(void)
 swd_err_t swdCmResetHalt(void)
 {
   swd_err_t err;
+
+  err = swdCmEnsureAp();
+  if (err != SWD_OK) return err;
   uint32_t  dhcsr = 0;
   uint32_t  t_start;
 

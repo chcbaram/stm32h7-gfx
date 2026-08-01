@@ -36,7 +36,7 @@
 
 #define STLDR_INFO_NAME     "StorageInfo"
 #define STLDR_INFO_SIZE     200
-#define STLDR_STACK_SIZE    0x1000
+#define STLDR_STACK_SIZE    0x4000
 #define STLDR_INIT_TIMEOUT  10000
 #define STLDR_ERASE_TIMEOUT 30000
 #define STLDR_CHIP_TIMEOUT  120000
@@ -146,7 +146,16 @@ static swd_err_t stldrLoadCode(algo_t *p_algo, uint32_t ram_base, uint32_t ram_s
   if (hi <= 0x1000) return SWD_ERR_PROTOCOL;    // 올릴 코드가 없다
 
   /* 로더가 자기 주소를 고정으로 갖고 있으므로 아레나를 그 뒤에 잡는다.
-     트램폴린도 여기 둔다 — ram_base 앞머리는 로더가 이미 쓰고 있을 수 있다. */
+     트램폴린도 여기 둔다 — ram_base 앞머리는 로더가 이미 쓰고 있을 수 있다.
+
+     스택은 넉넉히 준다. 스택은 stack_top 에서 아래로 자라므로 모자라면 바로
+     아래에 있는 로더의 .bss 를 덮어쓴다. 그러면 로더가 "왜인지 초기화에
+     실패" 하는데, 자기 변수가 깨진 것이라 진단이 안 나온다.
+
+     실제로 이걸로 하루를 썼다. W25Q128JV 외부 로더가 Init 에서 실패했는데,
+     같은 함수들을 멀리 떨어진 스택으로 하나씩 부르면 전부 성공했다. .FLM 은
+     하는 일이 적어 2KB 로도 되지만 .stldr 은 HAL 로 클럭과 XSPI 를 다 세우기
+     때문에 훨씬 많이 쓴다. */
   {
     uint32_t arena = (hi + 7) & ~7UL;
 

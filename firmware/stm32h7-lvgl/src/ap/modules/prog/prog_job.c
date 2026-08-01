@@ -28,13 +28,21 @@
 #define JOB_ALGO_MAX    (1 + JOB_LOADER_MAX)   // 내부 하나 + 외부 여럿
 
 
+/* 알고리즘 파일은 담당 범위만 읽고 바로 닫는다.
+
+   FatFs 가 _FS_LOCK = 2 라 파일을 두 개까지만 동시에 열 수 있다. 알고리즘 둘을
+   열어둔 채로 이미지를 열면 세 번째가 거부되고, 그러면 이미지 주소를 못 읽어
+   조용히 기본값으로 떨어진다 — 실제로 그렇게 외부 QSPI 용 이미지가 내부
+   플래시 알고리즘에 배정됐다. 열어둘 이유도 없다. */
 typedef struct
 {
   algo_t   algo;
   char     path[JOB_PATH_MAX];
+  uint32_t dev_adr;
+  uint32_t sz_dev;              // DB 로 좁힌 값
   uint32_t img[JOB_IMAGE_MAX];  // 담당 이미지 인덱스
   uint32_t img_cnt;
-  bool     is_open;
+  bool     is_valid;
 } job_algo_t;
 
 
@@ -162,18 +170,22 @@ swd_err_t jobRun(job_t *p_job, algo_progress_t cb, void *ctx, bool do_verify)
       jobPath(p_job, paths[i], ja[n_algo].path, sizeof(ja[n_algo].path));
       if (algoOpen(&ja[n_algo].algo, ja[n_algo].path) == false) return SWD_ERR_PROTOCOL;
 
+      ja[n_algo].dev_adr = ja[n_algo].algo.dev.dev_adr;
+      ja[n_algo].sz_dev  = ja[n_algo].algo.dev.sz_dev;
+
       /* 알고리즘이 자기 크기를 틀리게 적은 경우가 있어서 DB 값으로 좁힌다.
          GigaDevice 팩의 1MB/2MB .FLM 이 둘 다 3840KB 라고 한다. 넓게 잡힌
          범위는 지우기 방어를 그대로 무력화한다. */
       if (dev.flash_sz != 0 &&
-          ja[n_algo].algo.dev.dev_adr == dev.flash &&
-          ja[n_algo].algo.dev.sz_dev  >  dev.flash_sz)
+          ja[n_algo].dev_adr == dev.flash &&
+          ja[n_algo].sz_dev  >  dev.flash_sz)
       {
-        ja[n_algo].algo.dev.sz_dev = dev.flash_sz;
+        ja[n_algo].sz_dev = dev.flash_sz;
         if (cb) cb("clamp", dev.flash, dev.flash_sz, 0, ctx);
       }
 
-      ja[n_algo].is_open = true;
+      algoClose(&ja[n_algo].algo);      // 범위만 알면 된다. 열어두면 이미지를 못 연다.
+      ja[n_algo].is_valid = true;
       n_algo++;
     }
   }
@@ -197,7 +209,7 @@ swd_err_t jobRun(job_t *p_job, algo_progress_t cb, void *ctx, bool do_verify)
 
       for (uint32_t k = 0; k < n_algo; k++)
       {
-        if (algoIsInRange(&ja[k].algo, addr) == false) continue;
+        if (addr < ja[k].dev_adr || addr >= ja[k].dev_adr + ja[k].sz_dev) continue;
         if (hit == 0) sel = k;
         hit++;
       }
@@ -217,8 +229,7 @@ swd_err_t jobRun(job_t *p_job, algo_progress_t cb, void *ctx, bool do_verify)
     }
     if (put == false)
     {
-      err = SWD_ERR_PROTOCOL;             // 담당이 없거나 둘 이상이다
-      goto done;
+      return SWD_ERR_PROTOCOL;            // 담당이 없거나 둘 이상이다
     }
   }
 
@@ -228,17 +239,10 @@ swd_err_t jobRun(job_t *p_job, algo_progress_t cb, void *ctx, bool do_verify)
     if (ja[k].img_cnt == 0) continue;
 
     err = jobRunAlgo(p_job, &ja[k], &dev, cb, ctx, do_verify, &bad);
-    if (err != SWD_OK) goto done;
+    if (err != SWD_OK) return err;
   }
 
-  err = (bad == 0) ? SWD_OK : SWD_ERR_FAULT;
-
-done:
-  for (uint32_t k = 0; k < n_algo; k++)
-  {
-    if (ja[k].is_open) algoClose(&ja[k].algo);
-  }
-  return err;
+  return (bad == 0) ? SWD_OK : SWD_ERR_FAULT;
 }
 
 void jobPath(const job_t *p_job, const char *in, char *p_out, uint32_t max)
@@ -391,10 +395,13 @@ static swd_err_t jobRunAlgo(job_t *p_job, job_algo_t *p_ja, const prog_dev_t *p_
   err = swdCmResetHalt();
   if (err != SWD_OK) return err;
 
+  if (algoOpen(&p_ja->algo, p_ja->path) == false) return SWD_ERR_PROTOCOL;
+  p_ja->algo.dev.sz_dev = p_ja->sz_dev;         // 좁힌 범위를 다시 적용한다
+
   algoSetPSize(&p_ja->algo, p_job->has_psize ? p_job->psize : ALGO_PSIZE_8);
 
   err = algoLoad(&p_ja->algo, ram, ram_sz);
-  if (err != SWD_OK) return err;
+  if (err != SWD_OK) { algoClose(&p_ja->algo); return err; }
 
   if (cb) cb("algo", p_ja->algo.dev.dev_adr, p_ja->algo.dev.sz_dev, 0, ctx);
 
@@ -427,10 +434,11 @@ static swd_err_t jobRunAlgo(job_t *p_job, job_algo_t *p_ja, const prog_dev_t *p_
       }
     }
 
-    if (err != SWD_OK) return err;
+    if (err != SWD_OK) { algoClose(&p_ja->algo); return err; }
     *p_bad += bad;
   }
 
+  algoClose(&p_ja->algo);
   return SWD_OK;
 }
 

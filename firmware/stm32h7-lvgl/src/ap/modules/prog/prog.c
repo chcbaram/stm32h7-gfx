@@ -59,6 +59,10 @@ bool progInit(void)
 
 #ifdef _USE_HW_CLI
 
+/* prog algo test 가 잡아줄 타깃 RAM 크기. .stldr 은 수십 KB 짜리도 있어서
+   넉넉히 준다. 실제 잡은 디바이스 DB 의 ram_sz 를 쓴다. */
+#define PROG_TEST_RAM_SIZE  0x40000
+
 /* 타깃 RAM 으로 흘려보내는 콜백. p_data 가 NULL 이면 0 으로 채우라는 뜻이다. */
 typedef struct
 {
@@ -80,65 +84,58 @@ static bool progLoadToTarget(uint32_t addr, const uint8_t *p_data, uint32_t len,
   // .bss 처럼 내용이 없는 구간
   if (p_data == NULL)
   {
-    while (len > 0 && (addr & 3))
+    while (err == SWD_OK && len > 0 && (addr & 3))
     {
       err = swdMemWrite8(addr, 0);
-      if (err != SWD_OK) goto fail;
-      addr++; len--; done++;
+      if (err == SWD_OK) { addr++; len--; done++; }
     }
-    if (len >= 4)
+    if (err == SWD_OK && len >= 4)
     {
       err = swdMemFill(addr, 0, len / 4);
-      if (err != SWD_OK) goto fail;
-      addr += (len & ~3UL); done += (len & ~3UL); len &= 3;
+      if (err == SWD_OK)
+      {
+        addr += (len & ~3UL); done += (len & ~3UL); len &= 3;
+      }
     }
-    while (len > 0)
+    while (err == SWD_OK && len > 0)
     {
       err = swdMemWrite8(addr, 0);
-      if (err != SWD_OK) goto fail;
-      addr++; len--; done++;
+      if (err == SWD_OK) { addr++; len--; done++; }
     }
-    p_ctx->bytes += done;
-    return true;
   }
-
-  // 앞쪽 자투리
-  while (len > 0 && (addr & 3))
+  else
   {
-    err = swdMemWrite8(addr, *p_data);
-    if (err != SWD_OK) goto fail;
-    addr++; p_data++; len--; done++;
-  }
+    // 앞쪽 자투리
+    while (err == SWD_OK && len > 0 && (addr & 3))
+    {
+      err = swdMemWrite8(addr, *p_data);
+      if (err == SWD_OK) { addr++; p_data++; len--; done++; }
+    }
 
-  // 정렬된 구간
-  while (len >= 4)
-  {
-    uint32_t n = len & ~3UL;
+    // 정렬된 구간
+    while (err == SWD_OK && len >= 4)
+    {
+      uint32_t n = len & ~3UL;
 
-    if (n > sizeof(prog_word_buf)) n = sizeof(prog_word_buf);
+      if (n > sizeof(prog_word_buf)) n = sizeof(prog_word_buf);
 
-    memcpy(prog_word_buf, p_data, n);
-    err = swdMemWriteBlock(addr, prog_word_buf, n / 4);
-    if (err != SWD_OK) goto fail;
+      memcpy(prog_word_buf, p_data, n);
+      err = swdMemWriteBlock(addr, prog_word_buf, n / 4);
+      if (err == SWD_OK) { addr += n; p_data += n; len -= n; done += n; }
+    }
 
-    addr += n; p_data += n; len -= n; done += n;
-  }
-
-  // 뒤쪽 자투리
-  while (len > 0)
-  {
-    err = swdMemWrite8(addr, *p_data);
-    if (err != SWD_OK) goto fail;
-    addr++; p_data++; len--; done++;
+    // 뒤쪽 자투리
+    while (err == SWD_OK && len > 0)
+    {
+      err = swdMemWrite8(addr, *p_data);
+      if (err == SWD_OK) { addr++; p_data++; len--; done++; }
+    }
   }
 
   p_ctx->bytes += done;
-  return true;
+  if (err != SWD_OK) p_ctx->err_cnt++;
 
-fail:
-  p_ctx->bytes += done;
-  p_ctx->err_cnt++;
-  return false;
+  return (err == SWD_OK);
 }
 
 
@@ -558,7 +555,7 @@ void cliProg(cli_args_t *args)
         cliPrintf("halt 실패\n"); fail = true;
       }
       algoSetPSize(&flm, prog_psize);
-      if (!fail && (err = algoLoad(&flm, ram, 0x8000)) != SWD_OK)
+      if (!fail && (err = algoLoad(&flm, ram, PROG_TEST_RAM_SIZE)) != SWD_OK)
       {
         cliPrintf("load 실패 : %s\n", swdErrStr(err)); fail = true;
       }
@@ -693,7 +690,7 @@ void cliProg(cli_args_t *args)
       {
         cliPrintf("halt 실패\n");
       }
-      else if ((algoSetPSize(&flm, prog_psize), err = algoLoad(&flm, ram, 0x8000)) != SWD_OK)
+      else if ((algoSetPSize(&flm, prog_psize), err = algoLoad(&flm, ram, PROG_TEST_RAM_SIZE)) != SWD_OK)
       {
         cliPrintf("algo load 실패 : %s\n", swdErrStr(err));
       }
