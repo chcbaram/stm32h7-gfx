@@ -9,6 +9,7 @@
 #include "prog/prog_algo.h"
 #include "prog/prog_flm.h"
 #include "prog/prog_stldr.h"
+#include "prog/prog_dev.h"
 #include "swd.h"
 #include "swd/swd_dap.h"
 #include "swd/swd_cm.h"
@@ -32,6 +33,25 @@ MODULE_DEF(prog){
 
 
 // ----------------------------------------------------------------- 초기화
+
+static void progDevPrint(const prog_dev_t *p_dev)
+{
+  cliPrintf("  이름   : %s  (%s)\n", p_dev->name, p_dev->cpu);
+  cliPrintf("  id     : 0x%08X @ 0x%08X  mask 0x%08X\n",
+            p_dev->id_val, p_dev->id_addr, p_dev->id_mask);
+  cliPrintf("  ram    : 0x%08X  %d KB\n", p_dev->ram, (int)(p_dev->ram_sz / 1024));
+  if (p_dev->algo[0]) cliPrintf("  algo   : %s\n", p_dev->algo);
+}
+
+static bool progDevListCb(const prog_dev_t *p_dev, void *ctx)
+{
+  (void)ctx;
+
+  cliPrintf("%-26s %-12s ram 0x%08X %4d KB %s\n",
+            p_dev->name, p_dev->cpu, p_dev->ram, (int)(p_dev->ram_sz / 1024),
+            p_dev->algo[0] ? "algo" : "");
+  return true;
+}
 
 bool progInit(void)
 {
@@ -269,6 +289,50 @@ void cliProg(cli_args_t *args)
         cliPrintf("로드 실패 (%d bytes 진행, 오류 %d)\n", (int)ctx.bytes, (int)ctx.err_cnt);
       }
       elfClose(&elf);
+      ret = true;
+    }
+  }
+
+  /* 디바이스 DB 훑기와 타깃 자동 판별. */
+  if (args->argc >= 1 && args->isStr(0, "dev") == true)
+  {
+    prog_dev_t dev;
+    uint32_t   id = 0;
+    swd_err_t  err;
+
+    if (args->argc == 2)                    // 이름으로 찾기
+    {
+      if (devFind(args->getStr(1), &dev) == false)
+      {
+        cliPrintf("DB 에 없다 : %s\n", args->getStr(1));
+      }
+      else
+      {
+        progDevPrint(&dev);
+      }
+      ret = true;
+    }
+    else if (args->argc == 1)
+    {
+      uint32_t n = devList(progDevListCb, NULL);
+
+      cliPrintf("---- %d 개 (%s)\n", (int)n, HW_SWD_SD_MCU);
+
+      cliPrintf("\n타깃 판별 :\n");
+      err = devDetect(&dev, &id);
+      if (err == SWD_OK)
+      {
+        cliPrintf("  읽은값 : 0x%08X\n", id);
+        progDevPrint(&dev);
+      }
+      else if (err == SWD_ERR_FAULT)
+      {
+        cliPrintf("  0x%08X 에 맞는 항목이 둘 이상이다. 이름을 직접 지정해라\n", id);
+      }
+      else
+      {
+        cliPrintf("  못 찾았다 (읽은값 0x%08X). 연결 상태와 DB 를 확인해라\n", id);
+      }
       ret = true;
     }
   }
@@ -546,6 +610,7 @@ void cliProg(cli_args_t *args)
     cliPrintf("prog info\n");
     cliPrintf("prog elf info <path>        ELF 섹션/세그먼트/심볼 덤프\n");
     cliPrintf("prog elf load <path> <ram>  타깃 RAM 으로 재배치 로드\n");
+    cliPrintf("prog dev [이름]              디바이스 DB 훑기 / 타깃 자동 판별\n");
     cliPrintf("prog psize [0~3]            소거/굽기 병렬도 (.stldr 전용)\n");
     cliPrintf("prog algo info <path>       .FLM / .stldr 자동 판별 + 디바이스 정보\n");
     cliPrintf("prog algo test <path> <ram> <flash>  한 조각 지우기/굽기/검증\n");

@@ -136,6 +136,25 @@ def main():
                             ram=ram, ram_sz=ram_sz, id_addr=addr,
                             algo=loaders.get(did)))
 
+    # 같은 DEV_ID 를 다른 파일이 두 번 기술하는 경우가 있다 (0x485 와 0x485_swv).
+    # 그대로 두면 자동 판별이 "둘 이상 맞음" 으로 막히므로 여기서 합친다.
+    seen = {}
+    merged = []
+    for e in entries:
+        k = (e["name"], e["id"])
+        if k in seen:
+            old = seen[k]
+            # 정보가 더 많은 쪽을 남긴다
+            if old["ram"] is None and e["ram"] is not None:
+                old.update(ram=e["ram"], ram_sz=e["ram_sz"])
+            if not old["algo"] and e["algo"]:
+                old["algo"] = e["algo"]
+            continue
+        seen[k] = e
+        merged.append(e)
+    dup = len(entries) - len(merged)
+    entries = merged
+
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
 
     with open(args.out, "w", encoding="utf-8") as f:
@@ -172,6 +191,8 @@ def main():
     with_algo = sum(1 for e in entries if e["algo"])
     print(f"{args.out}")
     print(f"  항목        : {len(entries)} 개")
+    if dup:
+        print(f"  중복 병합   : {dup} 개  (같은 이름·DEV_ID 를 두 파일이 기술)")
     print(f"  자동 판별   : {auto} 개  (id_addr 있음)")
     print(f"  로더 연결   : {with_algo} 개")
     if no_addr:

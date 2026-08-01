@@ -2,7 +2,7 @@
 #
 #   tools/python/cubedb2txt.py 가 STM32CubeProgrammer 의 Data_Base 에서 만든다.
 #   원본 : /opt/ST/STM32CubeCLT_1.22.0/STM32CubeProgrammer
-#   항목 : 104 개
+#   항목 : 103 개
 #
 # id_addr/id_mask/id_val 은 벤더 중립 3연이다. "어느 주소를 읽어 어느 비트가
 # 무엇이면 이 디바이스" 라고만 적으므로 ST 이외의 벤더도 같은 형식을 쓴다.
@@ -501,15 +501,6 @@ id_val  = 0x00000483
 ram     = 0x24000000
 ram_sz  = 0x20000
 algo    = /prog/loaders/st/0x483.stldr
-
-[STM32H7RSxx]
-cpu     = Cortex-M7
-id_addr = 0x5C001000
-id_mask = 0x00000FFF
-id_val  = 0x00000485
-ram     = 0x20000000
-ram_sz  = 0x10000
-algo    = /prog/loaders/st/0x485.stldr
 
 [STM32H7RSxx]
 cpu     = Cortex-M7
