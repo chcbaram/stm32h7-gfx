@@ -49,6 +49,7 @@ typedef struct
   bool         verify;
   uint8_t      psize;       // ALGO_PSIZE_*
   uint32_t     speed_khz;   // 0 이면 지금 설정을 그대로
+  bool         filter;      // 목록에서 이 타깃에 안 맞는 것을 감춘다
 } prog_opt_t;
 
 /* 단계 하나. 진행 중인 것과 끝난 것을 같이 보여주려고 상태와 시간을 함께 든다. */
@@ -96,6 +97,9 @@ typedef struct
 {
   char proj[JOB_PROJ_MAX];
   char name[JOB_NAME_MAX];
+  /* fw.txt 의 device. 비어 있으면 자동 판별에 맡긴다는 뜻이라 미리 호환을
+     확인할 수 없다 — 목록에서 그렇게 밝힌다. */
+  char device[DEV_NAME_MAX];
 } prog_proj_t;
 
 

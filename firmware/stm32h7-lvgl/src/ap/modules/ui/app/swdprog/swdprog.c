@@ -76,7 +76,7 @@ static void      runRefresh(bool rebuild);
 static void      cfgRefresh(void);
 static lv_obj_t *makeCard(lv_obj_t *parent, int32_t h, const char *hint, const char *right);
 static lv_obj_t *makeRowLabel(lv_obj_t *card, int n, lv_style_t *st);
-static lv_obj_t *makeHeader(lv_obj_t *parent, const char *text);
+static lv_obj_t *makeHeader(lv_obj_t *parent, const char *text, int32_t close_w);
 
 static void cbScan(lv_event_t *e);
 static void cbPick(lv_event_t *e);
@@ -86,6 +86,8 @@ static void cbBack(lv_event_t *e);
 static void cbItem(lv_event_t *e);
 static void cbOpt(lv_event_t *e);
 static void cbRunScroll(lv_event_t *e);
+static void cbFilter(lv_event_t *e);
+static bool projMatches(const prog_proj_t *p);
 
 
 static lv_obj_t *page[PAGE_CNT];
@@ -104,6 +106,7 @@ static lv_obj_t *btn_start;
 
 // LIST
 static lv_obj_t *list_box;
+static lv_obj_t *sw_filter;
 
 // RUN
 static lv_obj_t *lbl_big;
@@ -256,7 +259,7 @@ static lv_obj_t *makeRowLabel(lv_obj_t *card, int n, lv_style_t *st)
 
    위쪽 48px 은 셰이드 센서가 먹으므로 거기 버튼을 두면 안 눌린다. 아래에 두면
    HOME 의 START 와 같은 자리라 손가락이 가는 곳도 일정하다. */
-static lv_obj_t *makeHeader(lv_obj_t *parent, const char *text)
+static lv_obj_t *makeHeader(lv_obj_t *parent, const char *text, int32_t close_w)
 {
   lv_obj_t *l = uiCreateLabel(parent, text, uiStyleTextBody());
   lv_obj_t *close;
@@ -264,8 +267,8 @@ static lv_obj_t *makeHeader(lv_obj_t *parent, const char *text)
   lv_obj_align(l, LV_ALIGN_TOP_LEFT, UI_MARGIN, UI_SPACE_MD);
 
   close = uiCreateButton(parent, "닫기", false);
-  lv_obj_set_size(close, body_w, BTN_H);
-  lv_obj_align(close, LV_ALIGN_BOTTOM_MID, 0, -UI_MARGIN);
+  lv_obj_set_size(close, (close_w > 0) ? close_w : body_w, BTN_H);
+  lv_obj_align(close, LV_ALIGN_BOTTOM_RIGHT, -UI_MARGIN, -UI_MARGIN);
   lv_obj_add_event_cb(close, cbBack, LV_EVENT_CLICKED, NULL);
   return l;
 }
@@ -405,7 +408,40 @@ static void homeRefresh(void)
 
 static void buildList(lv_obj_t *parent)
 {
-  makeHeader(parent, "FIRMWARE");
+  lv_obj_t *btn;
+  int32_t   half = (body_w - GAP) / 2;
+
+  makeHeader(parent, "FIRMWARE", half);
+
+  /* 이 타깃에 맞는 것만 보기.
+
+     글자만 있는 버튼은 그게 지금 상태인지 누르면 할 일인지 헷갈린다. 스위치를
+     두어 상태가 눈에 보이게 한다. 스위치 자체는 26px 이라 손가락으로 겨냥하기
+     작으므로, 누르는 건 카드 전체가 받고 스위치는 표시만 한다.
+
+     누를 수 있는 건 전부 아래에 모은다 - 화면 위 48px 은 셰이드 센서가 먹어서
+     거기 두면 눌리지 않는다. */
+  btn = uiCreateCard(parent, half, BTN_H);
+  lv_obj_set_style_pad_all(btn, 0, 0);
+  lv_obj_align(btn, LV_ALIGN_BOTTOM_LEFT, UI_MARGIN, -UI_MARGIN);
+  lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(btn, cbFilter, LV_EVENT_CLICKED, NULL);
+
+  {
+    lv_obj_t *l = uiCreateLabel(btn, "이 타깃만", uiStyleTextDim());
+
+    lv_obj_set_style_text_font(l, uiFontCaption(), 0);
+    lv_obj_align(l, LV_ALIGN_LEFT_MID, UI_SPACE_MD, 0);
+  }
+
+  sw_filter = lv_switch_create(btn);
+  lv_obj_set_size(sw_filter, 52, 26);
+  lv_obj_align(sw_filter, LV_ALIGN_RIGHT_MID, -UI_SPACE_MD, 0);
+  lv_obj_remove_flag(sw_filter, LV_OBJ_FLAG_CLICKABLE);   // 표시 전용
+  lv_obj_set_style_bg_color(sw_filter, lv_color_hex(UI_COLOR_SURFACE_ALT), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(sw_filter, lv_color_hex(UI_COLOR_ACCENT),
+                            LV_PART_INDICATOR | LV_STATE_CHECKED);
+  lv_obj_set_style_bg_color(sw_filter, lv_color_hex(UI_COLOR_TEXT), LV_PART_KNOB);
 
   list_box = lv_obj_create(parent);
   lv_obj_remove_style_all(list_box);
@@ -421,11 +457,32 @@ static void buildList(lv_obj_t *parent)
   lv_obj_set_style_radius(list_box, 2, LV_PART_SCROLLBAR);
 }
 
+/* 이 타깃에 맞는 프로젝트인가.
+
+   fw.txt 에 device 가 적혀 있을 때만 확실히 안다. 안 적혀 있으면 런타임에
+   자동 판별하겠다는 뜻이라 미리 알 수 없고, 그때는 감추지 않는다 — 감추면
+   "왜 내 펌웨어가 안 보이지" 가 된다. */
+static bool projMatches(const prog_proj_t *p)
+{
+  const prog_target_t *t = progTaskGetTarget();
+
+  if (p->device[0] == 0)     return true;   // 자동 판별에 맡긴다
+  if (t->is_valid == false)  return true;   // 타깃을 아직 모른다
+  if (t->dev_found == false) return true;
+
+  return strcmp(p->device, t->dev.name) == 0;
+}
+
 static void listRefresh(void)
 {
-  uint32_t cnt = progTaskGetProjCnt();
+  uint32_t cnt    = progTaskGetProjCnt();
+  uint32_t shown  = 0;
+  bool     filter = progTaskGetOpt()->filter;
 
   if (list_box == NULL) return;
+
+  if (filter) lv_obj_add_state(sw_filter, LV_STATE_CHECKED);
+  else        lv_obj_remove_state(sw_filter, LV_STATE_CHECKED);
 
   lv_obj_clean(list_box);
 
@@ -442,6 +499,9 @@ static void listRefresh(void)
     lv_obj_t          *l;
 
     if (p == NULL) break;
+    if (filter && projMatches(p) == false) continue;
+
+    shown++;
 
     row = uiCreateCard(list_box, LV_PCT(100), PAD * 2 + ROW * 2);
     lv_obj_set_style_pad_all(row, 0, 0);
@@ -461,11 +521,22 @@ static void listRefresh(void)
     lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
     lv_obj_align(l, LV_ALIGN_TOP_LEFT, UI_SPACE_MD, LINE(0));
 
-    l = uiCreateLabel(row, p->proj, uiStyleTextDim());
+    /* 대상 MCU 를 같이 보여준다. 안 적힌 프로젝트는 "자동 판별" 이라고 밝힌다 —
+       호환을 확인한 게 아니라 확인할 수 없다는 뜻이다. */
+    l = uiCreateLabel(row, "", uiStyleTextDim());
     lv_obj_set_style_text_font(l, uiFontCaption(), 0);
     lv_obj_set_width(l, LV_PCT(92));
     lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
+    /* 구분자는 ASCII 만 쓴다. 가운뎃점(U+00B7) 을 썼더니 깨져 보였다 - 한글
+       폰트는 KS X 1001 한글만 담고 있고 montserrat 에도 그 글리프가 없다. */
+    lv_label_set_text_fmt(l, "%s  /  %s", p->proj,
+                          p->device[0] ? p->device : "자동 판별");
     lv_obj_align(l, LV_ALIGN_TOP_LEFT, UI_SPACE_MD, LINE(1));
+  }
+
+  if (shown == 0)
+  {
+    uiCreateLabel(list_box, "이 타깃에 맞는 게 없다", uiStyleTextBody());
   }
 }
 
@@ -612,7 +683,7 @@ static void buildCfg(lv_obj_t *parent)
   static const char *OPT_NAME[4] = { "굽고 나서", "검증", "병렬도", "SWD 속도" };
   int32_t y = HEAD_H;
 
-  makeHeader(parent, "SETTINGS");
+  makeHeader(parent, "SETTINGS", 0);
 
   for (int i = 0; i < 4; i++)
   {
@@ -778,6 +849,17 @@ static void cbStart(lv_event_t *e)
 
   step_follow = true;
   progTaskRun(sel_proj);
+}
+
+static void cbFilter(lv_event_t *e)
+{
+  prog_opt_t o = *progTaskGetOpt();
+
+  (void)e;
+
+  o.filter = !o.filter;
+  progTaskSetOpt(&o);
+  listRefresh();
 }
 
 static void cbRunScroll(lv_event_t *e)

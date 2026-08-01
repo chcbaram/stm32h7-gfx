@@ -85,8 +85,12 @@ typedef struct
 // /prog/fw/<프로젝트>/fw.txt 를 읽는다. 타깃은 건드리지 않는다.
 bool      jobLoad(job_t *p_job, const char *project);
 
-// /prog/fw 아래에서 fw.txt 를 가진 폴더를 훑는다. cb 가 false 면 멈춘다.
-uint32_t  jobList(bool (*cb)(const char *proj, const char *name, void *ctx), void *ctx);
+/* /prog/fw 아래에서 fw.txt 를 가진 폴더를 훑는다. cb 가 false 면 멈춘다.
+
+   device 는 fw.txt 에 적힌 대상 MCU 다. 비어 있으면 자동 판별에 맡긴다는
+   뜻이라 미리 호환을 알 수 없다. */
+uint32_t  jobList(bool (*cb)(const char *proj, const char *name, const char *device,
+                             void *ctx), void *ctx);
 
 /* 잡을 실행한다. 연결·판별·리셋·소거·굽기·검증까지 전부 여기서 한다.
    진행 상황은 cb 로 알린다 (NULL 이면 생략). */
