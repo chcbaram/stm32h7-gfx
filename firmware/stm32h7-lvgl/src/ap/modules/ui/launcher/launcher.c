@@ -54,6 +54,7 @@ static int32_t back_x0;
 static int32_t back_y0;
 static bool    back_armed;
 static bool    back_fired;
+static bool    back_own;      /* app 이 이 제스처를 직접 그린다 */
 
 extern uint32_t _sapp;
 extern uint32_t _eapp;
@@ -412,6 +413,7 @@ void launcherBackSwipeCb(lv_event_t *e)
     back_x0    = p.x;
     back_y0    = p.y;
     back_fired = false;                        /* 아직 드래그로 확정 안 됨 */
+    back_own   = false;
     /* app 이 열려 있고, 전환 애니메이션 중이 아니고, 셰이드가 닫혀 있을 때만 */
     back_armed = (info.p_cur != NULL) &&
                  (info.app_cont != NULL) &&
@@ -426,18 +428,41 @@ void launcherBackSwipeCb(lv_event_t *e)
 
     /* 가로 이동이 세로보다 크면 드래그로 확정하고 화면을 따라 민다. */
     if (back_fired == false && dx > 10 && dx > ady)
+    {
       back_fired = true;
+      /* 드래그가 확정된 순간 한 번만 묻는다. app 이 하위 화면을 열어두고
+         있으면 그 뒤에 드러나야 할 건 런처 홈이 아니라 app 의 직전
+         페이지다. 그건 app 만 그릴 수 있으므로 컨테이너를 밀지 않는다. */
+      back_own = (info.p_cur != NULL) && (info.p_cur->back != NULL);
+    }
 
     if (back_fired == true)
     {
       if (dx < 0) dx = 0;
-      lv_obj_set_x(info.app_cont, dx);
+
+      if (back_own == true)
+        back_own = info.p_cur->back(APP_BACK_MOVE, dx);
+
+      if (back_own == false)
+        lv_obj_set_x(info.app_cont, dx);
     }
   }
   else if ((code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) &&
-           back_armed == true && back_fired == true && info.app_cont != NULL)
+           back_armed == true && back_fired == true &&
+           info.app_cont != NULL && info.p_cur != NULL)
   {
+    int32_t dx = p.x - back_x0;
+
     back_armed = false;
+
+    /* app 이 그리고 있었으면 마무리도 app 이 한다. CLI 의 launcherExitApp()
+       은 여기를 거치지 않는다 - 제스처는 "뒤로", 그쪽은 "종료" 다. */
+    if (back_own == true)
+    {
+      info.p_cur->back((dx > LCD_WIDTH / 2) ? APP_BACK_DONE : APP_BACK_CANCEL, dx);
+      back_own = false;
+      return;
+    }
 
     /* 절반 넘게 밀렸으면 뒤로가기, 아니면 제자리로 */
     if (lv_obj_get_x(info.app_cont) > LCD_WIDTH / 2)

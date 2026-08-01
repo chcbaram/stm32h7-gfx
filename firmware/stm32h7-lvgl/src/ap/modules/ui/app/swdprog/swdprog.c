@@ -64,8 +64,13 @@ static bool swdprogInit(void);
 static bool swdprogEnter(lv_obj_t *scr);
 static void swdprogUpdate(void);
 static void swdprogExit(void);
+static bool swdprogBack(app_back_t act, int32_t dx);
 
 static void      pageShow(page_t page);
+static void      pageSlide(lv_obj_t *obj, int32_t to, lv_anim_completed_cb_t done);
+static void      pageAnimXCb(void *obj, int32_t v);
+static void      pageBackDoneCb(lv_anim_t *a);
+static void      pageBackCancelCb(lv_anim_t *a);
 static void      buildHome(lv_obj_t *parent);
 static void      buildList(lv_obj_t *parent);
 static void      buildRun(lv_obj_t *parent);
@@ -141,6 +146,7 @@ APP_DEF(swdprog){
   .enter  = swdprogEnter,
   .update = swdprogUpdate,
   .exit   = swdprogExit,
+  .back   = swdprogBack,
 };
 
 
@@ -175,6 +181,9 @@ static bool swdprogEnter(lv_obj_t *scr)
   {
     page[i] = lv_obj_create(scr);
     lv_obj_remove_style_all(page[i]);
+    /* 바탕이 있어야 한다. 겹쳐만 있을 때는 투명이어도 티가 안 나지만,
+       뒤로가기 제스처로 밀리는 순간 뒤 페이지가 그대로 비쳐 보인다. */
+    lv_obj_add_style(page[i], uiStyleScreen(), LV_PART_MAIN);
     lv_obj_set_size(page[i], LV_PCT(100), LV_PCT(100));
     lv_obj_clear_flag(page[i], LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(page[i], LV_OBJ_FLAG_HIDDEN);
@@ -205,16 +214,97 @@ static void swdprogExit(void)
   lbl_opt[0] = NULL;
 }
 
+/* 뒤로가기 제스처. 하위 화면이면 홈으로 돌아가고 런처에는 넘기지 않는다.
+   홈에서만 app 을 나간다.
+
+   런처에 맡기지 않고 여기서 그리는 이유는, 끄는 동안 뒤에 드러나야 할 것이
+   런처 홈이 아니라 이 app 의 홈 페이지이기 때문이다. */
+static bool swdprogBack(app_back_t act, int32_t dx)
+{
+  int32_t w;
+
+  if (page[0] == NULL)       return false;
+  if (cur_page == PAGE_HOME) return false;   // 여기서는 런처가 나간다
+
+  /* 굽는 중에는 실행 화면을 벗어나지 않는다. 나가면 진행을 못 본다.
+     제스처를 먹되 화면은 움직이지 않아 "여기서는 안 된다" 가 그대로 보인다. */
+  if (progTaskGetState() == PROG_RUNNING) return true;
+
+  w = lv_obj_get_width(page[cur_page]);
+  if (dx < 0) dx = 0;
+  if (dx > w) dx = w;
+
+  if (act == APP_BACK_MOVE)
+  {
+    /* 뒤에 드러나기 직전에 홈을 최신 상태로 만든다. */
+    if (lv_obj_has_flag(page[PAGE_HOME], LV_OBJ_FLAG_HIDDEN))
+    {
+      homeRefresh();
+      lv_obj_clear_flag(page[PAGE_HOME], LV_OBJ_FLAG_HIDDEN);
+    }
+    /* 홈은 손가락의 1/3 만 따라온다. 뒤에 깔려 있다는 느낌을 준다. */
+    lv_obj_set_x(page[cur_page], dx);
+    lv_obj_set_x(page[PAGE_HOME], (dx - w) / 3);
+  }
+  else if (act == APP_BACK_DONE)
+  {
+    pageSlide(page[cur_page], w, pageBackDoneCb);
+    pageSlide(page[PAGE_HOME], 0, NULL);
+  }
+  else
+  {
+    pageSlide(page[cur_page], 0, pageBackCancelCb);
+    pageSlide(page[PAGE_HOME], -w / 3, NULL);
+  }
+  return true;
+}
+
+/* 페이지 전환은 숨김 플래그로 한다. 위치는 제스처가 흔들어 놓을 수 있으므로
+   여기서 항상 제자리로 되돌린다 - 이 함수를 거치면 배치가 늘 확정된다. */
 static void pageShow(page_t p)
 {
   for (int i = 0; i < PAGE_CNT; i++)
   {
     if (page[i] == NULL) continue;
 
+    lv_obj_set_x(page[i], 0);
     if (i == (int)p) lv_obj_clear_flag(page[i], LV_OBJ_FLAG_HIDDEN);
     else             lv_obj_add_flag(page[i], LV_OBJ_FLAG_HIDDEN);
   }
   cur_page = p;
+}
+
+static void pageSlide(lv_obj_t *obj, int32_t to, lv_anim_completed_cb_t done)
+{
+  lv_anim_t a;
+
+  lv_anim_init(&a);
+  lv_anim_set_var(&a, obj);
+  lv_anim_set_exec_cb(&a, pageAnimXCb);
+  lv_anim_set_values(&a, lv_obj_get_x(obj), to);
+  lv_anim_set_duration(&a, 160);
+  lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+  if (done != NULL)
+    lv_anim_set_completed_cb(&a, done);
+  lv_anim_start(&a);
+}
+
+static void pageAnimXCb(void *obj, int32_t v)
+{
+  lv_obj_set_x((lv_obj_t *)obj, v);
+}
+
+static void pageBackDoneCb(lv_anim_t *a)
+{
+  (void)a;
+  pageShow(PAGE_HOME);
+}
+
+/* 미리보기로 열어둔 홈을 다시 감춘다. */
+static void pageBackCancelCb(lv_anim_t *a)
+{
+  (void)a;
+  pageShow(cur_page);
 }
 
 
