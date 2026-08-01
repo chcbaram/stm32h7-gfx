@@ -113,6 +113,7 @@ lv_style_t *uiStyleCard(void);          /* 패널/카드            */
 lv_style_t *uiStyleBtn(void);           /* 일반 버튼            */
 lv_style_t *uiStyleBtnPressed(void);    /* 버튼 눌림            */
 lv_style_t *uiStyleBtnAccent(void);     /* 강조 버튼            */
+lv_style_t *uiStyleBtnDisabled(void);   /* 못 누르는 버튼       */
 lv_style_t *uiStyleTextTitle(void);
 lv_style_t *uiStyleTextBody(void);
 lv_style_t *uiStyleTextDim(void);

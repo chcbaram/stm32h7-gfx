@@ -355,8 +355,26 @@ static void homeRefresh(void)
   else
     lv_label_set_text(lbl_count, "");
 
-  if (sel_proj[0] == 0) lv_obj_add_state(btn_start, LV_STATE_DISABLED);
-  else                  lv_obj_remove_state(btn_start, LV_STATE_DISABLED);
+  /* 펌웨어를 골랐고 타깃이 붙어 있어야 시작할 수 있다. 둘 중 하나라도 없으면
+     눌러봐야 실패하므로 아예 못 누르게 하고, 무엇이 빠졌는지 START 자리에 적는다. */
+  {
+    lv_obj_t   *l  = lv_obj_get_child(btn_start, 0);
+    const char *why = NULL;
+
+    if (t->is_valid == false)   why = "타깃 없음";
+    else if (sel_proj[0] == 0)  why = "펌웨어 선택";
+
+    if (why != NULL)
+    {
+      lv_obj_add_state(btn_start, LV_STATE_DISABLED);
+      lv_label_set_text(l, why);
+    }
+    else
+    {
+      lv_obj_remove_state(btn_start, LV_STATE_DISABLED);
+      lv_label_set_text(l, "START");
+    }
+  }
 }
 
 

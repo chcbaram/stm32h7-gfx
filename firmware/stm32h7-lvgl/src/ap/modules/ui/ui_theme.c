@@ -55,6 +55,7 @@ static lv_style_t style_card;
 static lv_style_t style_btn;
 static lv_style_t style_btn_pressed;
 static lv_style_t style_btn_accent;
+static lv_style_t style_btn_disabled;
 static lv_style_t style_text_title;
 static lv_style_t style_text_body;
 static lv_style_t style_text_dim;
@@ -128,6 +129,16 @@ static void themeApplyStyles(void)
 
   lv_style_set_bg_color(&style_btn_accent, lv_color_hex(UI_COLOR_ACCENT));
   lv_style_set_border_width(&style_btn_accent, 0);
+
+  /* 못 누르는 버튼. LV_STATE_DISABLED 를 걸어도 보이는 게 그대로면 사람은
+     누를 수 있다고 생각하고 누른다. 강조 버튼도 덮어야 하므로 accent 뒤에
+     붙인다. */
+  lv_style_set_bg_color(&style_btn_disabled, lv_color_hex(UI_COLOR_SURFACE_ALT));
+  lv_style_set_bg_opa(&style_btn_disabled, LV_OPA_COVER);
+  lv_style_set_text_color(&style_btn_disabled, lv_color_hex(UI_COLOR_TEXT_DIM));
+  lv_style_set_border_color(&style_btn_disabled, lv_color_hex(UI_COLOR_LINE));
+  lv_style_set_border_width(&style_btn_disabled, 1);
+  lv_style_set_translate_y(&style_btn_disabled, 0);
   lv_style_set_text_color(&style_btn_accent, lv_color_hex(UI_COLOR_TEXT_ON_ACC));
 
   /* --- 글자 --- */
@@ -166,6 +177,7 @@ bool uiThemeInit(void)
   lv_style_init(&style_btn);
   lv_style_init(&style_btn_pressed);
   lv_style_init(&style_btn_accent);
+  lv_style_init(&style_btn_disabled);
   lv_style_init(&style_text_title);
   lv_style_init(&style_text_body);
   lv_style_init(&style_text_dim);
@@ -207,6 +219,7 @@ lv_style_t *uiStyleCard(void)       { return &style_card; }
 lv_style_t *uiStyleBtn(void)        { return &style_btn; }
 lv_style_t *uiStyleBtnPressed(void) { return &style_btn_pressed; }
 lv_style_t *uiStyleBtnAccent(void)  { return &style_btn_accent; }
+lv_style_t *uiStyleBtnDisabled(void){ return &style_btn_disabled; }
 lv_style_t *uiStyleTextTitle(void)  { return &style_text_title; }
 lv_style_t *uiStyleTextBody(void)   { return &style_text_body; }
 lv_style_t *uiStyleTextDim(void)    { return &style_text_dim; }
@@ -242,6 +255,8 @@ lv_obj_t *uiCreateButton(lv_obj_t *parent, const char *text, bool accent)
   {
     lv_obj_add_style(btn, uiStyleBtnAccent(), LV_PART_MAIN);
   }
+  // 비활성은 마지막에 붙여야 강조색을 덮는다
+  lv_obj_add_style(btn, uiStyleBtnDisabled(), LV_PART_MAIN | LV_STATE_DISABLED);
   lv_obj_set_size(btn, UI_TOUCH_MIN, UI_TOUCH_MIN);
 
   if (text != NULL)
