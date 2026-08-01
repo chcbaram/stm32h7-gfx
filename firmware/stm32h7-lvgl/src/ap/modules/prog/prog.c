@@ -6,8 +6,10 @@
 
 #include "prog/prog.h"
 #include "prog/prog_elf.h"
+#include "prog/prog_flm.h"
 #include "swd.h"
 #include "swd/swd_dap.h"
+#include "swd/swd_cm.h"
 #include "cli.h"
 
 
@@ -268,11 +270,206 @@ void cliProg(cli_args_t *args)
     }
   }
 
+  // ---- .FLM 플래시 알고리즘 -------------------------------------------
+
+  if (args->argc == 3 && args->isStr(0, "flm") == true && args->isStr(1, "info") == true)
+  {
+    static flm_t flm;
+
+    if (flmOpen(&flm, args->getStr(2)) == false)
+    {
+      cliPrintf("FLM 열기 실패 (심볼이나 DevDscr 이 없다)\n");
+    }
+    else
+    {
+      cliPrintf("DevName  : %s\n", flm.dev.name);
+      cliPrintf("Vers     : 0x%04X   DevType : %d %s\n", flm.dev.vers, flm.dev.dev_type,
+                (flm.dev.dev_type == FLM_DEV_ONCHIP) ? "(ONCHIP)" :
+                (flm.dev.dev_type == FLM_DEV_EXTSPI) ? "(EXTSPI)" : "");
+      cliPrintf("DevAdr   : 0x%08X   szDev : %d KB\n", flm.dev.dev_adr, (int)(flm.dev.sz_dev/1024));
+      cliPrintf("szPage   : %d B      valEmpty : 0x%02X\n", (int)flm.dev.sz_page, flm.dev.val_empty);
+      cliPrintf("timeout  : prog %d ms, erase %d ms\n", (int)flm.dev.to_prog, (int)flm.dev.to_erase);
+      cliPrintf("sectors  :\n");
+      for (uint32_t i = 0; i < flm.dev.sector_cnt; i++)
+      {
+        uint32_t nxt = (i + 1 < flm.dev.sector_cnt) ? flm.dev.sector[i+1].addr : flm.dev.sz_dev;
+        uint32_t cnt = (nxt - flm.dev.sector[i].addr) / flm.dev.sector[i].size;
+
+        cliPrintf("   %6d KB x %-2d  @ 0x%08X\n", (int)(flm.dev.sector[i].size/1024), (int)cnt,
+                  flm.dev.dev_adr + flm.dev.sector[i].addr);
+      }
+      cliPrintf("symbols  : Init %08X UnInit %08X\n", flm.fn_init, flm.fn_uninit);
+      cliPrintf("           EraseSector %08X EraseChip %08X ProgramPage %08X\n",
+                flm.fn_erase_sector, flm.fn_erase_chip, flm.fn_program);
+      flmClose(&flm);
+    }
+    ret = true;
+  }
+
+  /* 한 페이지만 지우고 굽고 되읽어 본다. 알고리즘 배관 전체를 검증하는
+     최소 단위다. flash_addr 은 반드시 지워도 되는 곳이어야 한다. */
+  if (args->argc == 5 && args->isStr(0, "flm") == true && args->isStr(1, "test") == true)
+  {
+    static flm_t    flm;
+    static uint8_t  page[1024];
+    static uint32_t rd[256];
+    char           *path  = args->getStr(2);
+    uint32_t        ram   = (uint32_t)args->getData(3);
+    uint32_t        flash = (uint32_t)args->getData(4);
+    swd_err_t       err;
+    uint32_t        t0;
+
+    if (flmOpen(&flm, path) == false)
+    {
+      cliPrintf("FLM 열기 실패\n");
+      ret = true;
+    }
+    else
+    {
+      uint32_t sec_base = flmSectorBase(&flm, flash);
+      uint32_t sec_size = flmSectorSize(&flm, flash);
+      uint32_t page_len = (flm.dev.sz_page > sizeof(page)) ? sizeof(page) : flm.dev.sz_page;
+      bool     fail = false;
+
+      cliPrintf("algo     : %s\n", flm.dev.name);
+      cliPrintf("target   : 0x%08X  (섹터 0x%08X, %d KB)\n",
+                flash, sec_base, (int)(sec_size/1024));
+
+      // 1) 코어를 세우고 알고리즘을 올린다
+      if (swdCmHalt() != SWD_OK)
+      {
+        cliPrintf("halt 실패\n"); fail = true;
+      }
+      if (!fail && (err = flmLoad(&flm, ram, 0x8000)) != SWD_OK)
+      {
+        cliPrintf("load 실패 : %s\n", swdErrStr(err)); fail = true;
+      }
+      if (!fail)
+      {
+        cliPrintf("arena    : code 0x%08X  static 0x%08X\n", flm.algo.code_addr, flm.algo.static_base);
+        cliPrintf("           stack 0x%08X  buf 0x%08X\n", flm.algo.stack_top, flm.buf_addr);
+      }
+
+      // 2) 지우기
+      if (!fail)
+      {
+        t0 = millis();
+        err = flmInit(&flm, flm.dev.dev_adr, 8000000, FLM_FNC_ERASE);
+        cliPrintf("Init(1)  : %s (%d ms)\n", swdErrStr(err), (int)(millis()-t0));
+        if (err != SWD_OK) fail = true;
+      }
+      if (!fail)
+      {
+        t0 = millis();
+        err = flmEraseSector(&flm, sec_base);
+        cliPrintf("Erase    : %s (%d ms)\n", swdErrStr(err), (int)(millis()-t0));
+        if (err != SWD_OK) fail = true;
+      }
+      if (!fail)
+      {
+        flmUnInit(&flm, FLM_FNC_ERASE);
+        swdMemReadBlock(flash, rd, 8);
+        cliPrintf("blank    : %08X %08X %08X %08X -> %s\n", rd[0], rd[1], rd[2], rd[3],
+                  (rd[0]==0xFFFFFFFF && rd[1]==0xFFFFFFFF) ? "OK" : "FAIL");
+        if (rd[0] != 0xFFFFFFFF) fail = true;
+      }
+
+      // 3) 패턴을 굽고 되읽는다
+      if (!fail)
+      {
+        for (uint32_t i = 0; i < page_len; i++) page[i] = (uint8_t)(0xA5 ^ i);
+
+        t0 = millis();
+        err = flmInit(&flm, flm.dev.dev_adr, 8000000, FLM_FNC_PROGRAM);
+        if (err == SWD_OK) err = flmProgramPage(&flm, flash, page, page_len);
+        cliPrintf("Program  : %s (%d B, %d ms)\n", swdErrStr(err), (int)page_len, (int)(millis()-t0));
+        flmUnInit(&flm, FLM_FNC_PROGRAM);
+        if (err != SWD_OK) fail = true;
+      }
+      if (!fail)
+      {
+        uint32_t bad = 0;
+
+        swdMemReadBlock(flash, rd, page_len / 4);
+        for (uint32_t i = 0; i < page_len; i++)
+        {
+          if (((uint8_t *)rd)[i] != page[i]) bad++;
+        }
+        cliPrintf("verify   : %08X %08X %08X %08X\n", rd[0], rd[1], rd[2], rd[3]);
+        cliPrintf("           불일치 %d / %d  -> %s\n", (int)bad, (int)page_len,
+                  bad ? "FAIL" : "PASS");
+      }
+
+      flmClose(&flm);
+      ret = true;
+    }
+  }
+
+  /* 파일 하나를 통째로 굽는다. 다운로더의 핵심 경로다. */
+  if (args->argc == 5 && args->isStr(0, "write") == true)
+  {
+    static flm_t flm;
+    char     *algo  = args->getStr(1);
+    char     *img   = args->getStr(2);
+    uint32_t  ram   = (uint32_t)args->getData(3);
+    uint32_t  flash = (uint32_t)args->getData(4);
+    swd_err_t err;
+    uint32_t  written = 0, bad = 0, t0;
+
+    if (flmOpen(&flm, algo) == false)
+    {
+      cliPrintf("FLM 열기 실패 : %s\n", algo);
+      ret = true;
+    }
+    else if (flmIsInRange(&flm, flash) == false)
+    {
+      cliPrintf("주소가 플래시 범위 밖이다 : 0x%08X (0x%08X ~ 0x%08X)\n",
+                flash, flm.dev.dev_adr, flm.dev.dev_adr + flm.dev.sz_dev - 1);
+      flmClose(&flm);
+      ret = true;
+    }
+    else
+    {
+      cliPrintf("algo   : %s\n", flm.dev.name);
+      cliPrintf("image  : %s -> 0x%08X\n", img, flash);
+
+      if (swdCmHalt() != SWD_OK)
+      {
+        cliPrintf("halt 실패\n");
+      }
+      else if ((err = flmLoad(&flm, ram, 0x8000)) != SWD_OK)
+      {
+        cliPrintf("algo load 실패 : %s\n", swdErrStr(err));
+      }
+      else
+      {
+        t0  = millis();
+        err = flmWriteFile(&flm, img, flash, NULL, NULL, &written);
+        cliPrintf("write  : %s  %d bytes, %d ms\n",
+                  swdErrStr(err), (int)written, (int)(millis() - t0));
+
+        if (err == SWD_OK)
+        {
+          t0  = millis();
+          err = flmVerifyFile(&flm, img, flash, NULL, NULL, &bad);
+          cliPrintf("verify : %s  불일치 %d, %d ms  -> %s\n",
+                    swdErrStr(err), (int)bad, (int)(millis() - t0),
+                    (err == SWD_OK && bad == 0) ? "PASS" : "FAIL");
+        }
+      }
+      flmClose(&flm);
+      ret = true;
+    }
+  }
+
   if (ret != true)
   {
     cliPrintf("prog info\n");
     cliPrintf("prog elf info <path>        ELF 섹션/세그먼트/심볼 덤프\n");
     cliPrintf("prog elf load <path> <ram>  타깃 RAM 으로 재배치 로드\n");
+    cliPrintf("prog flm info <path>        FlashDevice + 심볼\n");
+    cliPrintf("prog flm test <path> <ram> <flash>  한 페이지 지우기/굽기/검증\n");
+    cliPrintf("prog write <algo> <img> <ram> <flash>  파일 통째로 굽고 검증\n");
   }
 }
 #endif
