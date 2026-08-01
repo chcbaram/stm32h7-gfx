@@ -86,8 +86,6 @@ static void cbBack(lv_event_t *e);
 static void cbItem(lv_event_t *e);
 static void cbOpt(lv_event_t *e);
 static void cbRunScroll(lv_event_t *e);
-static void cbFilter(lv_event_t *e);
-static bool projMatches(const prog_proj_t *p);
 
 
 static lv_obj_t *page[PAGE_CNT];
@@ -106,8 +104,6 @@ static lv_obj_t *btn_start;
 
 // LIST
 static lv_obj_t *list_box;
-static lv_obj_t *btn_filter;
-static lv_obj_t *lbl_filter;
 
 // RUN
 static lv_obj_t *lbl_big;
@@ -126,6 +122,11 @@ static char         sel_proj[JOB_PROJ_MAX];
 static char         sel_name[JOB_NAME_MAX];
 static uint8_t      last_step_seq = 0xFF;
 static uint8_t      last_pct      = 0xFF;
+/* 워커 기동을 슬라이드가 끝난 뒤로 미룬다. enter() 는 런처가 화면을 밀어 넣기
+   전에 부르는데, 거기서 스캔을 걸면 SWD 비트뱅잉(DWT 로 busy-wait 한다)과
+   SD 훑기가 애니메이션과 같이 돌아 프레임을 떨어뜨린다. */
+static uint32_t     enter_ms;
+static bool         kicked;
 static uint8_t      last_proj_seq = 0xFF;
 static prog_state_t last_state    = PROG_STATE_CNT;
 
@@ -176,21 +177,17 @@ static bool swdprogEnter(lv_obj_t *scr)
     lv_obj_add_flag(page[i], LV_OBJ_FLAG_HIDDEN);
   }
 
-  /* 홈부터 만들어 바로 보여준다.
-
-     네 화면을 다 만든 뒤에 보여주면, 런처가 밀어 넣는 애니메이션이 도는 동안
-     한 프레임이 빈 채로 그려져 깜빡인다. 먼저 채우고 나머지는 그 뒤에 만든다. */
   buildHome(page[PAGE_HOME]);
-  homeRefresh();
-  pageShow(PAGE_HOME);
-
   buildList(page[PAGE_LIST]);
   buildRun(page[PAGE_RUN]);
   buildCfg(page[PAGE_CFG]);
-  cfgRefresh();
 
   progTaskList();          // 목록은 워커가 만든다 (SD 훑기는 수십 ms 씩 멈춘다)
   progTaskScan();          // 들어오면 바로 타깃을 본다
+
+  pageShow(PAGE_HOME);
+  homeRefresh();
+  cfgRefresh();
   return true;
 }
 
@@ -410,16 +407,6 @@ static void buildList(lv_obj_t *parent)
 {
   makeHeader(parent, "FIRMWARE");
 
-  /* 이 타깃에 맞는 것만 보기. 프로젝트가 늘어나면 매번 훑는 게 일이라 켜 두는
-     쪽이 기본이다. 다만 fw.txt 에 device 를 안 적은 프로젝트는 자동 판별에
-     맡긴다는 뜻이라 미리 판단할 수 없어서 감추지 않는다. */
-  btn_filter = uiCreateButton(parent, "", false);
-  lv_obj_set_size(btn_filter, 150, 40);
-  lv_obj_align(btn_filter, LV_ALIGN_TOP_RIGHT, -UI_MARGIN, UI_SPACE_MD - 4);
-  lv_obj_add_event_cb(btn_filter, cbFilter, LV_EVENT_CLICKED, NULL);
-  lbl_filter = lv_obj_get_child(btn_filter, 0);
-  lv_obj_set_style_text_font(lbl_filter, uiFontCaption(), 0);
-
   list_box = lv_obj_create(parent);
   lv_obj_remove_style_all(list_box);
   lv_obj_set_size(list_box, body_w, 480 - HEAD_H - BTN_H - UI_MARGIN - GAP);
@@ -434,32 +421,11 @@ static void buildList(lv_obj_t *parent)
   lv_obj_set_style_radius(list_box, 2, LV_PART_SCROLLBAR);
 }
 
-/* 이 타깃에 맞는 프로젝트인가.
-
-   fw.txt 에 device 가 적혀 있을 때만 확실히 안다. 안 적혀 있으면 런타임에
-   자동 판별하겠다는 뜻이라 미리 알 수 없고, 그때는 감추지 않는다 — 감추면
-   "왜 내 펌웨어가 안 보이지" 가 된다. */
-static bool projMatches(const prog_proj_t *p)
-{
-  const prog_target_t *t = progTaskGetTarget();
-
-  if (p->device[0] == 0)                 return true;   // 자동 판별에 맡긴다
-  if (t->is_valid == false)              return true;   // 타깃을 아직 모른다
-  if (t->dev_found == false)             return true;
-
-  return (strncasecmp(p->device, t->dev.name, strlen(p->device)) == 0) ||
-         (strncasecmp(t->dev.name, p->device, strlen(t->dev.name)) == 0);
-}
-
 static void listRefresh(void)
 {
-  uint32_t cnt    = progTaskGetProjCnt();
-  uint32_t shown  = 0;
-  bool     filter = progTaskGetOpt()->filter;
+  uint32_t cnt = progTaskGetProjCnt();
 
   if (list_box == NULL) return;
-
-  lv_label_set_text(lbl_filter, filter ? LV_SYMBOL_OK " 이 타깃만" : "전체 보기");
 
   lv_obj_clean(list_box);
 
@@ -476,9 +442,6 @@ static void listRefresh(void)
     lv_obj_t          *l;
 
     if (p == NULL) break;
-    if (filter && projMatches(p) == false) continue;
-
-    shown++;
 
     row = uiCreateCard(list_box, LV_PCT(100), PAD * 2 + ROW * 2);
     lv_obj_set_style_pad_all(row, 0, 0);
@@ -498,20 +461,11 @@ static void listRefresh(void)
     lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
     lv_obj_align(l, LV_ALIGN_TOP_LEFT, UI_SPACE_MD, LINE(0));
 
-    /* 대상 MCU 를 같이 보여준다. 안 적힌 프로젝트는 "자동" 이라고 밝힌다 —
-       호환을 확인한 게 아니라 확인할 수 없다는 뜻이다. */
-    l = uiCreateLabel(row, "", uiStyleTextDim());
+    l = uiCreateLabel(row, p->proj, uiStyleTextDim());
     lv_obj_set_style_text_font(l, uiFontCaption(), 0);
     lv_obj_set_width(l, LV_PCT(92));
     lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
-    lv_label_set_text_fmt(l, "%s  ·  %s", p->proj,
-                          p->device[0] ? p->device : "자동 판별");
     lv_obj_align(l, LV_ALIGN_TOP_LEFT, UI_SPACE_MD, LINE(1));
-  }
-
-  if (shown == 0)
-  {
-    uiCreateLabel(list_box, "이 타깃에 맞는 게 없다", uiStyleTextBody());
   }
 }
 
@@ -694,6 +648,14 @@ static void swdprogUpdate(void)
 
   if (page[0] == NULL) return;
 
+  // 슬라이드(200ms)가 끝난 뒤에 워커를 깨운다
+  if (kicked == false && (millis() - enter_ms) > 300)
+  {
+    kicked = true;
+    progTaskList();
+    progTaskScan();
+  }
+
   st  = progTaskGetState();
   pct = progTaskGetPercent();
   seq = progTaskGetStepSeq();
@@ -812,17 +774,6 @@ static void cbStart(lv_event_t *e)
 
   step_follow = true;
   progTaskRun(sel_proj);
-}
-
-static void cbFilter(lv_event_t *e)
-{
-  prog_opt_t o = *progTaskGetOpt();
-
-  (void)e;
-
-  o.filter = !o.filter;
-  progTaskSetOpt(&o);
-  listRefresh();
 }
 
 static void cbRunScroll(lv_event_t *e)

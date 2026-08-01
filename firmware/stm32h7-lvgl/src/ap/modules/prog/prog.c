@@ -23,8 +23,7 @@
 
 #ifdef _USE_HW_CLI
 static void cliProg(cli_args_t *args);
-static bool progJobListCb(const char *proj, const char *name, const char *device,
-                          void *ctx);
+static bool progJobListCb(const char *proj, const char *name, void *ctx);
 static void progJobProgressCb(const char *phase, uint32_t addr, uint32_t done,
                               uint32_t total, void *ctx);
 static void progDevPrint(const prog_dev_t *p_dev);
@@ -145,11 +144,11 @@ static bool progLoadToTarget(uint32_t addr, const uint8_t *p_data, uint32_t len,
 
 
 
-static bool progJobListCb(const char *proj, const char *name, const char *device, void *ctx)
+static bool progJobListCb(const char *proj, const char *name, void *ctx)
 {
   (void)ctx;
 
-  cliPrintf("%-20s %-30s %s\n", proj, name, device[0] ? device : "(자동)");
+  cliPrintf("%-20s %s\n", proj, name);
   return true;
 }
 

@@ -48,7 +48,7 @@ static uint32_t      step_cnt;
 static volatile uint8_t step_seq;
 static uint32_t      step_t0;          // 지금 진행 중인 단계의 시작 시각
 
-static prog_opt_t    opt = { PROG_RESET_RUN, true, ALGO_PSIZE_8, 0, true };
+static prog_opt_t    opt = { PROG_RESET_RUN, true, ALGO_PSIZE_8, 0 };
 static char          sel_project[JOB_PROJ_MAX];
 static uint32_t      ok_count;
 
@@ -62,8 +62,7 @@ static void progTaskDoList(void);
 static void progTaskDoRun(void);
 static void progTaskStep(uint8_t depth, const char *fmt, ...);
 static void progTaskStepEnd(prog_step_state_t st);
-static bool progTaskProjCb(const char *proj, const char *name, const char *device,
-                           void *ctx);
+static bool progTaskProjCb(const char *proj, const char *name, void *ctx);
 static void progTaskProgressCb(const char *phase, uint32_t addr, uint32_t done,
                                uint32_t total, void *ctx);
 
@@ -361,15 +360,14 @@ static void progTaskDoRun(void)
   }
 }
 
-static bool progTaskProjCb(const char *proj, const char *name, const char *device, void *ctx)
+static bool progTaskProjCb(const char *proj, const char *name, void *ctx)
 {
   (void)ctx;
 
   if (proj_cnt >= PROG_PROJ_CNT) return false;
 
-  snprintf(proj_list[proj_cnt].proj,   JOB_PROJ_MAX, "%s", proj);
-  snprintf(proj_list[proj_cnt].name,   JOB_NAME_MAX, "%s", name);
-  snprintf(proj_list[proj_cnt].device, DEV_NAME_MAX, "%s", device);
+  snprintf(proj_list[proj_cnt].proj, JOB_PROJ_MAX, "%s", proj);
+  snprintf(proj_list[proj_cnt].name, JOB_NAME_MAX, "%s", name);
   proj_cnt++;
   return true;
 }
