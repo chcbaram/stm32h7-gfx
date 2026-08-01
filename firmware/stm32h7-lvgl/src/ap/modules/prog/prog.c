@@ -444,9 +444,15 @@ void cliProg(cli_args_t *args)
       else
       {
         t0  = millis();
-        err = flmWriteFile(&flm, img, flash, NULL, NULL, &written);
+        flm_time_t tm;
+
+        err = flmWriteFile(&flm, img, flash, NULL, NULL, &written, &tm);
         cliPrintf("write  : %s  %d bytes, %d ms\n",
                   swdErrStr(err), (int)written, (int)(millis() - t0));
+        cliPrintf("  erase   : %5d ms\n", (int)tm.erase_ms);
+        cliPrintf("  sd read : %5d ms\n", (int)tm.read_ms);
+        cliPrintf("  xfer    : %5d ms   (%d 페이지)\n", (int)tm.xfer_ms, (int)tm.page_cnt);
+        cliPrintf("  algo    : %5d ms\n", (int)tm.call_ms);
 
         if (err == SWD_OK)
         {

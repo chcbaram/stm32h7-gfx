@@ -37,6 +37,8 @@
 #define FLM_CLK_DEF         8000000
 #define FLM_PAGE_MAX        4096
 
+static uint32_t flm_xfer_ms;      // flmProgramPage 안의 전송 시간 누적
+
 
 static uint32_t flmU16(const uint8_t *p);
 static uint32_t flmU32(const uint8_t *p);
@@ -141,7 +143,9 @@ swd_err_t flmLoad(flm_t *p_flm, uint32_t ram_base, uint32_t ram_size)
   p_flm->algo.static_base = 0;
   p_flm->algo.stack_top   = (hi + FLM_STACK_SIZE + 7) & ~7UL;
 
-  p_flm->buf_addr = (p_flm->algo.stack_top + 3) & ~3UL;
+  /* 버퍼를 두 개 잡는다. 타깃이 A 를 굽는 동안 B 를 채워 넣기 위해서다. */
+  p_flm->buf_addr    = (p_flm->algo.stack_top + 3) & ~3UL;
+  p_flm->buf_addr_b  = p_flm->buf_addr + ((p_flm->dev.sz_page + 3) & ~3UL);
 
   /* PrgData 가 있으면 그 주소가 R9(static base)다. RWPI 로 빌드된 알고리즘은
      전역 접근에 R9 를 쓴다. */
@@ -154,7 +158,7 @@ swd_err_t flmLoad(flm_t *p_flm, uint32_t ram_base, uint32_t ram_size)
     }
   }
 
-  if (p_flm->buf_addr + p_flm->dev.sz_page > p_flm->ram_end)
+  if (p_flm->buf_addr_b + p_flm->dev.sz_page > p_flm->ram_end)
   {
     return SWD_ERR_PROTOCOL;      // 아레나가 RAM 을 넘는다
   }
@@ -209,9 +213,14 @@ swd_err_t flmProgramPage(flm_t *p_flm, uint32_t addr, const uint8_t *p_data, uin
   if (flmIsInRange(p_flm, addr) == false)         return SWD_ERR_PROTOCOL;
 
   // 굽을 데이터를 타깃 버퍼에 먼저 올린다
-  if (flmLoadCb(p_flm->buf_addr, p_data, len, p_flm) == false)
   {
-    return SWD_ERR_FAULT;
+    uint32_t t0 = millis();
+
+    if (flmLoadCb(p_flm->buf_addr, p_data, len, p_flm) == false)
+    {
+      return SWD_ERR_FAULT;
+    }
+    flm_xfer_ms += millis() - t0;
   }
 
   return flmCall(p_flm, p_flm->fn_program + (uint32_t)p_flm->delta,
@@ -325,14 +334,19 @@ static swd_err_t flmEraseRange(flm_t *p_flm, uint32_t addr, uint32_t len,
 }
 
 swd_err_t flmWriteFile(flm_t *p_flm, const char *path, uint32_t addr,
-                       flm_progress_t cb, void *ctx, uint32_t *p_written)
+                       flm_progress_t cb, void *ctx, uint32_t *p_written,
+                       flm_time_t *p_time)
 {
+  flm_time_t tm;
   static uint8_t page[FLM_PAGE_MAX] __attribute__((aligned(32)));
   FIL        file;
   swd_err_t  err;
   uint32_t   size;
   uint32_t   done = 0;
+  uint32_t   t0;
 
+  memset(&tm, 0, sizeof(tm));
+  flm_xfer_ms = 0;
   if (p_flm == NULL || p_flm->is_loaded == false) return SWD_ERR_PROTOCOL;
   if (flmIsInRange(p_flm, addr) == false)         return SWD_ERR_PROTOCOL;
   if (p_flm->dev.sz_page > FLM_PAGE_MAX)          return SWD_ERR_PROTOCOL;
@@ -346,7 +360,9 @@ swd_err_t flmWriteFile(flm_t *p_flm, const char *path, uint32_t addr,
     return SWD_ERR_PROTOCOL;
   }
 
+  t0  = millis();
   err = flmEraseRange(p_flm, addr, size, cb, ctx);
+  tm.erase_ms = millis() - t0;
   if (err != SWD_OK)
   {
     f_close(&file);
@@ -360,36 +376,95 @@ swd_err_t flmWriteFile(flm_t *p_flm, const char *path, uint32_t addr,
     return err;
   }
 
-  while (done < size)
+  /* 이중 버퍼 파이프라인.
+       1. 페이지 N 을 타깃 버퍼에 올린다
+       2. ProgramPage 를 시작만 하고 기다리지 않는다
+       3. 타깃이 굽는 동안 페이지 N+1 을 SD 에서 읽어 다른 버퍼에 올린다
+       4. 그제서야 N 의 완료를 기다린다
+     AHB-AP 는 코어와 독립적으로 동작하므로 3번이 가능하다. */
   {
-    uint32_t n = p_flm->dev.sz_page;
-    UINT     br = 0;
+    uint32_t buf[2] = { p_flm->buf_addr, p_flm->buf_addr_b };
+    uint32_t idx    = 0;
+    bool     armed  = false;
+    uint32_t armed_len = 0;
 
-    if (n > size - done) n = size - done;
-
-    if (f_read(&file, page, n, &br) != FR_OK || br != n)
+    while (done < size || armed)
     {
-      err = SWD_ERR_PROTOCOL;
-      break;
-    }
-    // 마지막 페이지가 짧으면 빈 값으로 채운다
-    if (n < p_flm->dev.sz_page)
-    {
-      memset(&page[n], p_flm->dev.val_empty, p_flm->dev.sz_page - n);
-      n = p_flm->dev.sz_page;
-    }
+      uint32_t n  = 0;
+      UINT     br = 0;
 
-    err = flmProgramPage(p_flm, addr + done, page, n);
-    if (err != SWD_OK) break;
+      // 다음 페이지를 준비한다 (타깃은 이전 페이지를 굽는 중일 수 있다)
+      if (done + armed_len < size)
+      {
+        uint32_t nxt = p_flm->dev.sz_page;
 
-    done += br;
-    if (cb) cb("program", addr + done, done, size, ctx);
+        if (nxt > size - (done + armed_len)) nxt = size - (done + armed_len);
+
+        t0 = millis();
+        if (f_read(&file, page, nxt, &br) != FR_OK || br != nxt)
+        {
+          err = SWD_ERR_PROTOCOL;
+          break;
+        }
+        tm.read_ms += millis() - t0;
+
+        if (nxt < p_flm->dev.sz_page)
+        {
+          memset(&page[nxt], p_flm->dev.val_empty, p_flm->dev.sz_page - nxt);
+        }
+        n = nxt;
+
+        t0 = millis();
+        if (flmLoadCb(buf[idx], page, p_flm->dev.sz_page, p_flm) == false)
+        {
+          err = SWD_ERR_FAULT;
+          break;
+        }
+        tm.xfer_ms += millis() - t0;
+      }
+
+      // 앞서 시작해 둔 것이 있으면 이제 거둔다
+      if (armed)
+      {
+        uint32_t ret = 0;
+
+        t0  = millis();
+        err = swdAlgoWait(&p_flm->algo, p_flm->dev.to_prog, &ret);
+        tm.call_ms += millis() - t0;
+        armed = false;
+
+        if (err != SWD_OK || ret != 0)
+        {
+          if (err == SWD_OK) err = SWD_ERR_FAULT;
+          break;
+        }
+        done += armed_len;
+        armed_len = 0;
+        tm.page_cnt++;
+        if (cb) cb("program", addr + done, done, size, ctx);
+      }
+
+      // 준비된 페이지가 있으면 굽기를 시작만 한다
+      if (n > 0)
+      {
+        t0  = millis();
+        err = swdAlgoStart(&p_flm->algo, p_flm->fn_program + (uint32_t)p_flm->delta,
+                           addr + done, p_flm->dev.sz_page, buf[idx], 0);
+        tm.call_ms += millis() - t0;
+        if (err != SWD_OK) break;
+
+        armed     = true;
+        armed_len = n;
+        idx      ^= 1;
+      }
+    }
   }
 
   flmUnInit(p_flm, FLM_FNC_PROGRAM);
   f_close(&file);
 
   if (p_written) *p_written = done;
+  if (p_time)    *p_time    = tm;
   return err;
 }
 

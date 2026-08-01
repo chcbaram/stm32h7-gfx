@@ -75,6 +75,7 @@ typedef struct
   uint32_t       fn_program;
 
   uint32_t       buf_addr;      // ProgramPage 의 buf 인자로 넘길 타깃 주소
+  uint32_t       buf_addr_b;    // 이중 버퍼용 두 번째 버퍼
   uint32_t       ram_base;
   uint32_t       ram_end;
   int32_t        delta;         // 재배치량
@@ -109,8 +110,21 @@ uint32_t  flmSectorSize(flm_t *p_flm, uint32_t addr);
 typedef void (*flm_progress_t)(const char *phase, uint32_t addr, uint32_t done,
                                uint32_t total, void *ctx);
 
+/* 어디서 시간을 쓰는지 나눠서 돌려준다. 소거는 순수 타깃 시간이고
+   굽기는 우리 오버헤드가 섞여 있어서, 합쳐 보면 개선할 곳이 안 보인다. */
+typedef struct
+{
+  uint32_t erase_ms;
+  uint32_t xfer_ms;       // 페이지를 타깃 RAM 버퍼로 옮기는 시간
+  uint32_t call_ms;       // ProgramPage 호출(레지스터 세팅 + 완료 대기)
+  uint32_t read_ms;       // SD 카드에서 읽는 시간
+  uint32_t page_cnt;
+  uint32_t sector_cnt;
+} flm_time_t;
+
 swd_err_t flmWriteFile(flm_t *p_flm, const char *path, uint32_t addr,
-                       flm_progress_t cb, void *ctx, uint32_t *p_written);
+                       flm_progress_t cb, void *ctx, uint32_t *p_written,
+                       flm_time_t *p_time);
 
 // 구운 결과를 파일과 되읽어 비교한다.
 swd_err_t flmVerifyFile(flm_t *p_flm, const char *path, uint32_t addr,
