@@ -113,6 +113,8 @@ uint8_t              progTaskGetPercent(void);
 const char          *progTaskGetPhase(void);
 const prog_target_t *progTaskGetTarget(void);
 uint32_t             progTaskGetProjCnt(void);
+// 목록이 다시 만들어질 때마다 바뀐다. 열려 있는 목록 화면을 갱신하는 신호다.
+uint8_t              progTaskGetProjSeq(void);
 const prog_proj_t   *progTaskGetProj(uint32_t idx);
 uint32_t             progTaskGetElapsed(void);
 

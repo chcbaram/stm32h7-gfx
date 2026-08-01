@@ -114,6 +114,7 @@ static char         sel_proj[JOB_PROJ_MAX];
 static char         sel_name[JOB_NAME_MAX];
 static uint8_t      last_step_seq = 0xFF;
 static uint8_t      last_pct      = 0xFF;
+static uint8_t      last_proj_seq = 0xFF;
 static prog_state_t last_state    = PROG_STATE_CNT;
 
 
@@ -144,6 +145,7 @@ static bool swdprogEnter(lv_obj_t *scr)
 
   last_step_seq = 0xFF;
   last_pct      = 0xFF;
+  last_proj_seq = 0xFF;
   last_state    = PROG_STATE_CNT;
   step_drawn    = 0;
   step_follow   = true;
@@ -656,6 +658,15 @@ static void swdprogUpdate(void)
       last_step_seq = seq;
     }
   }
+  else if (cur_page == PAGE_LIST)
+  {
+    // 워커가 목록을 다 만들면 그때 그린다 (SD 훑기는 수십 ms 씩 걸린다)
+    if (progTaskGetProjSeq() != last_proj_seq)
+    {
+      last_proj_seq = progTaskGetProjSeq();
+      listRefresh();
+    }
+  }
   else if (cur_page == PAGE_HOME)
   {
     if (st != last_state || seq != last_step_seq)
@@ -687,7 +698,8 @@ static void cbPick(lv_event_t *e)
 
   if (progTaskGetState() == PROG_RUNNING) return;
 
-  listRefresh();
+  progTaskList();          // 들어갈 때마다 다시 훑는다 (SD 를 갈아 끼웠을 수 있다)
+  listRefresh();           // 있는 것부터 먼저 보여주고, 준비되면 update 가 다시 그린다
   pageShow(PAGE_LIST);
 }
 

@@ -20,16 +20,17 @@
 #define PROG_THREAD_STACK   (8 * 1024)
 
 
-typedef enum
-{
-  PROG_REQ_NONE = 0,
-  PROG_REQ_SCAN,
-  PROG_REQ_LIST,
-  PROG_REQ_RUN,
-} prog_req_t;
+/* 요청은 비트마스크다.
+
+   단일 변수로 두었더니 UI 가 목록과 스캔을 연달아 요청할 때 뒤엣것이 앞엣것을
+   덮어썼다. 워커는 5ms 마다 보는데 그 사이에 둘이 들어오면 하나가 사라진다.
+   실제로 앱에 들어오자마자 목록이 통째로 비어 있었다. */
+#define PROG_REQ_SCAN   (1 << 0)
+#define PROG_REQ_LIST   (1 << 1)
+#define PROG_REQ_RUN    (1 << 2)
 
 
-static volatile prog_req_t   prog_req;
+static volatile uint32_t     prog_req;
 static volatile prog_state_t prog_state;
 static volatile bool         prog_abort;
 static volatile uint8_t      prog_pct;
@@ -40,6 +41,7 @@ static char          req_proj[JOB_PROJ_MAX];
 static prog_target_t target;
 static prog_proj_t   proj_list[PROG_PROJ_CNT];
 static uint32_t      proj_cnt;
+static volatile uint8_t proj_seq;
 
 static prog_step_t   step[PROG_STEP_CNT];
 static uint32_t      step_cnt;
@@ -92,7 +94,7 @@ bool progTaskScan(void)
       prog_state == PROG_RUNNING) return false;
 
   prog_abort = false;
-  prog_req   = PROG_REQ_SCAN;
+  prog_req  |= PROG_REQ_SCAN;
   return true;
 }
 
@@ -102,7 +104,7 @@ bool progTaskList(void)
       prog_state == PROG_RUNNING) return false;
 
   prog_abort = false;
-  prog_req   = PROG_REQ_LIST;
+  prog_req  |= PROG_REQ_LIST;
   return true;
 }
 
@@ -117,7 +119,7 @@ bool progTaskRun(const char *project)
   __DMB();
 
   prog_abort = false;
-  prog_req   = PROG_REQ_RUN;
+  prog_req  |= PROG_REQ_RUN;
   return true;
 }
 
@@ -162,6 +164,7 @@ void progTaskSetProject(const char *project)
   nvsSet(PROG_NVS_PROJ, sel_project, sizeof(sel_project));
 }
 uint32_t     progTaskGetProjCnt(void) { return proj_cnt; }
+uint8_t      progTaskGetProjSeq(void) { return proj_seq; }
 
 const prog_target_t *progTaskGetTarget(void)
 {
@@ -182,19 +185,24 @@ static void progTaskThread(void const *arg)
 
   while (1)
   {
-    prog_req_t req = prog_req;
+    uint32_t req = prog_req;
 
-    if (req != PROG_REQ_NONE)
+    /* 하나씩 처리한다. 잡은 비트만 지워서 같이 들어온 다른 요청이 살아남는다.
+       목록 -> 스캔 -> 굽기 순인데, 굽기가 가장 오래 걸리므로 나중이다. */
+    if (req & PROG_REQ_LIST)
     {
-      prog_req = PROG_REQ_NONE;      // 잡는 즉시 지운다
-
-      switch (req)
-      {
-        case PROG_REQ_SCAN: progTaskDoScan(); break;
-        case PROG_REQ_LIST: progTaskDoList(); break;
-        case PROG_REQ_RUN:  progTaskDoRun();  break;
-        default: break;
-      }
+      prog_req &= ~PROG_REQ_LIST;
+      progTaskDoList();
+    }
+    else if (req & PROG_REQ_SCAN)
+    {
+      prog_req &= ~PROG_REQ_SCAN;
+      progTaskDoScan();
+    }
+    else if (req & PROG_REQ_RUN)
+    {
+      prog_req &= ~PROG_REQ_RUN;
+      progTaskDoRun();
     }
     delay(5);
   }
@@ -286,6 +294,7 @@ static void progTaskDoList(void)
 
   jobList(progTaskProjCb, NULL);
 
+  proj_seq++;
   prog_state = PROG_DONE;
 }
 
