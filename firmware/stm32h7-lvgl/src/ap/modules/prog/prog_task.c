@@ -39,8 +39,13 @@ static const char           *prog_phase = "";
 
 static char          req_proj[JOB_PROJ_MAX];
 static prog_target_t target;
-static prog_proj_t   proj_list[PROG_PROJ_CNT];
+/* 목록은 두 벌이다. 만드는 동안 보여주는 쪽을 건드리지 않으려는 것이다.
+   한 벌로 두고 시작할 때 개수를 0 으로 만들면, 화면이 빈 목록을 한 번 그렸다가
+   1초쯤 뒤 다시 채워져 깜빡이는 것처럼 보인다. */
+static prog_proj_t   proj_list[PROG_PROJ_CNT];    // UI 가 읽는다
+static prog_proj_t   proj_build[PROG_PROJ_CNT];   // 워커가 만든다
 static uint32_t      proj_cnt;
+static uint32_t      proj_build_cnt;
 static volatile uint8_t proj_seq;
 
 static prog_step_t   step[PROG_STEP_CNT];
@@ -211,12 +216,17 @@ static void progTaskThread(void const *arg)
 /* 연결된 타깃을 훑는다. 굽지 않고 읽기만 한다.
 
    순서가 중요하다. DP 를 먼저 깨우고, 코어 디버그가 어느 AP 뒤에 있는지 찾고,
-   그 다음에야 CPUID 와 디바이스 판별이 의미가 있다. */
+   그 다음에야 CPUID 와 디바이스 판별이 의미가 있다.
+
+   결과는 임시 구조체에 모았다가 마지막에 한 번에 옮긴다. 시작할 때 target 을
+   지우면 화면이 "-" 로 돌아갔다가 1초쯤 뒤 다시 채워져 깜빡이는 것처럼 보인다.
+   이전에 알아낸 것은 새 답이 나올 때까지 그대로 두는 게 맞다. */
 static void progTaskDoScan(void)
 {
-  uint32_t  idcode = 0;
-  uint32_t  t0     = millis();
-  swd_err_t err;
+  prog_target_t tmp;
+  uint32_t      idcode = 0;
+  uint32_t      t0     = millis();
+  swd_err_t     err;
 
   prog_state = PROG_SCANNING;
   prog_phase = "scan";
@@ -224,21 +234,26 @@ static void progTaskDoScan(void)
   step_cnt   = 0;
   step_seq++;
 
-  memset(&target, 0, sizeof(target));
+  memset(&tmp, 0, sizeof(tmp));
 
   err = swdConnect(&idcode);
   if (err != SWD_OK)
   {
     progTaskStep(0, "연결 실패 : %s", swdErrStr(err));
+    progTaskStepEnd(PROG_STEP_FAIL);
     progTaskStep(0, "배선과 타깃 전원을 확인해라");
+    progTaskStepEnd(PROG_STEP_FAIL);
+
+    target     = tmp;              // 연결이 끊긴 건 바로 알려야 한다
     prog_ms    = millis() - t0;
     prog_state = PROG_ERROR;
     return;
   }
 
-  target.idcode = idcode;
-  target.dp_ver = (idcode >> 12) & 0xF;
-  progTaskStep(0, "DPIDR  : 0x%08X  DPv%d", idcode, (int)target.dp_ver);
+  tmp.idcode = idcode;
+  tmp.dp_ver = (idcode >> 12) & 0xF;
+  progTaskStep(0, "DPIDR  : 0x%08X  DPv%d", idcode, (int)tmp.dp_ver);
+  progTaskStepEnd(PROG_STEP_OK);
   prog_pct = 25;
 
   swdCmInvalidate();
@@ -246,41 +261,53 @@ static void progTaskDoScan(void)
   if (err != SWD_OK)
   {
     progTaskStep(0, "코어 디버그를 못 찾았다");
+    progTaskStepEnd(PROG_STEP_FAIL);
+
+    target     = tmp;
     prog_ms    = millis() - t0;
     prog_state = PROG_ERROR;
     return;
   }
-  target.ap = swdDapGetAp();
-  progTaskStep(0, "AP     : %d", (int)target.ap);
+  tmp.ap = swdDapGetAp();
+  progTaskStep(0, "AP     : %d", (int)tmp.ap);
+  progTaskStepEnd(PROG_STEP_OK);
   prog_pct = 50;
 
-  swdMemRead32(0xE000ED00, &target.cpuid);
-  progTaskStep(0, "CPUID  : 0x%08X", target.cpuid);
+  swdMemRead32(0xE000ED00, &tmp.cpuid);
+  progTaskStep(0, "CPUID  : 0x%08X", tmp.cpuid);
+  progTaskStepEnd(PROG_STEP_OK);
   prog_pct = 75;
 
-  err = devDetect(&target.dev, &target.id_read);
-  target.dev_found = (err == SWD_OK);
+  err = devDetect(&tmp.dev, &tmp.id_read);
+  tmp.dev_found = (err == SWD_OK);
 
-  if (target.dev_found)
+  if (tmp.dev_found)
   {
-    progTaskStep(0, "%s", target.dev.name);
-    progTaskStep(0, "ram 0x%08X  %d KB", target.dev.ram, (int)(target.dev.ram_sz / 1024));
-    if (target.dev.flash_sz)
+    progTaskStep(0, "%s", tmp.dev.name);
+    progTaskStepEnd(PROG_STEP_OK);
+    progTaskStep(0, "ram 0x%08X  %d KB", tmp.dev.ram, (int)(tmp.dev.ram_sz / 1024));
+    progTaskStepEnd(PROG_STEP_OK);
+    if (tmp.dev.flash_sz)
     {
-      progTaskStep(0, "flash 0x%08X  %d KB", target.dev.flash,
-                  (int)(target.dev.flash_sz / 1024));
+      progTaskStep(0, "flash 0x%08X  %d KB", tmp.dev.flash,
+                   (int)(tmp.dev.flash_sz / 1024));
+      progTaskStepEnd(PROG_STEP_OK);
     }
   }
   else if (err == SWD_ERR_FAULT)
   {
-    progTaskStep(0, "0x%08X 에 맞는 항목이 둘 이상", target.id_read);
+    progTaskStep(0, "0x%08X 에 맞는 항목이 둘 이상", tmp.id_read);
+    progTaskStepEnd(PROG_STEP_FAIL);
   }
   else
   {
-    progTaskStep(0, "DB 에 없다 (읽은값 0x%08X)", target.id_read);
+    progTaskStep(0, "DB 에 없다 (읽은값 0x%08X)", tmp.id_read);
+    progTaskStepEnd(PROG_STEP_FAIL);
   }
 
-  target.is_valid = true;
+  tmp.is_valid = true;
+  target       = tmp;              // 다 끝난 뒤에 한 번에 바꾼다
+
   prog_pct   = 100;
   prog_ms    = millis() - t0;
   prog_state = PROG_DONE;
@@ -288,11 +315,15 @@ static void progTaskDoScan(void)
 
 static void progTaskDoList(void)
 {
-  prog_state = PROG_LISTING;
-  prog_phase = "list";
-  proj_cnt   = 0;
+  prog_state     = PROG_LISTING;
+  prog_phase     = "list";
+  proj_build_cnt = 0;
 
   jobList(progTaskProjCb, NULL);
+
+  // 다 만든 뒤에 한 번에 바꾼다
+  memcpy(proj_list, proj_build, sizeof(proj_list));
+  proj_cnt = proj_build_cnt;
 
   proj_seq++;
   prog_state = PROG_DONE;
@@ -360,15 +391,16 @@ static void progTaskDoRun(void)
   }
 }
 
+/* 만드는 쪽 버퍼에만 담는다. 보여주는 쪽은 다 만든 뒤에 한 번에 바뀐다. */
 static bool progTaskProjCb(const char *proj, const char *name, void *ctx)
 {
   (void)ctx;
 
-  if (proj_cnt >= PROG_PROJ_CNT) return false;
+  if (proj_build_cnt >= PROG_PROJ_CNT) return false;
 
-  snprintf(proj_list[proj_cnt].proj, JOB_PROJ_MAX, "%s", proj);
-  snprintf(proj_list[proj_cnt].name, JOB_NAME_MAX, "%s", name);
-  proj_cnt++;
+  snprintf(proj_build[proj_build_cnt].proj, JOB_PROJ_MAX, "%s", proj);
+  snprintf(proj_build[proj_build_cnt].name, JOB_NAME_MAX, "%s", name);
+  proj_build_cnt++;
   return true;
 }
 
