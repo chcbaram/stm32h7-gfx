@@ -18,10 +18,13 @@ bool uiInit(void)
   bool ret;
 
 
-#ifdef _USE_HW_LCD
-  lcdLogoOff();
-#endif
-
+  /* 부팅 로고(lcdInit 에서 그림)를 여기서 지우지 않는다.
+   *
+   * LVGL 은 DIRECT 모드로 "지금 표시중이 아닌" 버퍼에 첫 프레임을 통째로
+   * 그린 뒤 표시 주소를 그쪽으로 바꾼다. 즉 로고는 아래 폰트 로드와 런처
+   * 구성이 끝나고 첫 프레임이 완성되는 순간까지 그대로 떠 있다가 완성된
+   * 메뉴로 한 번에 바뀐다. 여기서 지우면 그 사이가 까만 화면이 된다.
+   */
   lvglInit();
 
   /* SPI Flash 의 한글 폰트를 fallback 으로 로드한다. (없으면 영문만 표시)
