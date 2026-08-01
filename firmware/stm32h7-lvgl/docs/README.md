@@ -35,7 +35,7 @@ ARM이 정한 규격이라 ST든 Nordic이든 NXP든 같은 코드가 돈다.
 | [6. ELF 파서를 펌웨어에 넣기](06-elf-loader.md) | 스트리밍 ELF32 파서, 재배치, 타깃 RAM 로드 | 완료 |
 | [7. 첫 굽기 — 그리고 타깃을 한 번 죽였다](07-first-burn.md) | `FlashDevice` 바인딩, 파일 굽기, 링크 복구 | 완료 |
 | [8. 얼마나 빠른가](08-performance.md) | pyOCD·ST 도구와 비교, 이중 버퍼링, 병목 분석 | 완료 |
-| 9. 펌웨어 파일 형식 | `.elf` / Intel HEX 지원 | 예정 |
+| [9. 펌웨어 파일 세 가지](09-image-format.md) | `.bin` / `.elf` / Intel HEX, 주소는 어디서 오나 | 완료 |
 | 10. 설정 파일과 잡 제어 | 디바이스 DB, 매니페스트 | 예정 |
 | 11. GUI | LVGL 앱, 펌웨어 선택, 진행률 | 예정 |
 
@@ -54,9 +54,10 @@ halt at  : PC 0x08033E70  SP 0x20020000   reason : VCATCH
 cli# swd bench 0x20000000 32
 read 32 KB in 41 ms -> 780 KB/s
 
-cli# prog write /prog/loaders/STM32F4xx_512.FLM /prog/fw/f411_lcd/app.bin 0x20001000 0x08000000
-write  : OK  299048 bytes, 8730 ms
-verify : OK  불일치 0, 1478 ms  -> PASS
+cli# prog write /prog/loaders/STM32F4xx_512.FLM /prog/fw/f411_lcd/app.elf 0x20001000
+image  : /prog/fw/f411_lcd/app.elf (elf, 주소는 파일 안에)
+write  : OK  0x08000000, 299048 bytes, 8799 ms
+verify : OK  불일치 0, 1556 ms  -> PASS
 ```
 
 - SWD 링크, 타깃 메모리 읽기·쓰기 (실용 상한 약 3.5 MHz, 780 KB/s)
@@ -65,6 +66,7 @@ verify : OK  불일치 0, 1478 ms  -> PASS
 - 타깃 RAM 에서 임의 함수 호출
 - `.FLM` 파싱과 재배치 로드
 - **292KB 펌웨어를 굽고 검증하고 부팅까지** (10.2초, pyOCD 의 2.1배 속도)
+- `.bin` / `.elf` / Intel HEX — 확장자가 아니라 내용으로 판별하고, `.bin` 만 주소를 묻는다
 - 순간적인 비트 오류를 스스로 복구 (3.5MHz 에서 52회 발생, 52회 복구)
 - 파형을 직접 보고 프로토콜을 디코드하는 내장 도구
 

@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 470" width="860" height="470" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="ar2" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+  <style>
+    .ttl { font-size: 15px; fill: #111827; font-weight: 700; }
+    .hd  { font-size: 12px; fill: #374151; font-weight: 700; }
+    .lb  { font-size: 11px; fill: #374151; }
+    .sm  { font-size: 10px; fill: #6b7280; }
+    .mn  { font-size: 10px; fill: #374151; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .box { stroke-width: 1.2; rx: 3; }
+  </style>
+
+  <text x="24" y="30" class="ttl">세 포맷의 차이는 하나 — 굽는 주소를 누가 아는가</text>
+  <text x="24" y="50" class="sm">굽기 루프는 파일을 모른다. "이 플래시 주소의 페이지 한 장을 채워라" 콜백 하나만 본다.</text>
+
+  <!-- ================= .bin ================= -->
+  <text x="24" y="92" class="hd">.bin</text>
+  <text x="24" y="110" class="sm">주소를 모른다</text>
+
+  <rect x="110" y="76" width="150" height="46" class="box" fill="#f3f4f6" stroke="#9ca3af"/>
+  <text x="185" y="95"  class="lb" text-anchor="middle">바이트만 있다</text>
+  <text x="185" y="112" class="sm" text-anchor="middle">299,048 B</text>
+
+  <path d="M268,99 L316,99" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar2)"/>
+
+  <rect x="322" y="76" width="176" height="46" class="box" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="410" y="95"  class="lb" text-anchor="middle">사람이 인자로 준다</text>
+  <text x="410" y="112" class="mn" text-anchor="middle">prog write ... 0x08000000</text>
+
+  <text x="516" y="103" class="sm">잘못 치면 엉뚱한 데를 지운다</text>
+
+  <!-- ================= .elf ================= -->
+  <text x="24" y="180" class="hd">.elf</text>
+  <text x="24" y="198" class="sm">세그먼트가 안다</text>
+
+  <rect x="110" y="152" width="388" height="86" class="box" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="122" y="171" class="sm">PT_LOAD</text>
+  <text x="196" y="171" class="sm">p_vaddr</text>
+  <text x="286" y="171" class="sm">p_paddr  (굽는 곳)</text>
+  <text x="404" y="171" class="sm">filesz</text>
+
+  <text x="122" y="191" class="mn">LOAD</text>
+  <text x="196" y="191" class="mn">0x08000000</text>
+  <text x="286" y="191" class="mn">0x08000000</text>
+  <text x="404" y="191" class="mn">0x48d8c</text>
+
+  <rect x="188" y="197" width="196" height="18" fill="#fef3c7" stroke="#d97706" stroke-width="1" rx="2"/>
+  <text x="122" y="211" class="mn">LOAD</text>
+  <text x="196" y="211" class="mn">0x20000000</text>
+  <text x="286" y="211" class="mn">0x08048d8c</text>
+  <text x="404" y="211" class="mn">0x0029c</text>
+
+  <text x="122" y="231" class="mn" fill="#9ca3af">LOAD</text>
+  <text x="196" y="231" class="mn" fill="#9ca3af">0x20018a98</text>
+  <text x="286" y="231" class="mn" fill="#9ca3af">0x08049028</text>
+  <text x="404" y="231" class="mn" fill="#9ca3af">0</text>
+
+  <text x="516" y="196" class="sm" fill="#d97706">.data 는 vaddr 이 RAM, paddr 이 플래시</text>
+  <text x="516" y="212" class="sm" fill="#d97706">vaddr 을 쓰면 RAM 주소에 굽는다</text>
+  <text x="516" y="234" class="sm" fill="#9ca3af">filesz 0 = .bss 뿐, 굽지 않는다</text>
+
+  <!-- ================= .hex ================= -->
+  <text x="24" y="296" class="hd">.hex</text>
+  <text x="24" y="314" class="sm">레코드마다 안다</text>
+
+  <rect x="110" y="268" width="388" height="76" class="box" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="122" y="288" class="mn">:020000<tspan fill="#2563eb" font-weight="700">04</tspan>0800F2</text>
+  <text x="300" y="288" class="sm">확장 선형 — 상위 16비트 = 0x0800</text>
+
+  <text x="122" y="308" class="mn">:10<tspan fill="#2563eb" font-weight="700">0000</tspan>00 0000022071... B8</text>
+  <text x="300" y="308" class="sm">데이터 16바이트 @ 0x08000000</text>
+
+  <text x="122" y="328" class="mn" fill="#9ca3af">... 18,699 개 ...</text>
+  <text x="300" y="328" class="sm">841 KB, 흩어진 주소</text>
+
+  <text x="516" y="290" class="sm">파일을 앞으로만 한 번 훑는다</text>
+  <text x="516" y="306" class="sm">레코드 하나를 물고 있다가</text>
+  <text x="516" y="322" class="sm">창에 걸리는 만큼만 복사</text>
+  <text x="516" y="342" class="sm" fill="#dc2626">순서 역행·체크섬은 열 때 거부</text>
+
+  <!-- ================= 공통 접점 ================= -->
+  <path d="M62,124 L62,368" stroke="#9ca3af" stroke-width="1" fill="none"/>
+  <circle cx="62" cy="124" r="2.5" fill="#9ca3af"/>
+  <circle cx="62" cy="240" r="2.5" fill="#9ca3af"/>
+  <circle cx="62" cy="346" r="2.5" fill="#9ca3af"/>
+  <path d="M62,368 L104,368" stroke="#9ca3af" stroke-width="1.2" fill="none" marker-end="url(#ar2)"/>
+
+  <text x="112" y="372" class="sm" fill="#9ca3af">세 포맷 공통 접점</text>
+
+  <rect x="110" y="384" width="388" height="34" class="box" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="304" y="405" class="mn" text-anchor="middle">fill(src, addr, buf, len)</text>
+
+  <text x="516" y="398" class="sm">굽기와 검증이 같은 콜백을 쓴다.</text>
+  <text x="516" y="414" class="sm">그래서 빈틈의 패딩까지 그대로 확인된다.</text>
+
+  <text x="24" y="450" class="sm">실측 (STM32F411, 3.5MHz, 같은 펌웨어) — bin 8,805 / elf 8,799 / hex 9,887 ms · 셋 다 불일치 0, 셋 다 부팅</text>
+  <text x="24" y="464" class="sm" fill="#9ca3af">5.3MB 짜리 비스트립 elf 도 410KB 스트립본과 같은 시간. 스트리밍 파서라 파일 크기가 아니라 PT_LOAD 크기만 든다.</text>
+</svg>
