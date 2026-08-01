@@ -206,6 +206,12 @@ swd_err_t algoVerifyElf(algo_t *p_algo, const char *path,
 swd_err_t algoVerifyHex(algo_t *p_algo, const char *path,
                         algo_progress_t cb, void *ctx, uint32_t *p_bad);
 
+/* 중단 요청을 묻는 함수를 걸어둔다. 소거·굽기·검증 루프가 조각마다 물어본다.
+
+   NULL 이면 안 묻는다. 알고리즘 호출 도중에는 끊지 않는다 - 타깃이 플래시를
+   쓰고 있는 중일 수 있어서, 조각 경계에서만 멈추는 게 안전하다. */
+void      algoSetAbortCb(bool (*is_abort)(void));
+
 // 포맷 구현이 타깃 RAM 에 바이트를 옮길 때 쓴다.
 bool      algoWriteMem(uint32_t addr, const uint8_t *p_data, uint32_t len, void *ctx);
 

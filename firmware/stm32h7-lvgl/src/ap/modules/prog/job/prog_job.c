@@ -141,15 +141,33 @@ swd_err_t jobRun(job_t *p_job, algo_progress_t cb, void *ctx, bool do_verify)
   }
   if (cb) cb("ap", swdDapGetAp(), 0, 0, ctx);
 
-  // 2) 디바이스
-  if (p_job->device[0] != 0)
+  /* 2) 디바이스.
+
+     fw.txt 가 device 를 적었더라도 타깃을 직접 읽어 대조한다. 지우기 직전에
+     신원을 확인하는 이 한 번이, 엉뚱한 보드를 지우는 걸 막는 유일한 장치다.
+
+     실제로 F411 을 물린 채 H7RS 용 잡을 돌렸다. 대조가 없으면 H7RS 알고리즘을
+     F411 RAM 에 올려 굽기 시작한다. */
   {
-    if (devFind(p_job->device, &dev) == false) return SWD_ERR_PROTOCOL;
-  }
-  else
-  {
-    err = devDetect(&dev, &id);
-    if (err != SWD_OK) return err;
+    prog_dev_t found;
+
+    err = devDetect(&found, &id);
+
+    if (p_job->device[0] != 0)
+    {
+      if (devFind(p_job->device, &dev) == false) return SWD_ERR_PROTOCOL;
+
+      if (err == SWD_OK && strcmp(found.name, dev.name) != 0)
+      {
+        if (cb) cb("mismatch", 0, 0, 0, ctx);
+        return SWD_ERR_MISMATCH;
+      }
+    }
+    else
+    {
+      if (err != SWD_OK) return err;
+      dev = found;
+    }
   }
   if (p_job->ap == 0xFF && dev.ap != 0xFF) swdCmSetAp(dev.ap);
   if (cb) cb("device", dev.ram, 0, 0, ctx);

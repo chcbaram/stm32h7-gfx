@@ -30,6 +30,20 @@ static const algo_ops_t *algo_ops_tbl[] =
 static swd_err_t algoEraseRange(algo_t *p_algo, uint32_t addr, uint32_t len,
                                 algo_progress_t cb, void *ctx);
 
+static bool (*algo_is_abort)(void);
+
+
+void algoSetAbortCb(bool (*is_abort)(void))
+{
+  algo_is_abort = is_abort;
+}
+
+// 조각 경계에서만 묻는다. 알고리즘이 도는 중에 끊으면 타깃이 어중간해진다.
+static bool algoAborted(void)
+{
+  return (algo_is_abort != NULL) && algo_is_abort();
+}
+
 
 // ----------------------------------------------------------------- 열기/닫기
 
@@ -182,6 +196,12 @@ static swd_err_t algoEraseRange(algo_t *p_algo, uint32_t addr, uint32_t len,
   {
     uint32_t size = algoSectorSize(p_algo, cur);
 
+    if (algoAborted())
+    {
+      p_algo->ops->uninit(p_algo, ALGO_FNC_ERASE);
+      return SWD_ERR_ABORT;
+    }
+
     if (size == 0)
     {
       p_algo->ops->uninit(p_algo, ALGO_FNC_ERASE);
@@ -298,6 +318,12 @@ static swd_err_t algoProgramRange(algo_t *p_algo, uint32_t addr, uint32_t len,
   {
     uint32_t n = 0;
 
+    if (algoAborted() && armed == false)
+    {
+      err = SWD_ERR_ABORT;
+      break;
+    }
+
     // 다음 페이지를 준비한다 (타깃은 이전 페이지를 굽는 중일 수 있다)
     if (done + armed_len < len)
     {
@@ -368,6 +394,8 @@ static swd_err_t algoVerifyRange(algo_t *p_algo, uint32_t addr, uint32_t len,
   while (done < len)
   {
     uint32_t n = p_algo->buf_size;
+
+    if (algoAborted()) { err = SWD_ERR_ABORT; break; }
 
     if (n > len - done) n = len - done;
 

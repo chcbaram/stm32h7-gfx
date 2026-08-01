@@ -523,10 +523,14 @@ static void runRefresh(bool rebuild)
 
   if (step_box == NULL) return;
 
-  if (rebuild)
+  /* 단계 수가 줄었으면 새 잡이 시작된 것이다. 덧붙이기만 하면 이전 잡의 줄이
+     그대로 남고 앞에서부터 덮어써져 뒤쪽에 지난 기록이 남는다.
+     "다시 굽기" 로 같은 화면에 머무를 때가 정확히 그 경우다. */
+  if (rebuild || cnt < step_drawn)
   {
     lv_obj_clean(step_box);
     step_drawn = 0;
+    step_follow = true;
   }
 
   // 새로 생긴 단계만 붙인다. 매번 다시 그리면 스크롤 위치가 튄다.
@@ -589,7 +593,9 @@ static void runRefresh(bool rebuild)
                           (int)((progTaskGetElapsed() % 1000) / 100));
     lv_obj_set_style_text_color(lbl_result,
                                 lv_color_hex(ok ? UI_COLOR_OK : UI_COLOR_ACCENT), 0);
-    lv_label_set_text(lbl_abort, ok ? "다시 굽기" : "돌아가기");
+    /* 실패했든 중단했든 다음에 할 일은 다시 굽는 것이다. 되돌아가기는 화면
+       왼쪽 엣지 스와이프로 언제든 되므로 버튼을 거기 쓰지 않는다. */
+    lv_label_set_text(lbl_abort, "다시 굽기");
   }
   else
   {
@@ -756,17 +762,15 @@ static void cbStart(lv_event_t *e)
     return;
   }
 
+  /* 완료·실패·중단 어느 쪽이든 다시 굽는다. 실패했으면 배선을 고치고 바로
+     재시도하고, 성공했으면 보드만 바꿔 끼면 된다. */
   if (cur_page == PAGE_RUN)
   {
-    // 완료/실패 화면에서 누른 것
-    if (progTaskGetState() == PROG_DONE && sel_proj[0] != 0)
+    if (sel_proj[0] != 0)
     {
       step_follow = true;
-      progTaskRun(sel_proj);      // 보드만 바꿔 끼고 바로 다음 장
-      return;
+      progTaskRun(sel_proj);
     }
-    homeRefresh();
-    pageShow(PAGE_HOME);
     return;
   }
 

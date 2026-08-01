@@ -65,14 +65,37 @@ static swd_err_t swdCmWaitRegRdy(void);
 
    그래서 CPUID 가 ARM 값(0x41______)으로 읽히는 AP 를 찾는다. 링크가 새로
    맺어지면 다시 찾아야 하므로 swdCmInvalidate 로 캐시를 버린다. */
-swd_err_t swdCmEnsureAp(void)
+/* 이 AP 로 코어 디버그가 닿는가.
+
+   CPUID 한 곳만 보면 안 된다. 연결되지 않은 AP 가 어느 주소를 읽어도 같은 값을
+   돌려주는 경우가 있는데(STM32H7S3 의 AP0 이 그렇다), 그 값이 우연히 ARM 코드로
+   보이면 통과해 버린다. 실제로 그래서 AP0 을 골랐고 그 뒤 모든 접근이 엉뚱한
+   버스로 갔다.
+
+   서로 다른 두 레지스터를 읽어 값이 다른지까지 본다. 같은 값이 나오면 그 AP 는
+   주소를 구분하지 않는다는 뜻이다. */
+static bool swdCmApHasCore(void)
 {
   uint32_t cpuid = 0;
-  uint8_t  keep;
+  uint32_t dfsr  = 0;
+
+  if (swdMemRead32(CM_CPUID, &cpuid) != SWD_OK)   return false;
+  if ((cpuid & 0xFF000000) != 0x41000000)         return false;   // ARM 이 아니다
+  if ((cpuid & 0x0000FFF0) == 0)                  return false;   // PARTNO 가 비었다
+
+  if (swdMemRead32(CM_DFSR, &dfsr) != SWD_OK)     return false;
+  if (dfsr == cpuid)                              return false;   // 주소를 구분 못 한다
+
+  return true;
+}
+
+swd_err_t swdCmEnsureAp(void)
+{
+  uint8_t keep;
 
   if (ap_done) return SWD_OK;
 
-  if (swdMemRead32(CM_CPUID, &cpuid) == SWD_OK && (cpuid & 0xFF000000) == 0x41000000)
+  if (swdCmApHasCore())
   {
     ap_done = true;
     return SWD_OK;
@@ -87,7 +110,7 @@ swd_err_t swdCmEnsureAp(void)
     swdDapSetAp((uint8_t)ap);
     if (swdApRead(SWD_AP_IDR, &idr) != SWD_OK || idr == 0) continue;
 
-    if (swdMemRead32(CM_CPUID, &cpuid) == SWD_OK && (cpuid & 0xFF000000) == 0x41000000)
+    if (swdCmApHasCore())
     {
       ap_done = true;
       return SWD_OK;

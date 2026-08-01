@@ -62,11 +62,13 @@ static uint32_t      ok_count;
 
 
 static void progTaskThread(void const *arg);
+static bool progTaskIsAbort(void);
 static void progTaskDoScan(void);
 static void progTaskDoList(void);
 static void progTaskDoRun(void);
 static void progTaskStep(uint8_t depth, const char *fmt, ...);
 static void progTaskStepEnd(prog_step_state_t st);
+static bool progTaskIsAbort(void);
 static bool progTaskProjCb(const char *proj, const char *name, void *ctx);
 static void progTaskProgressCb(const char *phase, uint32_t addr, uint32_t done,
                                uint32_t total, void *ctx);
@@ -363,7 +365,9 @@ static void progTaskDoRun(void)
     job.speed_khz  = opt.speed_khz;
   }
 
+  algoSetAbortCb(progTaskIsAbort);
   err = jobRun(&job, progTaskProgressCb, NULL, opt.verify);
+  algoSetAbortCb(NULL);
   progTaskStepEnd((err == SWD_OK) ? PROG_STEP_OK : PROG_STEP_FAIL);
 
   // 굽고 나서 타깃을 어떻게 둘지
@@ -387,11 +391,17 @@ static void progTaskDoRun(void)
   }
   else
   {
+    if (err == SWD_ERR_ABORT) progTaskStep(0, "사용자가 중단");
     prog_state = PROG_ERROR;
   }
 }
 
 /* 만드는 쪽 버퍼에만 담는다. 보여주는 쪽은 다 만든 뒤에 한 번에 바뀐다. */
+static bool progTaskIsAbort(void)
+{
+  return prog_abort;
+}
+
 static bool progTaskProjCb(const char *proj, const char *name, void *ctx)
 {
   (void)ctx;
@@ -418,6 +428,15 @@ static void progTaskProgressCb(const char *phase, uint32_t addr, uint32_t done,
     return;
   }
   if (strcmp(phase, "device") == 0)  return;
+  if (strcmp(phase, "mismatch") == 0)
+  {
+    progTaskStep(0, "물린 MCU 가 fw.txt 와 다르다");
+    progTaskStepEnd(PROG_STEP_FAIL);
+    progTaskStep(0, "실제 : %s",
+                 target.dev_found ? target.dev.name : "알 수 없음");
+    progTaskStepEnd(PROG_STEP_FAIL);
+    return;
+  }
   if (strcmp(phase, "clamp") == 0)
   {
     progTaskStep(0, "범위를 %d KB 로 좁힘", (int)(done / 1024));

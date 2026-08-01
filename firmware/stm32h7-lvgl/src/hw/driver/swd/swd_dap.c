@@ -480,6 +480,8 @@ const char *swdErrStr(swd_err_t err)
     case SWD_ERR_PARITY:    return "PARITY";
     case SWD_ERR_PROTOCOL:  return "PROTOCOL";
     case SWD_ERR_BUSY:      return "BUSY";
+    case SWD_ERR_ABORT:     return "중단됨";
+    case SWD_ERR_MISMATCH:  return "MCU 불일치";
     default:                return "?";
   }
 }

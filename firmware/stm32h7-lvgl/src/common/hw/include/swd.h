@@ -52,6 +52,8 @@ typedef enum
   SWD_ERR_PARITY,
   SWD_ERR_PROTOCOL,
   SWD_ERR_BUSY,
+  SWD_ERR_ABORT,      // 사람이 중단시켰다. 오류가 아니다.
+  SWD_ERR_MISMATCH,   // fw.txt 가 말한 MCU 와 실제로 물린 MCU 가 다르다
 } swd_err_t;
 
 
