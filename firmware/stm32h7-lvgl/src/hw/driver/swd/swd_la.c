@@ -58,24 +58,20 @@ static uint8_t  pin_dio;
 
 static uint32_t swdLaTimClk(void);
 
-/* 캡처는 순환 모드로 돈다. 실패 직전 구간을 남기려면 최신 샘플이 살아야 해서
-   원샷이 아니라 링이어야 한다. 그래서 접근은 항상 la_start 기준 오프셋이다. */
-static inline uint16_t laClk(uint32_t i)
-{
-  uint32_t k = la_start + i;
-  if (k >= LA_BUF_CNT) k -= LA_BUF_CNT;
-  return la_clk[k];
-}
-
-static inline uint16_t laDio(uint32_t i)
-{
-  uint32_t k = la_start + i;
-  if (k >= LA_BUF_CNT) k -= LA_BUF_CNT;
-  return la_dio[k];
-}
 
 static void     swdLaStop(void);
 static uint32_t swdLaBits(void);
+
+/* 캡처는 순환 모드로 돈다. 실패 직전 구간을 남기려면 최신 샘플이 살아야 해서
+   원샷이 아니라 링이어야 한다. 그래서 접근은 항상 la_start 기준 오프셋이다. */
+static inline uint16_t laClk(uint32_t i);
+static inline uint16_t laDio(uint32_t i);
+
+
+#ifdef _USE_HW_CLI
+
+
+#endif
 
 
 // ----------------------------------------------------------------- 초기화
@@ -129,31 +125,8 @@ bool swdLaIsInit(void)
   return is_init;
 }
 
-/* TIM2 는 APB1 이다. APB1 프리스케일러가 1 이 아니면 타이머 클럭은 PCLK1 의
-   두 배가 된다. 지금 설정(APB1_DIV2)에서는 137.5MHz x 2 = 275MHz 다. */
-uint32_t swdLaTimClk(void)
-{
-  uint32_t pclk1 = HAL_RCC_GetPCLK1Freq();
-
-  if ((RCC->D2CFGR & RCC_D2CFGR_D2PPRE1) == RCC_D2CFGR_D2PPRE1_DIV1)
-  {
-    return pclk1;
-  }
-  return pclk1 * 2;
-}
-
 
 // ----------------------------------------------------------------- 캡처
-
-void swdLaStop(void)
-{
-  __HAL_TIM_DISABLE(&htim_la);
-  __HAL_TIM_DISABLE_DMA(&htim_la, TIM_DMA_UPDATE);
-  __HAL_TIM_DISABLE_DMA(&htim_la, TIM_DMA_CC1);
-
-  HAL_DMA_Abort(&hdma_clk);
-  HAL_DMA_Abort(&hdma_dio);
-}
 
 bool swdLaArm(uint32_t rate_khz)
 {
@@ -323,42 +296,6 @@ void swdLaAutoTrig(void)
 
 // ----------------------------------------------------------------- 분석
 
-/* SWCLK 상승 에지마다 비트 하나.
-   SWDIO 는 클럭이 low 인 동안 안정되고 상승 에지에서 샘플되므로,
-   에지 직전 샘플의 SWDIO 를 그 비트의 값으로 본다. */
-uint32_t swdLaBits(void)
-{
-  uint8_t prev = 0;
-
-  la_bit_cnt = 0;
-
-  if (la_count < 2)
-  {
-    return 0;
-  }
-
-  prev = (uint8_t)((laClk(0) >> pin_clk) & 1);
-
-  for (uint32_t i = 1; i < la_count; i++)
-  {
-    uint8_t cur = (uint8_t)((laClk(i) >> pin_clk) & 1);
-
-    if (prev == 0 && cur == 1)
-    {
-      if (la_bit_cnt >= LA_BIT_MAX)
-      {
-        break;
-      }
-      la_bit[la_bit_cnt]     = (uint8_t)((laDio(i-1) >> pin_dio) & 1);
-      la_bit_idx[la_bit_cnt] = (uint16_t)i;
-      la_bit_cnt++;
-    }
-    prev = cur;
-  }
-
-  return la_bit_cnt;
-}
-
 bool swdLaAnalyze(swd_la_stat_t *p_stat)
 {
   uint32_t ns_per_sample;
@@ -448,8 +385,6 @@ bool swdLaAnalyze(swd_la_stat_t *p_stat)
 
 
 // ----------------------------------------------------------------- 출력
-
-#ifdef _USE_HW_CLI
 
 void swdLaDump(uint32_t count)
 {
@@ -644,6 +579,81 @@ void swdLaDecode(void)
   }
 }
 
-#endif
+
+// ----------------------------------------------------------------- 내부
+
+/* TIM2 는 APB1 이다. APB1 프리스케일러가 1 이 아니면 타이머 클럭은 PCLK1 의
+   두 배가 된다. 지금 설정(APB1_DIV2)에서는 137.5MHz x 2 = 275MHz 다. */
+uint32_t swdLaTimClk(void)
+{
+  uint32_t pclk1 = HAL_RCC_GetPCLK1Freq();
+
+  if ((RCC->D2CFGR & RCC_D2CFGR_D2PPRE1) == RCC_D2CFGR_D2PPRE1_DIV1)
+  {
+    return pclk1;
+  }
+  return pclk1 * 2;
+}
+
+void swdLaStop(void)
+{
+  __HAL_TIM_DISABLE(&htim_la);
+  __HAL_TIM_DISABLE_DMA(&htim_la, TIM_DMA_UPDATE);
+  __HAL_TIM_DISABLE_DMA(&htim_la, TIM_DMA_CC1);
+
+  HAL_DMA_Abort(&hdma_clk);
+  HAL_DMA_Abort(&hdma_dio);
+}
+
+/* SWCLK 상승 에지마다 비트 하나.
+   SWDIO 는 클럭이 low 인 동안 안정되고 상승 에지에서 샘플되므로,
+   에지 직전 샘플의 SWDIO 를 그 비트의 값으로 본다. */
+uint32_t swdLaBits(void)
+{
+  uint8_t prev = 0;
+
+  la_bit_cnt = 0;
+
+  if (la_count < 2)
+  {
+    return 0;
+  }
+
+  prev = (uint8_t)((laClk(0) >> pin_clk) & 1);
+
+  for (uint32_t i = 1; i < la_count; i++)
+  {
+    uint8_t cur = (uint8_t)((laClk(i) >> pin_clk) & 1);
+
+    if (prev == 0 && cur == 1)
+    {
+      if (la_bit_cnt >= LA_BIT_MAX)
+      {
+        break;
+      }
+      la_bit[la_bit_cnt]     = (uint8_t)((laDio(i-1) >> pin_dio) & 1);
+      la_bit_idx[la_bit_cnt] = (uint16_t)i;
+      la_bit_cnt++;
+    }
+    prev = cur;
+  }
+
+  return la_bit_cnt;
+}
+
+static inline uint16_t laClk(uint32_t i)
+{
+  uint32_t k = la_start + i;
+  if (k >= LA_BUF_CNT) k -= LA_BUF_CNT;
+  return la_clk[k];
+}
+
+static inline uint16_t laDio(uint32_t i)
+{
+  uint32_t k = la_start + i;
+  if (k >= LA_BUF_CNT) k -= LA_BUF_CNT;
+  return la_dio[k];
+}
+
 
 #endif

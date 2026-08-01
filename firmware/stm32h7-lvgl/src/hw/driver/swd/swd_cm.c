@@ -53,31 +53,7 @@ static uint32_t  last_dfsr;
 static swd_err_t swdCmWaitRegRdy(void);
 
 
-uint32_t swdCmGetLastDfsr(void)
-{
-  return last_dfsr;
-}
-
-
-// ----------------------------------------------------------------- 기본
-
-swd_err_t swdCmGetDhcsr(uint32_t *p_dhcsr)
-{
-  return swdMemRead32(CM_DHCSR, p_dhcsr);
-}
-
-swd_err_t swdCmIsHalted(bool *p_halted)
-{
-  swd_err_t err;
-  uint32_t  dhcsr = 0;
-
-  err = swdMemRead32(CM_DHCSR, &dhcsr);
-  if (p_halted != NULL)
-  {
-    *p_halted = (err == SWD_OK) && ((dhcsr & CM_S_HALT) != 0);
-  }
-  return err;
-}
+// ----------------------------------------------------------------- 코어 제어
 
 swd_err_t swdCmHalt(void)
 {
@@ -139,6 +115,24 @@ swd_err_t swdCmStep(void)
     if (dhcsr & CM_S_HALT) return SWD_OK;
   }
   return SWD_ERR_WAIT;
+}
+
+swd_err_t swdCmIsHalted(bool *p_halted)
+{
+  swd_err_t err;
+  uint32_t  dhcsr = 0;
+
+  err = swdMemRead32(CM_DHCSR, &dhcsr);
+  if (p_halted != NULL)
+  {
+    *p_halted = (err == SWD_OK) && ((dhcsr & CM_S_HALT) != 0);
+  }
+  return err;
+}
+
+swd_err_t swdCmGetDhcsr(uint32_t *p_dhcsr)
+{
+  return swdMemRead32(CM_DHCSR, p_dhcsr);
 }
 
 swd_err_t swdCmDetach(void)
@@ -231,23 +225,13 @@ swd_err_t swdCmSysReset(void)
   return SWD_OK;
 }
 
+uint32_t swdCmGetLastDfsr(void)
+{
+  return last_dfsr;
+}
+
 
 // ----------------------------------------------------------------- 레지스터
-
-swd_err_t swdCmWaitRegRdy(void)
-{
-  uint32_t dhcsr = 0;
-  uint32_t t_start = millis();
-
-  while (millis() - t_start < CM_REG_TIMEOUT_MS)
-  {
-    swd_err_t err = swdMemRead32(CM_DHCSR, &dhcsr);
-
-    if (err != SWD_OK) return err;
-    if (dhcsr & CM_S_REGRDY) return SWD_OK;
-  }
-  return SWD_ERR_WAIT;
-}
 
 swd_err_t swdCmRegRead(uint8_t regsel, uint32_t *p_data)
 {
@@ -339,6 +323,24 @@ const char *swdCmDfsrStr(uint32_t dfsr)
   if (dfsr & CM_DFSR_BKPT)     return "BKPT";
   if (dfsr & CM_DFSR_HALTED)   return "HALTED (debugger request)";
   return "none";
+}
+
+
+// ----------------------------------------------------------------- 내부
+
+swd_err_t swdCmWaitRegRdy(void)
+{
+  uint32_t dhcsr = 0;
+  uint32_t t_start = millis();
+
+  while (millis() - t_start < CM_REG_TIMEOUT_MS)
+  {
+    swd_err_t err = swdMemRead32(CM_DHCSR, &dhcsr);
+
+    if (err != SWD_OK) return err;
+    if (dhcsr & CM_S_REGRDY) return SWD_OK;
+  }
+  return SWD_ERR_WAIT;
 }
 
 

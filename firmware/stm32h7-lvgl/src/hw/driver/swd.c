@@ -87,79 +87,12 @@ static void     swdBegin(void);
 static void     swdCalibrate(void);
 static uint32_t swdMeasureRaw(void);
 
-
-// ----------------------------------------------------------------- 비트 프리미티브
-
-static inline void swdDelay(void)
-{
-  uint32_t n = swd_half_cyc;
-
-  if (n)
-  {
-    uint32_t t_start = DWT->CYCCNT;
-
-    while ((DWT->CYCCNT - t_start) < n)
-    {
-    }
-  }
-}
-
-static inline void swdClockCycle(void)
-{
-  SWCLK_LO();
-  swdDelay();
-  SWCLK_HI();
-  swdDelay();
-}
-
-static inline void swdWriteBit(uint32_t bit)
-{
-  SWDIO_WR(bit & 1UL);
-  SWCLK_LO();
-  swdDelay();
-  SWCLK_HI();
-  swdDelay();
-}
-
-static inline uint32_t swdReadBit(void)
-{
-  uint32_t bit;
-
-  SWCLK_LO();
-  swdDelay();
-  bit = SWDIO_RD();
-  SWCLK_HI();
-  swdDelay();
-
-  return bit;
-}
-
-static inline uint32_t swdParity32(uint32_t value)
-{
-  value ^= value >> 16;
-  value ^= value >> 8;
-  value ^= value >> 4;
-  value ^= value >> 2;
-  value ^= value >> 1;
-
-  return value & 1UL;
-}
-
-/* Request 바이트는 LSB first 로 나간다.
-     bit0 Start=1, bit1 APnDP, bit2 RnW, bit3 A2, bit4 A3,
-     bit5 Parity, bit6 Stop=0, bit7 Park=1
-   DPIDR 읽기(APnDP=0, RnW=1, A=0x0) 는 0xA5 가 되어야 한다. */
-static inline uint8_t swdMakeRequest(uint32_t ap_ndp, uint32_t rd_nwr, uint32_t a2, uint32_t a3)
-{
-  uint32_t parity = (ap_ndp ^ rd_nwr ^ a2 ^ a3) & 1UL;
-
-  return (uint8_t)(0x81UL
-                   | (ap_ndp << 1)
-                   | (rd_nwr << 2)
-                   | (a2     << 3)
-                   | (a3     << 4)
-                   | (parity << 5));
-}
+static inline void     swdDelay(void);
+static inline void     swdClockCycle(void);
+static inline void     swdWriteBit(uint32_t bit);
+static inline uint32_t swdReadBit(void);
+static inline uint32_t swdParity32(uint32_t value);
+static inline uint8_t  swdMakeRequest(uint32_t ap_ndp, uint32_t rd_nwr, uint32_t a2, uint32_t a3);
 
 
 // ----------------------------------------------------------------- 초기화
@@ -205,128 +138,8 @@ bool swdIsBusy(void)
   return is_busy;
 }
 
-/* SWCLK 는 푸시풀 출력, SWDIO 는 푸시풀 + 약한 풀업(타깃 유휴 레벨과 맞춘다).
- *
- * OSPEEDR(드라이브 강도)이 중요하다. 높일수록 좋을 것 같지만 반대다.
- * 종단 없는 점퍼선에서는 VERY_HIGH 의 서브나노초 에지가 링잉과 반사를 만들어
- * 비트 오류를 낸다. 이 오류는 클럭 주기가 아니라 에지 기울기에 의존하므로
- * 속도를 낮춰도 사라지지 않는 게 특징이고, 그래서 원인을 오해하기 쉽다.
- *
- * STM32F411 타깃 + 점퍼선 실측 (32워드 블록 읽기 20회):
- *   LOW 0 실패 / MEDIUM 3 / HIGH 11 / VERY_HIGH 9
- * LOW 로는 최대 속도(실효 ~10MHz)까지 64워드 블록이 무오류였다.
- *
- * 제대로 하려면 SWCLK/SWDIO 에 직렬 22~33옴, SWDIO 에 풀업 10k, 짧은 GND
- * 리턴을 두는 게 맞다. 배선이 개선되면 swd drv 로 올려서 다시 재면 된다. */
-void swdPinInit(void)
-{
-  uint32_t pos;
-
-  pos = SWD_CLK_PIN * 2;
-  SWD_CLK_PORT->OSPEEDR = (SWD_CLK_PORT->OSPEEDR & ~(3UL << pos)) | (swd_ospeed << pos);
-  SWD_CLK_PORT->PUPDR   = (SWD_CLK_PORT->PUPDR   & ~(3UL << pos));
-  SWD_CLK_PORT->OTYPER &= ~(1UL << SWD_CLK_PIN);
-  SWD_CLK_PORT->BSRR    = (1UL << SWD_CLK_PIN);                     // 유휴 시 high
-  SWD_CLK_PORT->MODER   = (SWD_CLK_PORT->MODER   & ~(3UL << pos)) | (1UL << pos);
-
-  pos = SWD_IO_PIN * 2;
-  SWD_IO_PORT->OSPEEDR  = (SWD_IO_PORT->OSPEEDR  & ~(3UL << pos)) | (swd_ospeed << pos);
-  SWD_IO_PORT->PUPDR    = (SWD_IO_PORT->PUPDR    & ~(3UL << pos)) | (1UL << pos);
-  SWD_IO_PORT->OTYPER  &= ~(1UL << SWD_IO_PIN);
-  SWD_IO_PORT->BSRR     = (1UL << SWD_IO_PIN);
-  SWD_IO_PORT->MODER    = (SWD_IO_PORT->MODER    & ~(3UL << pos)) | (1UL << pos);
-
-#if SWD_USE_RST
-  pos = SWD_RST_PIN * 2;
-  SWD_RST_PORT->OTYPER |= (1UL << SWD_RST_PIN);               // 오픈드레인
-  SWD_RST_PORT->PUPDR   = (SWD_RST_PORT->PUPDR & ~(3UL << pos)) | (1UL << pos);
-  SWD_RST_PORT->BSRR    = (1UL << SWD_RST_PIN);
-  SWD_RST_PORT->MODER   = (SWD_RST_PORT->MODER & ~(3UL << pos)) | (1UL << pos);
-#endif
-}
-
-/* MODER 전체 워드를 미리 만들어 두면 방향 전환이 단일 스토어로 끝난다.
-   read-modify-write 가 아니므로 인터럽트 마스킹도 필요 없다. */
-void swdModerCache(void)
-{
-  uint32_t pos = SWD_IO_PIN * 2;
-  uint32_t m   = SWD_IO_PORT->MODER & ~(3UL << pos);
-
-  moder_in  = m;                    // 00 = input
-  moder_out = m | (1UL << pos);     // 01 = output
-}
-
-/* 유휴 상태에서 SWD 를 쓰기 직전에 부른다.
- *
- * MODER 캐시를 반드시 여기서 갱신해야 한다. swdInit() 은 hwInit() 안에서
- * gpioInit() 직후에 도는데, 같은 포트를 쓰는 spiInit()/sdInit()/qspiInit()/
- * ltdcInit() 은 그 뒤에 돈다. init 때 캐시한 워드를 그대로 쓰면 SWDIO_OUT()
- * 한 번에 PC1(SDMMC2_CK), PC6/7/9(LTDC), PC11(QSPI) 이 전부 초기화 이전
- * 상태로 되돌아가서 SD/LCD/QSPI 가 죽는다.
- *
- * 갱신한 뒤부터 swdDisconnect() 까지는 다른 코드가 이 포트의 핀을 재설정하면
- * 안 된다. sdUpdate() 의 카드 삽입 경로가 sdReInit() 을 부르는 게 대표적이다.
- */
-void swdBegin(void)
-{
-  swdPinInit();
-  swdModerCache();
-}
-
 
 // ----------------------------------------------------------------- 속도
-
-/* 지연 없이 돌 때의 반주기 비용을 실측해서 역산한다. 하드코딩하면 컴파일
-   옵션이나 캐시 상태가 바뀔 때 어긋난다. */
-void swdCalibrate(void)
-{
-  uint32_t khz_max;
-
-  swd_half_cyc = 0;
-  khz_max = swdMeasureRaw();
-
-  if (khz_max > 0)
-  {
-    swd_loop_ovh = SystemCoreClock / (2 * khz_max * 1000);
-  }
-  if (swd_loop_ovh == 0)
-  {
-    swd_loop_ovh = 1;
-  }
-}
-
-/* SWDIO=0 으로 SWCLK 를 N회 토글하고 micros() 로 브래킷한다.
-   간이 측정이지만 해상도는 충분하다. 1MHz 에서 1000토글이면 1000us 라 0.1%,
-   최대 속도 8MHz 에서도 125us 라 0.8% 다.
-   SWDIO 를 low 로 두는 건 이게 SWD 유휴 구간이라 타깃을 건드리지 않기 때문이다.
-   (high 로 50클럭 이상 보내면 그건 line reset 이 된다) */
-uint32_t swdMeasureRaw(void)
-{
-  uint32_t t_start;
-  uint32_t t_us;
-
-  swdBegin();
-  SWDIO_OUT();
-  SWDIO_LO();
-
-  t_start = micros();
-  for (int i = 0; i < SWD_MEAS_CNT; i++)
-  {
-    SWCLK_LO();
-    swdDelay();
-    SWCLK_HI();
-    swdDelay();
-  }
-  t_us = micros() - t_start;
-
-  SWCLK_HI();
-
-  if (t_us == 0)
-  {
-    return 0;
-  }
-  return (SWD_MEAS_CNT * 1000UL) / t_us;
-}
 
 uint32_t swdMeasureSpeed(void)
 {
@@ -722,6 +535,204 @@ void swdRstSet(bool level)
 #else
   (void)level;
 #endif
+}
+
+
+// ----------------------------------------------------------------- 내부
+
+static inline void swdDelay(void)
+{
+  uint32_t n = swd_half_cyc;
+
+  if (n)
+  {
+    uint32_t t_start = DWT->CYCCNT;
+
+    while ((DWT->CYCCNT - t_start) < n)
+    {
+    }
+  }
+}
+
+static inline void swdClockCycle(void)
+{
+  SWCLK_LO();
+  swdDelay();
+  SWCLK_HI();
+  swdDelay();
+}
+
+static inline void swdWriteBit(uint32_t bit)
+{
+  SWDIO_WR(bit & 1UL);
+  SWCLK_LO();
+  swdDelay();
+  SWCLK_HI();
+  swdDelay();
+}
+
+static inline uint32_t swdReadBit(void)
+{
+  uint32_t bit;
+
+  SWCLK_LO();
+  swdDelay();
+  bit = SWDIO_RD();
+  SWCLK_HI();
+  swdDelay();
+
+  return bit;
+}
+
+static inline uint32_t swdParity32(uint32_t value)
+{
+  value ^= value >> 16;
+  value ^= value >> 8;
+  value ^= value >> 4;
+  value ^= value >> 2;
+  value ^= value >> 1;
+
+  return value & 1UL;
+}
+
+/* Request 바이트는 LSB first 로 나간다.
+     bit0 Start=1, bit1 APnDP, bit2 RnW, bit3 A2, bit4 A3,
+     bit5 Parity, bit6 Stop=0, bit7 Park=1
+   DPIDR 읽기(APnDP=0, RnW=1, A=0x0) 는 0xA5 가 되어야 한다. */
+static inline uint8_t swdMakeRequest(uint32_t ap_ndp, uint32_t rd_nwr, uint32_t a2, uint32_t a3)
+{
+  uint32_t parity = (ap_ndp ^ rd_nwr ^ a2 ^ a3) & 1UL;
+
+  return (uint8_t)(0x81UL
+                   | (ap_ndp << 1)
+                   | (rd_nwr << 2)
+                   | (a2     << 3)
+                   | (a3     << 4)
+                   | (parity << 5));
+}
+
+/* SWCLK 는 푸시풀 출력, SWDIO 는 푸시풀 + 약한 풀업(타깃 유휴 레벨과 맞춘다).
+ *
+ * OSPEEDR(드라이브 강도)이 중요하다. 높일수록 좋을 것 같지만 반대다.
+ * 종단 없는 점퍼선에서는 VERY_HIGH 의 서브나노초 에지가 링잉과 반사를 만들어
+ * 비트 오류를 낸다. 이 오류는 클럭 주기가 아니라 에지 기울기에 의존하므로
+ * 속도를 낮춰도 사라지지 않는 게 특징이고, 그래서 원인을 오해하기 쉽다.
+ *
+ * STM32F411 타깃 + 점퍼선 실측 (32워드 블록 읽기 20회):
+ *   LOW 0 실패 / MEDIUM 3 / HIGH 11 / VERY_HIGH 9
+ *
+ * LOW 로 고정한 뒤 대량 전송(32KB, 약 8200 트랜잭션) 5회 반복 실측:
+ *   1.8MHz 5/5   3.5MHz 5/5   5.7MHz 3/5   23MHz 2/5
+ * 짧은 전송은 최대 속도로도 통과하므로 작은 표본에 속기 쉽다. 트랜잭션당
+ * 오류율이 낮아도 수천 번 반복하면 드러난다. 이 배선의 실용 상한은 ~3.5MHz.
+ *
+ * 제대로 하려면 SWCLK/SWDIO 에 직렬 22~33옴, SWDIO 에 풀업 10k, 짧은 GND
+ * 리턴을 두는 게 맞다. 배선이 개선되면 swd drv 로 올려서 다시 재면 된다. */
+void swdPinInit(void)
+{
+  uint32_t pos;
+
+  pos = SWD_CLK_PIN * 2;
+  SWD_CLK_PORT->OSPEEDR = (SWD_CLK_PORT->OSPEEDR & ~(3UL << pos)) | (swd_ospeed << pos);
+  SWD_CLK_PORT->PUPDR   = (SWD_CLK_PORT->PUPDR   & ~(3UL << pos));
+  SWD_CLK_PORT->OTYPER &= ~(1UL << SWD_CLK_PIN);
+  SWD_CLK_PORT->BSRR    = (1UL << SWD_CLK_PIN);                     // 유휴 시 high
+  SWD_CLK_PORT->MODER   = (SWD_CLK_PORT->MODER   & ~(3UL << pos)) | (1UL << pos);
+
+  pos = SWD_IO_PIN * 2;
+  SWD_IO_PORT->OSPEEDR  = (SWD_IO_PORT->OSPEEDR  & ~(3UL << pos)) | (swd_ospeed << pos);
+  SWD_IO_PORT->PUPDR    = (SWD_IO_PORT->PUPDR    & ~(3UL << pos)) | (1UL << pos);
+  SWD_IO_PORT->OTYPER  &= ~(1UL << SWD_IO_PIN);
+  SWD_IO_PORT->BSRR     = (1UL << SWD_IO_PIN);
+  SWD_IO_PORT->MODER    = (SWD_IO_PORT->MODER    & ~(3UL << pos)) | (1UL << pos);
+
+#if SWD_USE_RST
+  pos = SWD_RST_PIN * 2;
+  SWD_RST_PORT->OTYPER |= (1UL << SWD_RST_PIN);               // 오픈드레인
+  SWD_RST_PORT->PUPDR   = (SWD_RST_PORT->PUPDR & ~(3UL << pos)) | (1UL << pos);
+  SWD_RST_PORT->BSRR    = (1UL << SWD_RST_PIN);
+  SWD_RST_PORT->MODER   = (SWD_RST_PORT->MODER & ~(3UL << pos)) | (1UL << pos);
+#endif
+}
+
+/* MODER 전체 워드를 미리 만들어 두면 방향 전환이 단일 스토어로 끝난다.
+   read-modify-write 가 아니므로 인터럽트 마스킹도 필요 없다. */
+void swdModerCache(void)
+{
+  uint32_t pos = SWD_IO_PIN * 2;
+  uint32_t m   = SWD_IO_PORT->MODER & ~(3UL << pos);
+
+  moder_in  = m;                    // 00 = input
+  moder_out = m | (1UL << pos);     // 01 = output
+}
+
+/* 유휴 상태에서 SWD 를 쓰기 직전에 부른다.
+ *
+ * MODER 캐시를 반드시 여기서 갱신해야 한다. swdInit() 은 hwInit() 안에서
+ * gpioInit() 직후에 도는데, 같은 포트를 쓰는 spiInit()/sdInit()/qspiInit()/
+ * ltdcInit() 은 그 뒤에 돈다. init 때 캐시한 워드를 그대로 쓰면 SWDIO_OUT()
+ * 한 번에 PC1(SDMMC2_CK), PC6/7/9(LTDC), PC11(QSPI) 이 전부 초기화 이전
+ * 상태로 되돌아가서 SD/LCD/QSPI 가 죽는다.
+ *
+ * 갱신한 뒤부터 swdDisconnect() 까지는 다른 코드가 이 포트의 핀을 재설정하면
+ * 안 된다. sdUpdate() 의 카드 삽입 경로가 sdReInit() 을 부르는 게 대표적이다.
+ */
+void swdBegin(void)
+{
+  swdPinInit();
+  swdModerCache();
+}
+
+/* 지연 없이 돌 때의 반주기 비용을 실측해서 역산한다. 하드코딩하면 컴파일
+   옵션이나 캐시 상태가 바뀔 때 어긋난다. */
+void swdCalibrate(void)
+{
+  uint32_t khz_max;
+
+  swd_half_cyc = 0;
+  khz_max = swdMeasureRaw();
+
+  if (khz_max > 0)
+  {
+    swd_loop_ovh = SystemCoreClock / (2 * khz_max * 1000);
+  }
+  if (swd_loop_ovh == 0)
+  {
+    swd_loop_ovh = 1;
+  }
+}
+
+/* SWDIO=0 으로 SWCLK 를 N회 토글하고 micros() 로 브래킷한다.
+   간이 측정이지만 해상도는 충분하다. 1MHz 에서 1000토글이면 1000us 라 0.1%,
+   최대 속도 8MHz 에서도 125us 라 0.8% 다.
+   SWDIO 를 low 로 두는 건 이게 SWD 유휴 구간이라 타깃을 건드리지 않기 때문이다.
+   (high 로 50클럭 이상 보내면 그건 line reset 이 된다) */
+uint32_t swdMeasureRaw(void)
+{
+  uint32_t t_start;
+  uint32_t t_us;
+
+  swdBegin();
+  SWDIO_OUT();
+  SWDIO_LO();
+
+  t_start = micros();
+  for (int i = 0; i < SWD_MEAS_CNT; i++)
+  {
+    SWCLK_LO();
+    swdDelay();
+    SWCLK_HI();
+    swdDelay();
+  }
+  t_us = micros() - t_start;
+
+  SWCLK_HI();
+
+  if (t_us == 0)
+  {
+    return 0;
+  }
+  return (SWD_MEAS_CNT * 1000UL) / t_us;
 }
 
 

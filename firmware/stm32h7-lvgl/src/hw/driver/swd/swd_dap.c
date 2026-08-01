@@ -34,153 +34,30 @@ static uint8_t  ap_sel       = 0;
 static swd_err_t swdXfer(uint8_t ap_ndp, uint8_t rd_nwr, uint8_t addr, uint32_t *p_data);
 static swd_err_t swdApSelect(uint8_t addr);
 static swd_err_t swdCswSet(uint32_t csw);
+static swd_err_t swdMemReadChunk(uint32_t addr, uint32_t *p_data, uint32_t count);
+static swd_err_t swdMemWriteChunk(uint32_t addr, const uint32_t *p_data, uint32_t count);
 
 
-void swdDapInvalidate(void)
+// ----------------------------------------------------------------- 링크/파워업
+
+swd_err_t swdDapEnsure(void)
 {
-  is_powered   = false;
-  select_cache = 0xFFFFFFFF;
-  csw_cache    = 0xFFFFFFFF;
-}
+  swd_err_t err;
 
-bool swdDapIsPowered(void)
-{
-  return is_powered;
-}
-
-void swdDapSetAp(uint8_t apsel)
-{
-  if (apsel != ap_sel)
+  if (swdIsConnected() == false)
   {
-    ap_sel       = apsel;
-    select_cache = 0xFFFFFFFF;      // AP 가 바뀌면 CSW 도 다시 써야 한다
-    csw_cache    = 0xFFFFFFFF;
+    err = swdConnect(NULL);         // 내부에서 swdDapInvalidate() 가 불린다
+    if (err != SWD_OK) return err;
   }
-}
 
-uint8_t swdDapGetAp(void)
-{
-  return ap_sel;
-}
-
-
-// ----------------------------------------------------------------- 전송 래퍼
-
-/* sticky 에러를 지운다. swdXfer 를 다시 부르면 재귀가 되므로 raw 전송을 쓴다. */
-swd_err_t swdDapClearError(void)
-{
-  uint32_t data;
-
-  data = SWD_ABORT_ALLCLR;
-  swdTransfer(0, 0, SWD_DP_ABORT, &data);
+  if (is_powered == false)
+  {
+    err = swdDapPowerUp();
+    if (err != SWD_OK) return err;
+  }
 
   return SWD_OK;
 }
-
-/* WAIT 는 패킷 전체를 다시 보낸다. 타깃이 이전 트랜잭션을 아직 처리 중이라는
-   뜻이라 조금 기다렸다 재시도하면 대개 풀린다. */
-swd_err_t swdXfer(uint8_t ap_ndp, uint8_t rd_nwr, uint8_t addr, uint32_t *p_data)
-{
-  uint32_t ack = 0;
-
-  for (uint32_t retry = 0; retry < HW_SWD_WAIT_RETRY; retry++)
-  {
-    ack = swdTransfer(ap_ndp, rd_nwr, addr, p_data);
-
-    if (ack == SWD_ACK_OK)
-    {
-      return SWD_OK;
-    }
-    if (ack == SWD_ACK_WAIT)
-    {
-      if (retry >= 8)
-      {
-        delayUs(retry);           // 오래 끌면 점점 여유를 준다
-      }
-      continue;
-    }
-    break;
-  }
-
-  switch(ack)
-  {
-    case SWD_ACK_WAIT:
-      {
-        uint32_t data = SWD_ABORT_DAPABORT;
-        swdTransfer(0, 0, SWD_DP_ABORT, &data);
-      }
-      return SWD_ERR_WAIT;
-
-    case SWD_ACK_FAULT:
-      swdDapClearError();
-      return SWD_ERR_FAULT;
-
-    case SWD_ACK_PARITY:   return SWD_ERR_PARITY;
-    case SWD_ACK_NORESP:   return SWD_ERR_NORESP;
-    default:               return SWD_ERR_PROTOCOL;
-  }
-}
-
-swd_err_t swdDpRead(uint8_t addr, uint32_t *p_data)
-{
-  return swdXfer(0, 1, addr, p_data);
-}
-
-swd_err_t swdDpWrite(uint8_t addr, uint32_t data)
-{
-  return swdXfer(0, 0, addr, &data);
-}
-
-/* AP 주소는 8비트다. 상위 니블은 SELECT.APBANKSEL 로, 하위 A[3:2] 만
-   패킷에 실린다. DPBANKSEL 은 항상 0 으로 둔다 (CTRL/STAT 접근 조건). */
-swd_err_t swdApSelect(uint8_t addr)
-{
-  uint32_t sel = ((uint32_t)ap_sel << 24) | (addr & 0xF0);
-
-  if (sel == select_cache)
-  {
-    return SWD_OK;
-  }
-
-  swd_err_t err = swdDpWrite(SWD_DP_SELECT, sel);
-  if (err == SWD_OK)
-  {
-    select_cache = sel;
-  }
-  else
-  {
-    select_cache = 0xFFFFFFFF;
-  }
-  return err;
-}
-
-/* AP 읽기는 posted 다. 요청을 보낸 뒤 RDBUFF 에서 값을 거둬야 한다. */
-swd_err_t swdApRead(uint8_t addr, uint32_t *p_data)
-{
-  swd_err_t err;
-  uint32_t  dummy = 0;
-
-  err = swdApSelect(addr);
-  if (err != SWD_OK) return err;
-
-  err = swdXfer(1, 1, addr & 0x0C, &dummy);
-  if (err != SWD_OK) return err;
-
-  return swdDpRead(SWD_DP_RDBUFF, p_data);
-}
-
-swd_err_t swdApWrite(uint8_t addr, uint32_t data)
-{
-  swd_err_t err;
-
-  err = swdApSelect(addr);
-  if (err != SWD_OK) return err;
-
-  return swdXfer(1, 0, addr & 0x0C, &data);
-}
-
-
-// ----------------------------------------------------------------- 파워업
 
 swd_err_t swdDapPowerUp(void)
 {
@@ -215,40 +92,84 @@ swd_err_t swdDapPowerUp(void)
   return SWD_ERR_FAULT;
 }
 
-swd_err_t swdDapEnsure(void)
+bool swdDapIsPowered(void)
 {
-  swd_err_t err;
+  return is_powered;
+}
 
-  if (swdIsConnected() == false)
-  {
-    err = swdConnect(NULL);         // 내부에서 swdDapInvalidate() 가 불린다
-    if (err != SWD_OK) return err;
-  }
+void swdDapInvalidate(void)
+{
+  is_powered   = false;
+  select_cache = 0xFFFFFFFF;
+  csw_cache    = 0xFFFFFFFF;
+}
 
-  if (is_powered == false)
+void swdDapSetAp(uint8_t apsel)
+{
+  if (apsel != ap_sel)
   {
-    err = swdDapPowerUp();
-    if (err != SWD_OK) return err;
+    ap_sel       = apsel;
+    select_cache = 0xFFFFFFFF;      // AP 가 바뀌면 CSW 도 다시 써야 한다
+    csw_cache    = 0xFFFFFFFF;
   }
+}
+
+uint8_t swdDapGetAp(void)
+{
+  return ap_sel;
+}
+
+/* sticky 에러를 지운다. swdXfer 를 다시 부르면 재귀가 되므로 raw 전송을 쓴다. */
+swd_err_t swdDapClearError(void)
+{
+  uint32_t data;
+
+  data = SWD_ABORT_ALLCLR;
+  swdTransfer(0, 0, SWD_DP_ABORT, &data);
 
   return SWD_OK;
 }
 
 
-// ----------------------------------------------------------------- MEM-AP
+// ----------------------------------------------------------------- DP/AP 레지스터
 
-swd_err_t swdCswSet(uint32_t csw)
+swd_err_t swdDpRead(uint8_t addr, uint32_t *p_data)
 {
-  if (csw == csw_cache)
-  {
-    return SWD_OK;
-  }
-
-  swd_err_t err = swdApWrite(SWD_AP_CSW, csw);
-  csw_cache = (err == SWD_OK) ? csw : 0xFFFFFFFF;
-
-  return err;
+  return swdXfer(0, 1, addr, p_data);
 }
+
+swd_err_t swdDpWrite(uint8_t addr, uint32_t data)
+{
+  return swdXfer(0, 0, addr, &data);
+}
+
+/* AP 읽기는 posted 다. 요청을 보낸 뒤 RDBUFF 에서 값을 거둬야 한다. */
+swd_err_t swdApRead(uint8_t addr, uint32_t *p_data)
+{
+  swd_err_t err;
+  uint32_t  dummy = 0;
+
+  err = swdApSelect(addr);
+  if (err != SWD_OK) return err;
+
+  err = swdXfer(1, 1, addr & 0x0C, &dummy);
+  if (err != SWD_OK) return err;
+
+  return swdDpRead(SWD_DP_RDBUFF, p_data);
+}
+
+swd_err_t swdApWrite(uint8_t addr, uint32_t data)
+{
+  swd_err_t err;
+
+  err = swdApSelect(addr);
+  if (err != SWD_OK) return err;
+
+  return swdXfer(1, 0, addr & 0x0C, &data);
+}
+
+
+// ----------------------------------------------------------------- 타깃 메모리
 
 swd_err_t swdMemRead32(uint32_t addr, uint32_t *p_data)
 {
@@ -336,59 +257,6 @@ swd_err_t swdMemWrite8(uint32_t addr, uint8_t data)
   return swdApWrite(SWD_AP_DRW, ((uint32_t)data) << ((addr & 0x03) * 8));
 }
 
-
-/* 1KB 경계를 넘지 않는 한 덩어리를 읽는다.
-   AP read 가 posted 라서 n 워드에 n+1 트랜잭션이 든다.
-     TAR -> AP read(버림) -> AP read x (n-1) -> RDBUFF */
-static swd_err_t swdMemReadChunk(uint32_t addr, uint32_t *p_data, uint32_t count)
-{
-  swd_err_t err;
-  uint32_t  dummy = 0;
-
-  err = swdCswSet(SWD_CSW_BASE | SWD_CSW_INC_SINGLE | SWD_CSW_SIZE_32);
-                                                              if (err != SWD_OK) return err;
-  err = swdApWrite(SWD_AP_TAR, addr);                         if (err != SWD_OK) return err;
-  err = swdApSelect(SWD_AP_DRW);                              if (err != SWD_OK) return err;
-
-  // 파이프라인 채우기. 첫 결과는 버린다.
-  err = swdXfer(1, 1, SWD_AP_DRW & 0x0C, &dummy);             if (err != SWD_OK) return err;
-
-  for (uint32_t i = 0; i < count - 1; i++)
-  {
-    err = swdXfer(1, 1, SWD_AP_DRW & 0x0C, &p_data[i]);       if (err != SWD_OK) return err;
-  }
-
-  return swdDpRead(SWD_DP_RDBUFF, &p_data[count - 1]);
-}
-
-static swd_err_t swdMemWriteChunk(uint32_t addr, const uint32_t *p_data, uint32_t count)
-{
-  swd_err_t err;
-  uint32_t  ctrl = 0;
-
-  err = swdCswSet(SWD_CSW_BASE | SWD_CSW_INC_SINGLE | SWD_CSW_SIZE_32);
-                                                              if (err != SWD_OK) return err;
-  err = swdApWrite(SWD_AP_TAR, addr);                         if (err != SWD_OK) return err;
-  err = swdApSelect(SWD_AP_DRW);                              if (err != SWD_OK) return err;
-
-  for (uint32_t i = 0; i < count; i++)
-  {
-    uint32_t value = p_data[i];
-
-    err = swdXfer(1, 0, SWD_AP_DRW & 0x0C, &value);           if (err != SWD_OK) return err;
-  }
-
-  // 쓰기는 워드마다 확인하지 않고 블록 끝에서 한 번만 본다. 이게 처리량의 핵심.
-  err = swdDpRead(SWD_DP_CTRL_STAT, &ctrl);                   if (err != SWD_OK) return err;
-
-  if (ctrl & (SWD_CTRL_STICKYERR | SWD_CTRL_WDATAERR))
-  {
-    swdDapClearError();
-    return SWD_ERR_FAULT;
-  }
-  return SWD_OK;
-}
-
 swd_err_t swdMemReadBlock(uint32_t addr, uint32_t *p_data, uint32_t count)
 {
   swd_err_t err;
@@ -474,7 +342,6 @@ swd_err_t swdMemFill(uint32_t addr, uint32_t data, uint32_t count)
   return SWD_OK;
 }
 
-
 const char *swdErrStr(swd_err_t err)
 {
   switch(err)
@@ -489,6 +356,141 @@ const char *swdErrStr(swd_err_t err)
     case SWD_ERR_BUSY:      return "BUSY";
     default:                return "?";
   }
+}
+
+
+// ----------------------------------------------------------------- 내부
+
+/* WAIT 는 패킷 전체를 다시 보낸다. 타깃이 이전 트랜잭션을 아직 처리 중이라는
+   뜻이라 조금 기다렸다 재시도하면 대개 풀린다. */
+swd_err_t swdXfer(uint8_t ap_ndp, uint8_t rd_nwr, uint8_t addr, uint32_t *p_data)
+{
+  uint32_t ack = 0;
+
+  for (uint32_t retry = 0; retry < HW_SWD_WAIT_RETRY; retry++)
+  {
+    ack = swdTransfer(ap_ndp, rd_nwr, addr, p_data);
+
+    if (ack == SWD_ACK_OK)
+    {
+      return SWD_OK;
+    }
+    if (ack == SWD_ACK_WAIT)
+    {
+      if (retry >= 8)
+      {
+        delayUs(retry);           // 오래 끌면 점점 여유를 준다
+      }
+      continue;
+    }
+    break;
+  }
+
+  switch(ack)
+  {
+    case SWD_ACK_WAIT:
+      {
+        uint32_t data = SWD_ABORT_DAPABORT;
+        swdTransfer(0, 0, SWD_DP_ABORT, &data);
+      }
+      return SWD_ERR_WAIT;
+
+    case SWD_ACK_FAULT:
+      swdDapClearError();
+      return SWD_ERR_FAULT;
+
+    case SWD_ACK_PARITY:   return SWD_ERR_PARITY;
+    case SWD_ACK_NORESP:   return SWD_ERR_NORESP;
+    default:               return SWD_ERR_PROTOCOL;
+  }
+}
+
+/* AP 주소는 8비트다. 상위 니블은 SELECT.APBANKSEL 로, 하위 A[3:2] 만
+   패킷에 실린다. DPBANKSEL 은 항상 0 으로 둔다 (CTRL/STAT 접근 조건). */
+swd_err_t swdApSelect(uint8_t addr)
+{
+  uint32_t sel = ((uint32_t)ap_sel << 24) | (addr & 0xF0);
+
+  if (sel == select_cache)
+  {
+    return SWD_OK;
+  }
+
+  swd_err_t err = swdDpWrite(SWD_DP_SELECT, sel);
+  if (err == SWD_OK)
+  {
+    select_cache = sel;
+  }
+  else
+  {
+    select_cache = 0xFFFFFFFF;
+  }
+  return err;
+}
+
+swd_err_t swdCswSet(uint32_t csw)
+{
+  if (csw == csw_cache)
+  {
+    return SWD_OK;
+  }
+
+  swd_err_t err = swdApWrite(SWD_AP_CSW, csw);
+  csw_cache = (err == SWD_OK) ? csw : 0xFFFFFFFF;
+
+  return err;
+}
+
+/* 1KB 경계를 넘지 않는 한 덩어리를 읽는다.
+   AP read 가 posted 라서 n 워드에 n+1 트랜잭션이 든다.
+     TAR -> AP read(버림) -> AP read x (n-1) -> RDBUFF */
+static swd_err_t swdMemReadChunk(uint32_t addr, uint32_t *p_data, uint32_t count)
+{
+  swd_err_t err;
+  uint32_t  dummy = 0;
+
+  err = swdCswSet(SWD_CSW_BASE | SWD_CSW_INC_SINGLE | SWD_CSW_SIZE_32);
+                                                              if (err != SWD_OK) return err;
+  err = swdApWrite(SWD_AP_TAR, addr);                         if (err != SWD_OK) return err;
+  err = swdApSelect(SWD_AP_DRW);                              if (err != SWD_OK) return err;
+
+  // 파이프라인 채우기. 첫 결과는 버린다.
+  err = swdXfer(1, 1, SWD_AP_DRW & 0x0C, &dummy);             if (err != SWD_OK) return err;
+
+  for (uint32_t i = 0; i < count - 1; i++)
+  {
+    err = swdXfer(1, 1, SWD_AP_DRW & 0x0C, &p_data[i]);       if (err != SWD_OK) return err;
+  }
+
+  return swdDpRead(SWD_DP_RDBUFF, &p_data[count - 1]);
+}
+
+static swd_err_t swdMemWriteChunk(uint32_t addr, const uint32_t *p_data, uint32_t count)
+{
+  swd_err_t err;
+  uint32_t  ctrl = 0;
+
+  err = swdCswSet(SWD_CSW_BASE | SWD_CSW_INC_SINGLE | SWD_CSW_SIZE_32);
+                                                              if (err != SWD_OK) return err;
+  err = swdApWrite(SWD_AP_TAR, addr);                         if (err != SWD_OK) return err;
+  err = swdApSelect(SWD_AP_DRW);                              if (err != SWD_OK) return err;
+
+  for (uint32_t i = 0; i < count; i++)
+  {
+    uint32_t value = p_data[i];
+
+    err = swdXfer(1, 0, SWD_AP_DRW & 0x0C, &value);           if (err != SWD_OK) return err;
+  }
+
+  // 쓰기는 워드마다 확인하지 않고 블록 끝에서 한 번만 본다. 이게 처리량의 핵심.
+  err = swdDpRead(SWD_DP_CTRL_STAT, &ctrl);                   if (err != SWD_OK) return err;
+
+  if (ctrl & (SWD_CTRL_STICKYERR | SWD_CTRL_WDATAERR))
+  {
+    swdDapClearError();
+    return SWD_ERR_FAULT;
+  }
+  return SWD_OK;
 }
 
 

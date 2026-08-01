@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" width="800" height="560" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif">
+  <defs>
+    <pattern id="trn" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="#f3f4f6"/>
+      <line x1="0" y1="0" x2="0" y2="6" stroke="#c9ced6" stroke-width="2"/>
+    </pattern>
+    <marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+
+  <style>
+    .t   { font-size: 13px; fill: #111827; }
+    .sm  { font-size: 11px; fill: #6b7280; }
+    .lb  { font-size: 12px; fill: #374151; font-weight: 600; }
+    .hd  { font-size: 15px; fill: #111827; font-weight: 700; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+    .box { stroke-width: 1.5; rx: 3; }
+  </style>
+
+  <!-- ============ 읽기 ============ -->
+  <text x="24" y="34" class="hd">SWD 트랜잭션 — 선 하나를 번갈아 잡는다</text>
+  <text x="24" y="54" class="sm">SWDIO 는 양방향 반이중. 주인이 바뀌는 자리마다 turnaround 가 1클럭씩 들어간다.</text>
+
+  <text x="24" y="94" class="lb">읽기 (READ)</text>
+
+  <!-- 블록 -->
+  <rect x="24"  y="104" width="150" height="42" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <rect x="174" y="104" width="28"  height="42" class="box" fill="url(#trn)" stroke="#9ca3af" stroke-dasharray="3 2"/>
+  <rect x="202" y="104" width="72"  height="42" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <rect x="274" y="104" width="200" height="42" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <rect x="474" y="104" width="28"  height="42" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <rect x="502" y="104" width="28"  height="42" class="box" fill="url(#trn)" stroke="#9ca3af" stroke-dasharray="3 2"/>
+  <rect x="530" y="104" width="100" height="42" class="box" fill="#dbeafe" stroke="#2563eb"/>
+
+  <text x="99"  y="123" class="t" text-anchor="middle">Request</text>
+  <text x="99"  y="138" class="sm" text-anchor="middle">8 bit</text>
+  <text x="188" y="130" class="sm" text-anchor="middle">T</text>
+  <text x="238" y="123" class="t" text-anchor="middle">ACK</text>
+  <text x="238" y="138" class="sm" text-anchor="middle">3 bit</text>
+  <text x="374" y="123" class="t" text-anchor="middle">Data</text>
+  <text x="374" y="138" class="sm" text-anchor="middle">32 bit</text>
+  <text x="488" y="130" class="t" text-anchor="middle">P</text>
+  <text x="516" y="130" class="sm" text-anchor="middle">T</text>
+  <text x="580" y="123" class="t" text-anchor="middle">Idle</text>
+  <text x="580" y="138" class="sm" text-anchor="middle">8 bit</text>
+
+  <!-- 누가 잡는가 -->
+  <line x1="24"  y1="156" x2="174" y2="156" stroke="#2563eb" stroke-width="2"/>
+  <line x1="202" y1="156" x2="502" y2="156" stroke="#d97706" stroke-width="2"/>
+  <line x1="530" y1="156" x2="630" y2="156" stroke="#2563eb" stroke-width="2"/>
+  <text x="99"  y="171" class="sm" text-anchor="middle" fill="#2563eb">호스트 구동</text>
+  <text x="352" y="171" class="sm" text-anchor="middle" fill="#d97706">타깃 구동</text>
+  <text x="580" y="171" class="sm" text-anchor="middle" fill="#2563eb">호스트 구동</text>
+
+  <!-- ============ 쓰기 ============ -->
+  <text x="24" y="216" class="lb">쓰기 (WRITE)</text>
+
+  <rect x="24"  y="226" width="150" height="42" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <rect x="174" y="226" width="28"  height="42" class="box" fill="url(#trn)" stroke="#9ca3af" stroke-dasharray="3 2"/>
+  <rect x="202" y="226" width="72"  height="42" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <rect x="274" y="226" width="28"  height="42" class="box" fill="url(#trn)" stroke="#9ca3af" stroke-dasharray="3 2"/>
+  <rect x="302" y="226" width="200" height="42" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <rect x="502" y="226" width="28"  height="42" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <rect x="530" y="226" width="100" height="42" class="box" fill="#dbeafe" stroke="#2563eb"/>
+
+  <text x="99"  y="245" class="t" text-anchor="middle">Request</text>
+  <text x="99"  y="260" class="sm" text-anchor="middle">8 bit</text>
+  <text x="188" y="252" class="sm" text-anchor="middle">T</text>
+  <text x="238" y="245" class="t" text-anchor="middle">ACK</text>
+  <text x="238" y="260" class="sm" text-anchor="middle">3 bit</text>
+  <text x="288" y="252" class="sm" text-anchor="middle">T</text>
+  <text x="402" y="245" class="t" text-anchor="middle">Data</text>
+  <text x="402" y="260" class="sm" text-anchor="middle">32 bit</text>
+  <text x="516" y="252" class="t" text-anchor="middle">P</text>
+  <text x="580" y="245" class="t" text-anchor="middle">Idle</text>
+  <text x="580" y="260" class="sm" text-anchor="middle">8 bit</text>
+
+  <line x1="24"  y1="278" x2="174" y2="278" stroke="#2563eb" stroke-width="2"/>
+  <line x1="202" y1="278" x2="274" y2="278" stroke="#d97706" stroke-width="2"/>
+  <line x1="302" y1="278" x2="630" y2="278" stroke="#2563eb" stroke-width="2"/>
+  <text x="99"  y="293" class="sm" text-anchor="middle" fill="#2563eb">호스트</text>
+  <text x="238" y="293" class="sm" text-anchor="middle" fill="#d97706">타깃</text>
+  <text x="466" y="293" class="sm" text-anchor="middle" fill="#2563eb">호스트 구동</text>
+
+  <path d="M 644,238 L 644,218 L 288,218 L 288,223" fill="none" stroke="#6b7280" stroke-width="1" marker-end="url(#ar)"/>
+  <text x="648" y="243" class="sm">쓰기는 turnaround 가</text>
+  <text x="648" y="257" class="sm">데이터 <tspan font-weight="700">앞</tspan>에 온다</text>
+
+  <!-- 범례 -->
+  <rect x="24"  y="316" width="14" height="12" class="box" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="44"  y="326" class="sm">호스트가 구동</text>
+  <rect x="134" y="316" width="14" height="12" class="box" fill="#fef3c7" stroke="#d97706"/>
+  <text x="154" y="326" class="sm">타깃이 구동</text>
+  <rect x="240" y="316" width="14" height="12" class="box" fill="url(#trn)" stroke="#9ca3af" stroke-dasharray="3 2"/>
+  <text x="260" y="326" class="sm">turnaround — 아무도 안 잡는다 (풀업만 남는다)</text>
+
+  <line x1="24" y1="348" x2="776" y2="348" stroke="#e5e7eb" stroke-width="1"/>
+
+  <!-- ============ 비트 타이밍 ============ -->
+  <text x="24" y="378" class="lb">비트 단위 타이밍</text>
+  <text x="24" y="396" class="sm">호스트는 하강 에지 직후에 SWDIO 를 바꾸고, 타깃은 상승 에지에서 샘플한다.</text>
+
+  <text x="24" y="437" class="t">SWCLK</text>
+  <!-- 클럭: 하강에서 시작, 주기 70 -->
+  <path d="M 90,420 L 90,446 L 125,446 L 125,420 L 160,420 L 160,446 L 195,446 L 195,420
+           L 230,420 L 230,446 L 265,446 L 265,420 L 300,420 L 300,446 L 335,446 L 335,420 L 370,420"
+        fill="none" stroke="#111827" stroke-width="2"/>
+
+  <text x="24" y="492" class="t">SWDIO</text>
+  <!-- 데이터: 하강 직후 바뀜 -->
+  <path d="M 90,489 L 95,475 L 160,475 L 165,489 L 230,489 L 235,475 L 300,475 L 305,489 L 370,489"
+        fill="none" stroke="#2563eb" stroke-width="2"/>
+  <text x="127" y="468" class="mono" text-anchor="middle" fill="#2563eb">1</text>
+  <text x="197" y="503" class="mono" text-anchor="middle" fill="#2563eb">0</text>
+  <text x="267" y="468" class="mono" text-anchor="middle" fill="#2563eb">1</text>
+  <text x="337" y="503" class="mono" text-anchor="middle" fill="#2563eb">0</text>
+
+  <!-- 샘플 지점 (상승 에지) -->
+  <g stroke="#d97706" stroke-width="1.5" stroke-dasharray="3 3">
+    <line x1="125" y1="415" x2="125" y2="500"/>
+    <line x1="195" y1="415" x2="195" y2="500"/>
+    <line x1="265" y1="415" x2="265" y2="500"/>
+    <line x1="335" y1="415" x2="335" y2="500"/>
+  </g>
+  <circle cx="125" cy="475" r="3.5" fill="#d97706"/>
+  <circle cx="195" cy="489" r="3.5" fill="#d97706"/>
+  <circle cx="265" cy="475" r="3.5" fill="#d97706"/>
+  <circle cx="335" cy="489" r="3.5" fill="#d97706"/>
+
+  <!-- 주석 -->
+  <line x1="120" y1="530" x2="97" y2="497" stroke="#6b7280" stroke-width="1" marker-end="url(#ar)"/>
+  <text x="124" y="534" class="sm">하강 직후 SWDIO 를 세팅</text>
+
+  <line x1="420" y1="418" x2="342" y2="418" stroke="#6b7280" stroke-width="1" marker-end="url(#ar)"/>
+  <text x="426" y="422" class="sm" fill="#d97706">상승 에지에서 샘플</text>
+
+  <text x="426" y="448" class="sm">타깃이 구동하는 구간에서는</text>
+  <text x="426" y="462" class="sm">호스트가 같은 지점에서 읽는다</text>
+</svg>
