@@ -39,7 +39,15 @@
 #define GAP           UI_SPACE_SM
 #define BTN_H         60
 #define CARD_H        (PAD * 2 + ROW * 3)
-#define HEAD_H        60
+
+/* 화면 맨 위 48px 은 상단 셰이드의 센서(lv_layer_top)가 덮고 있다. 여기에
+   누를 것을 두면 터치가 셰이드로 가서 반응하지 않는다. 제목처럼 안 누르는
+   것만 올린다.
+
+   누를 수 있는 것은 전부 HEAD_H 아래에서 시작한다 — 두 값을 따로 적으면
+   나중에 하나만 바꿨을 때 조용히 안 눌리는 버튼이 생긴다. */
+#define SHADE_H       48
+#define HEAD_H        (SHADE_H + 12)
 
 
 typedef enum
@@ -239,6 +247,10 @@ static lv_obj_t *makeRowLabel(lv_obj_t *card, int n, lv_style_t *st)
   return l;
 }
 
+/* 제목은 위에, 닫기는 아래에 둔다.
+
+   위쪽 48px 은 셰이드 센서가 먹으므로 거기 버튼을 두면 안 눌린다. 아래에 두면
+   HOME 의 START 와 같은 자리라 손가락이 가는 곳도 일정하다. */
 static lv_obj_t *makeHeader(lv_obj_t *parent, const char *text)
 {
   lv_obj_t *l = uiCreateLabel(parent, text, uiStyleTextBody());
@@ -246,9 +258,9 @@ static lv_obj_t *makeHeader(lv_obj_t *parent, const char *text)
 
   lv_obj_align(l, LV_ALIGN_TOP_LEFT, UI_MARGIN, UI_SPACE_MD);
 
-  close = uiCreateButton(parent, LV_SYMBOL_CLOSE, false);
-  lv_obj_set_size(close, 60, 40);
-  lv_obj_align(close, LV_ALIGN_TOP_RIGHT, -UI_MARGIN, UI_SPACE_SM);
+  close = uiCreateButton(parent, "닫기", false);
+  lv_obj_set_size(close, body_w, BTN_H);
+  lv_obj_align(close, LV_ALIGN_BOTTOM_MID, 0, -UI_MARGIN);
   lv_obj_add_event_cb(close, cbBack, LV_EVENT_CLICKED, NULL);
   return l;
 }
@@ -392,7 +404,7 @@ static void buildList(lv_obj_t *parent)
 
   list_box = lv_obj_create(parent);
   lv_obj_remove_style_all(list_box);
-  lv_obj_set_size(list_box, body_w, 480 - HEAD_H - UI_MARGIN);
+  lv_obj_set_size(list_box, body_w, 480 - HEAD_H - BTN_H - UI_MARGIN - GAP);
   lv_obj_align(list_box, LV_ALIGN_TOP_MID, 0, HEAD_H);
   lv_obj_set_flex_flow(list_box, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_row(list_box, GAP, 0);
@@ -758,17 +770,31 @@ static void cbRunScroll(lv_event_t *e)
   step_follow = false;      // 사람이 스크롤하면 자동 따라가기를 멈춘다
 }
 
-/* 스크롤 플릭이 선택으로 새지 않게 릴리즈 좌표가 행 안인지 본다.
-   여기서 잘못 고르면 엉뚱한 펌웨어를 굽는다. */
+/* 스크롤 플릭이 선택으로 새지 않게 막는다. 여기서 잘못 고르면 엉뚱한 펌웨어를
+   굽는다.
+
+   좌표만 보는 가드로는 부족했다. "누른 행 밖에서 뗐나" 만 보면, 스크롤하다
+   같은 행 안에서 손을 떼는 흔한 경우가 그대로 통과한다. 실제로 스크롤이
+   일어났는지를 물어봐야 한다 - lv_indev_get_scroll_obj 가 그때 non-NULL 이다. */
 static void cbItem(lv_event_t *e)
 {
-  lv_obj_t          *row = lv_event_get_target(e);
-  uint32_t           idx = (uint32_t)(uintptr_t)lv_event_get_user_data(e);
+  lv_obj_t          *row   = lv_event_get_target(e);
+  uint32_t           idx   = (uint32_t)(uintptr_t)lv_event_get_user_data(e);
+  lv_indev_t        *indev = lv_indev_active();
   const prog_proj_t *p;
   lv_point_t         pt;
+  lv_point_t         vect;
   lv_area_t          area;
 
-  lv_indev_get_point(lv_indev_active(), &pt);
+  if (indev == NULL) return;
+
+  if (lv_indev_get_scroll_obj(indev) != NULL) return;   // 스크롤 중이었다
+
+  // 관성 없이 조금씩 끈 경우도 걸러낸다
+  lv_indev_get_vect(indev, &vect);
+  if (vect.y > 4 || vect.y < -4) return;
+
+  lv_indev_get_point(indev, &pt);
   lv_obj_get_coords(row, &area);
   if (pt.x < area.x1 || pt.x > area.x2 || pt.y < area.y1 || pt.y > area.y2) return;
 
