@@ -1,0 +1,20 @@
+# STM32F411 LCD 데모 — fw.txt 최소 예시
+#
+# device 를 안 적으면 타깃에서 읽어 판별하고, 알고리즘과 RAM 주소는 디바이스
+# DB 에서 온다. .elf 는 굽는 주소를 스스로 알고 있다. 그래서 두 줄이면 된다.
+
+name  = STM32F411 LCD demo
+image = app.elf
+
+# 소거·굽기 병렬도. .stldr 만 쓰고 .FLM 은 무시한다.
+# 기본값 0(x8) 은 가장 안전한 값이라 느리다. 타깃 VDD 가 2.7V 이상인 걸
+# 알고 있으면 2(x32) 로 올린다 — 이 보드는 3.3V 다.
+psize = 2
+
+# 필요할 때만 덧붙인다
+#
+# device = STM32F411xC/E                          자동 판별을 끄고 강제 지정
+# algo   = /prog/loaders/flm/STM32F4xx_512.FLM    DB 기본값 대신 이걸로
+# loader = /prog/loaders/ext/MX25L512G_xx.stldr   외부 QSPI 로더
+# speed  = 3500                                   SWD kHz
+# image  = res.bin @ 0x90000000                   외부 QSPI 로 간다 (주소로 갈린다)

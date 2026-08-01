@@ -10,6 +10,7 @@
 #include "prog/prog_flm.h"
 #include "prog/prog_stldr.h"
 #include "prog/prog_dev.h"
+#include "prog/prog_job.h"
 #include "swd.h"
 #include "swd/swd_dap.h"
 #include "swd/swd_cm.h"
@@ -21,6 +22,11 @@
 
 #ifdef _USE_HW_CLI
 static void cliProg(cli_args_t *args);
+static bool progJobListCb(const char *proj, const char *name, void *ctx);
+static void progJobProgressCb(const char *phase, uint32_t addr, uint32_t done,
+                              uint32_t total, void *ctx);
+static void progDevPrint(const prog_dev_t *p_dev);
+static bool progDevListCb(const prog_dev_t *p_dev, void *ctx);
 static uint32_t prog_psize = ALGO_PSIZE_8;
 #endif
 
@@ -33,28 +39,6 @@ MODULE_DEF(prog){
 
 
 // ----------------------------------------------------------------- 초기화
-
-static void progDevPrint(const prog_dev_t *p_dev)
-{
-  cliPrintf("  이름   : %s  (%s)\n", p_dev->name, p_dev->cpu);
-  cliPrintf("  id     : 0x%08X @ 0x%08X  mask 0x%08X\n",
-            p_dev->id_val, p_dev->id_addr, p_dev->id_mask);
-  cliPrintf("  ram    : 0x%08X  %d KB\n", p_dev->ram, (int)(p_dev->ram_sz / 1024));
-  if (p_dev->flash_sz)
-    cliPrintf("  flash  : 0x%08X  %d KB   (알고리즘과 교차 검증용)\n",
-              p_dev->flash, (int)(p_dev->flash_sz / 1024));
-  if (p_dev->algo[0]) cliPrintf("  algo   : %s\n", p_dev->algo);
-}
-
-static bool progDevListCb(const prog_dev_t *p_dev, void *ctx)
-{
-  (void)ctx;
-
-  cliPrintf("%-26s %-12s ram 0x%08X %4d KB %s\n",
-            p_dev->name, p_dev->cpu, p_dev->ram, (int)(p_dev->ram_sz / 1024),
-            p_dev->algo[0] ? "algo" : "");
-  return true;
-}
 
 bool progInit(void)
 {
@@ -156,6 +140,88 @@ fail:
   p_ctx->err_cnt++;
   return false;
 }
+
+
+
+
+static bool progJobListCb(const char *proj, const char *name, void *ctx)
+{
+  (void)ctx;
+
+  cliPrintf("%-20s %s\n", proj, name);
+  return true;
+}
+
+/* 잡 진행 상황. 페이지마다 찍으면 시리얼이 병목이 되므로 단계가 바뀔 때와
+   10%% 마다만 알린다. */
+static void progJobProgressCb(const char *phase, uint32_t addr, uint32_t done,
+                              uint32_t total, void *ctx)
+{
+  static const char *last  = NULL;
+  static uint32_t    last_pct = 0xFFFFFFFF;
+
+  (void)ctx;
+
+  if (strcmp(phase, "device") == 0)
+  {
+    cliPrintf("ram    : 0x%08X\n", addr);
+    last = NULL;
+    return;
+  }
+  if (strcmp(phase, "clamp") == 0)
+  {
+    cliPrintf("clamp  : 알고리즘이 크게 잡고 있어 DB 값 %d KB 로 좁힌다\n", (int)(done / 1024));
+    return;
+  }
+  if (strcmp(phase, "algo") == 0)
+  {
+    cliPrintf("algo   : 0x%08X ~ 0x%08X\n", addr, addr + done - 1);
+    last = NULL;
+    return;
+  }
+
+  if (total == 0) return;
+
+  {
+    uint32_t pct = done * 100 / total;
+
+    if (phase != last)
+    {
+      cliPrintf("%-8s : ", phase);
+      last     = phase;
+      last_pct = 0xFFFFFFFF;
+    }
+    if (last_pct == 0xFFFFFFFF || pct >= last_pct + 10 || done >= total)
+    {
+      cliPrintf("%d%% ", (int)pct);
+      last_pct = pct;
+      if (done >= total) { cliPrintf("\n"); last = NULL; }
+    }
+  }
+}
+
+static void progDevPrint(const prog_dev_t *p_dev)
+{
+  cliPrintf("  이름   : %s  (%s)\n", p_dev->name, p_dev->cpu);
+  cliPrintf("  id     : 0x%08X @ 0x%08X  mask 0x%08X\n",
+            p_dev->id_val, p_dev->id_addr, p_dev->id_mask);
+  cliPrintf("  ram    : 0x%08X  %d KB\n", p_dev->ram, (int)(p_dev->ram_sz / 1024));
+  if (p_dev->flash_sz)
+    cliPrintf("  flash  : 0x%08X  %d KB   (알고리즘과 교차 검증용)\n",
+              p_dev->flash, (int)(p_dev->flash_sz / 1024));
+  if (p_dev->algo[0]) cliPrintf("  algo   : %s\n", p_dev->algo);
+}
+
+static bool progDevListCb(const prog_dev_t *p_dev, void *ctx)
+{
+  (void)ctx;
+
+  cliPrintf("%-26s %-12s ram 0x%08X %4d KB %s\n",
+            p_dev->name, p_dev->cpu, p_dev->ram, (int)(p_dev->ram_sz / 1024),
+            p_dev->algo[0] ? "algo" : "");
+  return true;
+}
+
 
 void cliProg(cli_args_t *args)
 {
@@ -294,6 +360,51 @@ void cliProg(cli_args_t *args)
       elfClose(&elf);
       ret = true;
     }
+  }
+
+  /* 프로젝트 목록 */
+  if (args->argc == 1 && args->isStr(0, "list") == true)
+  {
+    uint32_t n = jobList(progJobListCb, NULL);
+
+    cliPrintf("---- %d 개 (%s)\n", (int)n, HW_SWD_SD_FW);
+    ret = true;
+  }
+
+  /* 잡 실행. GUI 가 한 줄도 없는 상태에서 여기까지 되는 게 이 단계의 목표다. */
+  if (args->argc == 2 && (args->isStr(0, "run") == true || args->isStr(0, "verify") == true))
+  {
+    static job_t job;
+    bool      only_verify = args->isStr(0, "verify");
+    swd_err_t err;
+    uint32_t  t0;
+
+    if (jobLoad(&job, args->getStr(1)) == false)
+    {
+      cliPrintf("fw.txt 를 읽지 못했다 : %s/%s/fw.txt\n", HW_SWD_SD_FW, args->getStr(1));
+      cliPrintf("prog list 로 확인해라\n");
+    }
+    else
+    {
+      cliPrintf("잡     : %s\n", job.name);
+      cliPrintf("device : %s\n", job.device[0] ? job.device : "(자동 판별)");
+      if (job.algo[0])   cliPrintf("algo   : %s\n", job.algo);
+      if (job.loader[0]) cliPrintf("loader : %s\n", job.loader);
+      for (uint32_t i = 0; i < job.image_cnt; i++)
+      {
+        cliPrintf("image  : %s", job.image[i].file);
+        if (job.image[i].has_addr) cliPrintf(" @ 0x%08X", job.image[i].addr);
+        cliPrintf("\n");
+      }
+      cliPrintf("----\n");
+
+      t0  = millis();
+      err = jobRun(&job, progJobProgressCb, NULL, true);
+      cliPrintf("----\n");
+      cliPrintf("%s : %s  (%d ms)\n", only_verify ? "verify" : "run",
+                swdErrStr(err), (int)(millis() - t0));
+    }
+    ret = true;
   }
 
   /* 디바이스 DB 훑기와 타깃 자동 판별. */
@@ -613,6 +724,8 @@ void cliProg(cli_args_t *args)
     cliPrintf("prog info\n");
     cliPrintf("prog elf info <path>        ELF 섹션/세그먼트/심볼 덤프\n");
     cliPrintf("prog elf load <path> <ram>  타깃 RAM 으로 재배치 로드\n");
+    cliPrintf("prog list                   /prog/fw 의 프로젝트 목록\n");
+    cliPrintf("prog run <프로젝트>         fw.txt 대로 굽고 검증\n");
     cliPrintf("prog dev [이름]              디바이스 DB 훑기 / 타깃 자동 판별\n");
     cliPrintf("prog psize [0~3]            소거/굽기 병렬도 (.stldr 전용)\n");
     cliPrintf("prog algo info <path>       .FLM / .stldr 자동 판별 + 디바이스 정보\n");
