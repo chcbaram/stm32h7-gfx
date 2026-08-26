@@ -9,10 +9,11 @@
 #define _DEF_FIRMWATRE_VERSION    "V240322R1"
 #define _DEF_BOARD_NAME           "STM32H7-GFX-FW"
 
-
 #define LCD_MODEL_4_0_480x480       1
 #define LCD_MODEL_4_3_800x480       0
 #define LCD_MODEL_4_3_480x272       0
+#define LCD_MODEL_5_0_480x854       0
+#define LCD_MODEL_5_0_800x480       0
 #define LCD_MODEL_7_0_800x480       0
 
 
@@ -26,13 +27,13 @@
 #define _USE_HW_BUZZER
 #define _USE_HW_RTOS
 
-#if LCD_MODEL_4_0_480x480
+#if LCD_MODEL_4_0_480x480 || LCD_MODEL_5_0_480x854
 #define _USE_HW_GT911
-#endif
-#if LCD_MODEL_4_3_800x480 || LCD_MODEL_4_3_480x272
+#elif LCD_MODEL_4_3_800x480 || LCD_MODEL_4_3_480x272
 #define _USE_HW_FT5206
-#endif
-#if LCD_MODEL_7_0_800x480
+#elif LCD_MODEL_5_0_800x480
+#define _USE_HW_GSL1680
+#elif LCD_MODEL_7_0_800x480
 #define _USE_HW_FT5316
 #endif
 
@@ -40,9 +41,10 @@
 #define      HW_LED_MAX_CH          1
 
 #define _USE_HW_UART
-#define      HW_UART_MAX_CH         2
+#define      HW_UART_MAX_CH         3
 #define      HW_UART_CH_SWD         _DEF_UART1
 #define      HW_UART_CH_USB         _DEF_UART2
+#define      HW_UART_CH_RS485       _DEF_UART3
 
 #define _USE_HW_CLI
 #define      HW_CLI_CMD_LIST_MAX    32
@@ -128,6 +130,12 @@
 #elif LCD_MODEL_4_3_480x272
 #define      HW_ST7701_WIDTH       480
 #define      HW_ST7701_HEIGHT      272
+#elif LCD_MODEL_5_0_480x854
+#define      HW_ST7701_WIDTH       480
+#define      HW_ST7701_HEIGHT      854
+#elif LCD_MODEL_5_0_800x480
+#define      HW_ST7701_WIDTH       800
+#define      HW_ST7701_HEIGHT      480
 #elif LCD_MODEL_7_0_800x480
 #define      HW_ST7701_WIDTH       800
 #define      HW_ST7701_HEIGHT      480

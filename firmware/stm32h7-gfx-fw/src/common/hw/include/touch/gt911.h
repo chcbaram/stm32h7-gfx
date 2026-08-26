@@ -139,7 +139,7 @@ typedef struct
   uint16_t x;
   uint16_t y;
   uint8_t  weight;
-  uint8_t  area;
+  uint16_t area;  // 8bit -> 16 bit로 수정
 } gt911_point_t;
 
 typedef struct

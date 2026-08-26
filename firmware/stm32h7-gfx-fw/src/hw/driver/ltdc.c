@@ -23,6 +23,14 @@
 #define LCD_VSYNC             ((uint16_t)4)     // Vertical synchronization   
 #define LCD_VBP               ((uint16_t)16)    // Vertical back porch        
 #define LCD_VFP               ((uint16_t)16)    // Vertical front porch       
+#elif LCD_MODEL_5_0_480x854
+#define LCD_HSYNC             ((uint16_t)8)
+#define LCD_HBP               ((uint16_t)80)
+#define LCD_HFP               ((uint16_t)72)
+
+#define LCD_VSYNC             ((uint16_t)8)
+#define LCD_VBP               ((uint16_t)17)
+#define LCD_VFP               ((uint16_t)2)
 #else
 #define LCD_HSYNC             ((uint16_t)8)     // Horizontal synchronization 
 #define LCD_HBP               ((uint16_t)50)    // Horizontal back porch      
@@ -377,6 +385,8 @@ void HAL_LTDC_MspInit(LTDC_HandleTypeDef* ltdcHandle)
     PeriphClkInitStruct.PLL3.PLL3Q = 2;
 #if LCD_MODEL_7_0_800x480
     PeriphClkInitStruct.PLL3.PLL3R = 22;
+#elif LCD_MODEL_5_0_480x854
+    PeriphClkInitStruct.PLL3.PLL3R = 19;
 #else
     PeriphClkInitStruct.PLL3.PLL3R = 34;
 #endif

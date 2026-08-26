@@ -681,10 +681,43 @@ void lcdDrawHLine(int16_t x, int16_t y, int16_t w, uint16_t color)
 
 void lcdDrawFillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color)
 {
+#if LCD_MODEL_5_0_480x854
+  int32_t x0 = x;
+  int32_t y0 = y;
+  int32_t x1 = x0 + w;
+  int32_t y1 = y0 + h;
+
+  if (w <= 0 || h <= 0)
+  {
+    return;
+  }
+
+  if (x0 < 0)          x0 = 0;
+  if (y0 < 0)          y0 = 0;
+  if (x1 > LCD_WIDTH)  x1 = LCD_WIDTH;
+  if (y1 > LCD_HEIGHT) y1 = LCD_HEIGHT;
+
+  if (x0 >= x1 || y0 >= y1)
+  {
+    return;
+  }
+
+  // 세로형 480x854 화면의 경우 기존 세로선의 픽셀수가 두배가까이 증가하기때문에 DMA로 출력하도록 분기해둔다.
+  uint32_t fill_width  = (uint32_t)(x1 - x0);
+  uint32_t fill_height = (uint32_t)(y1 - y0);
+  uint16_t *p_dst = &p_draw_frame_buf[y0 * LCD_WIDTH + x0];
+
+  lcdFillBuffer(p_dst,
+                fill_width,
+                fill_height,
+                LCD_WIDTH - fill_width,
+                color);
+#else
   for (int16_t i=x; i<x+w; i++)
   {
     lcdDrawVLine(i, y, h, color);
   }
+#endif
 }
 
 void lcdDrawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color)
@@ -1480,6 +1513,7 @@ void cliLcd(cli_args_t *args)
   if (args->argc == 1 && args->isStr(0, "touch") == true)
   {
     touch_info_t info;
+
     uint32_t cnt = 0;
     uint32_t fps = 0;
     uint32_t fps_time = 0;
@@ -1497,17 +1531,18 @@ void cliLcd(cli_args_t *args)
 
         lcdPrintfRect(0, 0, LCD_WIDTH, 32, green, 32, 
                       LCD_ALIGN_H_CENTER|LCD_ALIGN_V_CENTER, 
-                      "[TOUCH 테스트]");
+                      "[LCD TOUCH]");
 
         if (cnt%30 == 0)
         {
           fps = lcdGetFps();
           fps_time = lcdGetFpsTime();
         }
+
         cnt++;
         lcdPrintf(5,16*1, white, "%d fps", fps);
         lcdPrintf(5,16*2, white, "%d ms " , fps_time);
-        
+
 
         touchGetInfo(&info);
 
